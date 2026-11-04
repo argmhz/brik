@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brik – sprites demo</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #111;
+        color: #eee;
+        font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+        overflow: hidden;
+      }
+      #game {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        image-rendering: pixelated;
+        touch-action: none;
+      }
+      .overlay {
+        position: fixed;
+        left: 12px;
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 6px;
+        pointer-events: none;
+      }
+      #hud {
+        top: 12px;
+      }
+      #help {
+        bottom: 12px;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" tabindex="0"></canvas>
+    <div id="hud" class="overlay">loading…</div>
+    <div id="help" class="overlay">
+      WASD / piletaster: gå · Space: 1000 gems · Klik: 50 gems · C: ryd gems · Scroll: zoom
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

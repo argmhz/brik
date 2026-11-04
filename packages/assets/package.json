@@ -1,0 +1,10 @@
+{
+  "name": "@brik/assets",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@brik/core": "workspace:*" }
+}

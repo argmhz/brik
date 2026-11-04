@@ -1,0 +1,21 @@
+{
+  "name": "brik",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite examples/sprites-demo",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "editor": "node scripts/gen-types.mjs && vite apps/web",
+    "types": "node scripts/gen-types.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vitest": "2.1.8",
+    "happy-dom": "15.11.7"
+  }
+}

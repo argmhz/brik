@@ -1,0 +1,361 @@
+import {
+  type AnimationClip,
+  App,
+  Assets,
+  AssetsPlugin,
+  Audio,
+  Camera2D,
+  CorePlugin,
+  type Entity,
+  Name,
+  type SceneData,
+  type SceneEntityData,
+  SceneId,
+  Transform2D,
+  type SpriteRef,
+  type World,
+  clearWorld,
+  findBySceneId,
+  loadScene,
+  newGuid,
+  newSceneId,
+  serializeScene,
+} from "@brik/runtime";
+import { syncAllInstances } from "./prefabs";
+import { joinPath } from "./fs";
+import { AssetDatabase, type Decoder, SCENE_EXTENSION } from "./asset-db";
+import { createEntities, deleteEntities, duplicateEntities } from "./commands";
+import { type LogLevel, LogStore } from "./console-log";
+import type { ProjectFS } from "./fs";
+import { type EditCommand, History } from "./history";
+import { PlayController } from "./play";
+import { ScriptHost } from "./script-host";
+import type { EsbuildLike } from "./scripts";
+import { type ProjectSettings, defaultScene, readProject, sceneToJson, writeProject } from "./project";
+
+export type Tool = "move" | "rotate" | "scale";
+export type EntityKind = "empty" | "sprite" | "camera" | "rect" | "circle" | "text" | "animated" | "sound";
+export type EditorEvent = "world" | "selection" | "assets" | "scene" | "settings" | "scripts" | "console" | "play";
+
+export interface EditorOptions {
+  decode?: Decoder;
+  makeUrl?: (bytes: Uint8Array, mime: string) => string;
+  /** Enables scripts. Returns a ready esbuild (esbuild-wasm in the browser). */
+  esbuild?: () => Promise<EsbuildLike>;
+  /** Loads compiled script code as a module. Default: blob URL import. */
+  importCode?: (code: string) => Promise<Record<string, unknown>>;
+}
+
+/**
+ * The editor's state and actions, independent of the UI. The UI listens with
+ * `editor.on(...)` and calls methods; every change to the scene goes through
+ * `execute` so it can be undone.
+ */
+export class Editor {
+  readonly app: App;
+  readonly world: World;
+  readonly assets: Assets;
+  readonly history = new History();
+  readonly db: AssetDatabase;
+  readonly console = new LogStore();
+  readonly scripts: ScriptHost;
+  readonly play: PlayController;
+  settings: ProjectSettings;
+
+  scenePath: string | null = null;
+  /** Selected entities, by scene id. The last one is the "active" selection. */
+  selection: string[] = [];
+  /** Selected asset path (shown in the inspector when no entity is selected). */
+  selectedAsset: string | null = null;
+
+  tool: Tool = "move";
+  snap = false;
+  gridSize = 16;
+  showGrid = true;
+  /** The scene view camera. */
+  view = { x: 0, y: 0, zoom: 2 };
+
+  private listeners = new Map<EditorEvent, Set<() => void>>();
+
+  private constructor(
+    readonly fs: ProjectFS,
+    settings: ProjectSettings,
+    options: EditorOptions,
+  ) {
+    this.settings = settings;
+    this.app = new App().addPlugin(CorePlugin).addPlugin(AssetsPlugin);
+    this.world = this.app.world;
+    this.assets = this.world.resource(Assets);
+    this.db = new AssetDatabase(fs, this.assets, options.decode, options.makeUrl);
+    this.db.audio = this.world.insertResource(new Audio());
+    this.db.onPrefabChanged = (guid) => {
+      if (!this.play.active) syncAllInstances(this, guid);
+    };
+    this.play = new PlayController(this);
+    this.scripts = new ScriptHost(this, options.esbuild, options.importCode);
+    this.history.subscribe(() => this.emit("scene"));
+  }
+
+  static async open(fs: ProjectFS, options: EditorOptions = {}): Promise<Editor> {
+    const editor = new Editor(fs, await readProject(fs), options);
+    await editor.db.refresh();
+    // scripts may define components used by the scene, so compile them first
+    await editor.scripts.rebuild();
+    if (await fs.exists(editor.settings.startScene)) await editor.openScene(editor.settings.startScene);
+    else editor.newScene();
+    return editor;
+  }
+
+  // ---------------------------------------------------------------- events
+
+  on(event: EditorEvent, fn: () => void): () => void {
+    let set = this.listeners.get(event);
+    if (!set) this.listeners.set(event, (set = new Set()));
+    set.add(fn);
+    return () => set.delete(fn);
+  }
+
+  emit(event: EditorEvent): void {
+    for (const fn of this.listeners.get(event) ?? []) fn();
+  }
+
+  // ---------------------------------------------------------------- history
+
+  /**
+   * Applies a change. In play mode it is applied but not recorded, since the
+   * scene is restored when play stops anyway.
+   */
+  execute(cmd: EditCommand): void {
+    if (this.play.active) cmd.do();
+    else this.history.execute(cmd);
+    this.afterChange();
+  }
+
+  /** Records a change that was already applied, e.g. at the end of a gizmo drag. */
+  push(cmd: EditCommand): void {
+    if (!this.play.active) this.history.push(cmd);
+    this.afterChange();
+  }
+
+  /** Call after the world was changed outside of commands (e.g. play mode stopped). */
+  afterExternalChange(): void {
+    this.afterChange();
+    this.emit("selection");
+  }
+
+  log(level: LogLevel, text: string, loc?: { file?: string; line?: number; column?: number }): void {
+    this.console.add(level, text, loc);
+    this.emit("console");
+  }
+
+  undo(): void {
+    if (!this.play.active && this.history.undo()) this.afterChange();
+  }
+
+  redo(): void {
+    if (!this.play.active && this.history.redo()) this.afterChange();
+  }
+
+  private afterChange(): void {
+    const alive = this.selection.filter((id) => findBySceneId(this.world, id) >= 0);
+    if (alive.length !== this.selection.length) {
+      this.selection = alive;
+      this.emit("selection");
+    }
+    this.emit("world");
+  }
+
+  // ---------------------------------------------------------------- selection
+
+  select(ids: string[]): void {
+    this.selection = [...new Set(ids)];
+    if (ids.length > 0) this.selectedAsset = null;
+    this.emit("selection");
+  }
+
+  /** Ctrl/Cmd-click: add or remove one entity from the selection. */
+  toggleSelect(id: string): void {
+    this.select(this.selection.includes(id) ? this.selection.filter((s) => s !== id) : [...this.selection, id]);
+  }
+
+  selectAsset(path: string | null): void {
+    this.selectedAsset = path;
+    if (path) this.selection = [];
+    this.emit("selection");
+  }
+
+  selectedEntities(): Entity[] {
+    return this.selection.map((id) => findBySceneId(this.world, id)).filter((e) => e >= 0);
+  }
+
+  idOf(e: Entity): string {
+    return this.world.store(SceneId).id[e];
+  }
+
+  entityName(e: Entity): string {
+    const n = this.world.has(e, Name) ? this.world.store(Name).value[e] : "";
+    return n || `Entity ${this.idOf(e)?.slice(0, 4) ?? e}`;
+  }
+
+  // ---------------------------------------------------------------- settings
+
+  setTool(tool: Tool): void {
+    this.tool = tool;
+    this.emit("settings");
+  }
+
+  setSnap(snap: boolean): void {
+    this.snap = snap;
+    this.emit("settings");
+  }
+
+  setShowGrid(show: boolean): void {
+    this.showGrid = show;
+    this.emit("settings");
+  }
+
+  // ---------------------------------------------------------------- scenes
+
+  get dirty(): boolean {
+    return this.history.dirty;
+  }
+
+  newScene(): void {
+    this.play.stop();
+    loadScene(this.world, defaultScene());
+    this.scenePath = null;
+    this.resetAfterLoad();
+  }
+
+  async openScene(path: string): Promise<void> {
+    this.play.stop();
+    const data = JSON.parse(await this.fs.readText(path)) as SceneData;
+    loadScene(this.world, data);
+    this.scenePath = path;
+    this.resetAfterLoad();
+  }
+
+  /** Saves to the current path, or `path` if given (save as). */
+  async saveScene(path?: string): Promise<string> {
+    if (this.play.active) throw new Error("Stop spillet, før du gemmer scenen");
+    let target = path ?? this.scenePath;
+    if (!target) throw new Error("Brik editor: no scene path");
+    if (!target.endsWith(SCENE_EXTENSION)) target += SCENE_EXTENSION;
+    await this.fs.writeFile(target, sceneToJson(serializeScene(this.world)));
+    this.scenePath = target;
+    this.history.markSaved();
+    if (!(await this.fs.exists(this.settings.startScene))) {
+      this.settings = { ...this.settings, startScene: target };
+      await writeProject(this.fs, this.settings);
+    }
+    this.emit("scene");
+    this.emit("assets");
+    return target;
+  }
+
+  async setStartScene(path: string): Promise<void> {
+    this.settings = { ...this.settings, startScene: path };
+    await writeProject(this.fs, this.settings);
+    this.emit("assets");
+  }
+
+  private resetAfterLoad(): void {
+    this.history.clear();
+    this.history.markSaved();
+    this.selection = [];
+    // center the view on the first camera, if there is one
+    const cam = this.world.query([Camera2D, Transform2D]).first();
+    if (cam >= 0) {
+      const T = this.world.store(Transform2D);
+      this.view = { x: T.position.x[cam], y: T.position.y[cam], zoom: this.view.zoom };
+    }
+    this.emit("selection");
+    this.emit("world");
+    this.emit("scene");
+  }
+
+  // ---------------------------------------------------------------- entity actions
+
+  /** Creates a new entity and selects it. */
+  createEntity(
+    kind: EntityKind,
+    opts: {
+      name?: string;
+      sprite?: SpriteRef;
+      clip?: string;
+      x?: number;
+      y?: number;
+      parentId?: string | null;
+      extra?: SceneEntityData["components"];
+    } = {},
+  ): string {
+    const id = newSceneId();
+    const names: Record<EntityKind, string> = {
+      empty: "Entity",
+      sprite: "Sprite",
+      camera: "Camera",
+      rect: "Rektangel",
+      circle: "Cirkel",
+      text: "Tekst",
+      animated: "Animation",
+      sound: "Lyd",
+    };
+    const components: SceneEntityData["components"] = {
+      Name: { value: opts.name ?? names[kind] },
+      Transform2D: { position: { x: opts.x ?? 0, y: opts.y ?? 0 } },
+    };
+    if (kind === "sprite" || kind === "animated") components.Sprite = { sprite: opts.sprite ?? null };
+    if (kind === "animated") components.SpriteAnimator = { clip: opts.clip ?? null };
+    if (kind === "camera") components.Camera2D = { zoom: 3 };
+    if (kind === "rect") components.Shape2D = { kind: "rect", size: { x: 32, y: 32 }, fill: { r: 0.36, g: 0.62, b: 0.95, a: 1 } };
+    if (kind === "circle") components.Shape2D = { kind: "circle", size: { x: 32, y: 32 }, fill: { r: 0.95, g: 0.55, b: 0.3, a: 1 } };
+    if (kind === "text") components.Text2D = { text: "Tekst", size: 16 };
+    Object.assign(components, opts.extra);
+    this.execute(createEntities(this.world, `Opret ${components.Name.value}`, [{ id, components }], opts.parentId));
+    this.select([id]);
+    return id;
+  }
+
+  deleteSelection(): void {
+    if (this.selection.length === 0) return;
+    this.execute(deleteEntities(this.world, this.selection));
+    this.select([]);
+  }
+
+  duplicateSelection(): void {
+    if (this.selection.length === 0) return;
+    const { cmd, newIds } = duplicateEntities(this.world, this.selection);
+    this.execute(cmd);
+    this.select(newIds);
+  }
+
+  /**
+   * Makes an animation clip from sprites (in order) and saves it next to their
+   * texture as `<name>.anim.json`. Returns the clip.
+   */
+  async createAnimation(sprites: SpriteRef[], name: string, fps = 10): Promise<{ path: string; clip: AnimationClip }> {
+    if (sprites.length === 0) throw new Error("Vælg mindst én sprite");
+    const tex = this.db.byGuid(sprites[0].texture);
+    const dir = tex ? tex.path.split("/").slice(0, -1).join("/") : "animations";
+    const clean = name.replace(/[\\/:*?"<>|]/g, "_").trim() || "animation";
+    let path = joinPath(dir, `${clean}.anim.json`);
+    for (let i = 2; await this.fs.exists(path); i++) path = joinPath(dir, `${clean} ${i}.anim.json`);
+    const clip: AnimationClip = {
+      guid: newGuid(),
+      name: clean,
+      mode: "loop",
+      frames: sprites.map((sprite) => ({ sprite, duration: 1 / fps })),
+      events: [],
+    };
+    await this.db.saveClip(path, clip);
+    this.emit("assets");
+    return { path, clip };
+  }
+
+  /** Discards everything (used when closing the project). */
+  dispose(): void {
+    this.play.stop();
+    clearWorld(this.world);
+    this.listeners.clear();
+  }
+}

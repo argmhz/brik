@@ -1,0 +1,517 @@
+import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
+import { type Entity, GlobalTransform2D, type Mat3, type Vec2, type World, mat3 } from "@brik/core";
+import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
+import { SpriteBatcher, packColor } from "./sprite-batcher";
+import { TextCache, type TextImage, type TextStyle } from "./text";
+
+const KIND_SPRITE = 0;
+const KIND_SHAPE = 1;
+const KIND_TEXT = 2;
+
+const renderers = new Set<Renderer>();
+
+/** Rasterized Text2D, shared by all renderers (and by picking). */
+export const textCache = new TextCache((tex) => {
+  for (const r of renderers) r.releaseTexture(tex);
+});
+
+const style: TextStyle = { text: "", size: 16, font: "", align: "center", bold: false, maxWidth: 0, lineHeight: 1.2 };
+
+/** The rasterized text for an entity's Text2D, or null if empty / unavailable. */
+export function textImage(world: World, e: Entity): TextImage | null {
+  const T = world.store(Text2D);
+  if (!T.text[e]) return null;
+  style.text = T.text[e];
+  style.size = T.size[e];
+  style.font = T.font[e];
+  style.align = T.align[e];
+  style.bold = T.bold[e] !== 0;
+  style.maxWidth = T.maxWidth[e];
+  style.lineHeight = T.lineHeight[e];
+  return textCache.get(style);
+}
+
+interface GpuTexture {
+  tex: WebGLTexture;
+  version: number;
+  id: number;
+}
+
+export interface RendererOptions {
+  /** Max device pixel ratio to render at. Default 2. */
+  maxPixelRatio?: number;
+  antialias?: boolean;
+}
+
+/** A free camera, e.g. the editor's scene view. */
+export interface EditorView {
+  x: number;
+  y: number;
+  zoom: number;
+  clearColor?: { r: number; g: number; b: number; a: number };
+}
+
+export interface RenderStats {
+  sprites: number;
+  drawCalls: number;
+  cameras: number;
+}
+
+/**
+ * Draws the world with WebGL2. Available as a resource: `world.resource(Renderer)`.
+ */
+export class Renderer {
+  readonly gl: WebGL2RenderingContext;
+  readonly stats: RenderStats = { sprites: 0, drawCalls: 0, cameras: 0 };
+  private batcher!: SpriteBatcher;
+  private textures = new Map<TextureAsset, GpuTexture>();
+  private nextTextureId = 1;
+  private contextLost = false;
+  private warnedNoCamera = false;
+  private readonly maxPixelRatio: number;
+
+  // per-frame scratch, reused to avoid garbage
+  private items: Entity[] = [];
+  private itemKind: number[] = [];
+  private itemTex: (GpuTexture | null)[] = [];
+  private keyLayer = new Int32Array(0);
+  private keyOrder = new Int32Array(0);
+  private keyY = new Float32Array(0);
+  private keyTex = new Int32Array(0);
+  private order: number[] = [];
+  private resolved: ResolvedSprite[] = [];
+  private viewProj = new Float32Array(9);
+
+  constructor(
+    readonly canvas: HTMLCanvasElement,
+    options: RendererOptions = {},
+  ) {
+    this.maxPixelRatio = options.maxPixelRatio ?? 2;
+    const gl = canvas.getContext("webgl2", {
+      alpha: false,
+      antialias: options.antialias ?? false,
+      premultipliedAlpha: true,
+    });
+    if (!gl) throw new Error("Brik: WebGL2 is not supported in this browser");
+    this.gl = gl;
+    this.initGl();
+    renderers.add(this);
+    canvas.addEventListener("webglcontextlost", (ev) => {
+      ev.preventDefault();
+      this.contextLost = true;
+    });
+    canvas.addEventListener("webglcontextrestored", () => {
+      this.textures.clear();
+      this.initGl();
+      this.contextLost = false;
+    });
+  }
+
+  /** Canvas size in CSS pixels. */
+  get width(): number {
+    return this.canvas.clientWidth || this.canvas.width;
+  }
+
+  get height(): number {
+    return this.canvas.clientHeight || this.canvas.height;
+  }
+
+  render(world: World): void {
+    if (this.contextLost) return;
+    this.resize();
+    const gl = this.gl;
+    this.stats.sprites = 0;
+    this.stats.drawCalls = 0;
+
+    const cameras = world.query([Camera2D, GlobalTransform2D]).toArray();
+    const C = world.store(Camera2D);
+    const G = world.store(GlobalTransform2D);
+    cameras.sort((a, b) => C.priority[a] - C.priority[b]);
+    this.stats.cameras = cameras.length;
+
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    if (cameras.length === 0) {
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      if (!this.warnedNoCamera) {
+        this.warnedNoCamera = true;
+        console.warn("[brik] no Camera2D in the world, nothing to draw");
+      }
+      return;
+    }
+
+    const count = this.collect(world);
+    this.batcher.drawCalls = 0;
+    this.batcher.instances = 0;
+
+    gl.enable(gl.SCISSOR_TEST);
+    for (const cam of cameras) {
+      if (!G.active[cam]) continue;
+      const vx = Math.round(C.viewport.x[cam] * gl.drawingBufferWidth);
+      const vy = Math.round(C.viewport.y[cam] * gl.drawingBufferHeight);
+      const vw = Math.round(C.viewport.w[cam] * gl.drawingBufferWidth);
+      const vh = Math.round(C.viewport.h[cam] * gl.drawingBufferHeight);
+      gl.viewport(vx, vy, vw, vh);
+      gl.scissor(vx, vy, vw, vh);
+      if (C.clear[cam]) {
+        gl.clearColor(C.clearColor.r[cam], C.clearColor.g[cam], C.clearColor.b[cam], C.clearColor.a[cam]);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      const bounds = this.setView(
+        globalOf(world, cam),
+        C.zoom[cam],
+        this.width * C.viewport.w[cam],
+        this.height * C.viewport.h[cam],
+      );
+      this.drawSprites(world, count, bounds);
+    }
+    gl.disable(gl.SCISSOR_TEST);
+    this.stats.drawCalls = this.batcher.drawCalls;
+  }
+
+  /**
+   * Draws the world from an explicit view instead of its cameras, filling the
+   * whole canvas. Used by the editor's scene view.
+   */
+  renderView(world: World, view: EditorView): void {
+    if (this.contextLost) return;
+    this.resize();
+    const gl = this.gl;
+    this.stats.sprites = 0;
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    const c = view.clearColor ?? { r: 0.12, g: 0.12, b: 0.14, a: 1 };
+    gl.clearColor(c.r, c.g, c.b, c.a);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const count = this.collect(world);
+    this.batcher.drawCalls = 0;
+    const camM = mat3.fromTRS(view.x, view.y, 0, 1, 1);
+    this.drawSprites(world, count, this.setView(camM, view.zoom, this.width, this.height));
+    this.stats.drawCalls = this.batcher.drawCalls;
+    this.stats.cameras = 0;
+  }
+
+  /** Converts a CSS-pixel position on the canvas (y down) to world coordinates. */
+  screenToWorld(world: World, camera: Entity, screen: Vec2, out: Vec2 = { x: 0, y: 0 }): Vec2 {
+    const C = world.store(Camera2D);
+    const vw = this.width * C.viewport.w[camera];
+    const vh = this.height * C.viewport.h[camera];
+    const vx = this.width * C.viewport.x[camera];
+    const vyTop = this.height * (1 - C.viewport.y[camera] - C.viewport.h[camera]);
+    const zoom = C.zoom[camera];
+    // view space: centered, y up, in world units
+    const local = { x: (screen.x - vx - vw / 2) / zoom, y: -(screen.y - vyTop - vh / 2) / zoom };
+    return mat3.transformPoint(globalOf(world, camera), local, out);
+  }
+
+  /** Converts world coordinates to CSS pixels on the canvas (y down). */
+  worldToScreen(world: World, camera: Entity, p: Vec2, out: Vec2 = { x: 0, y: 0 }): Vec2 {
+    const C = world.store(Camera2D);
+    const inv = mat3.invert(globalOf(world, camera)) ?? mat3.identity();
+    const v = mat3.transformPoint(inv, p);
+    const vw = this.width * C.viewport.w[camera];
+    const vh = this.height * C.viewport.h[camera];
+    const vx = this.width * C.viewport.x[camera];
+    const vyTop = this.height * (1 - C.viewport.y[camera] - C.viewport.h[camera]);
+    const zoom = C.zoom[camera];
+    out.x = vx + vw / 2 + v.x * zoom;
+    out.y = vyTop + vh / 2 - v.y * zoom;
+    return out;
+  }
+
+  // ---------------------------------------------------------------- internals
+
+  private initGl(): void {
+    const gl = this.gl;
+    this.batcher = new SpriteBatcher(gl);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  }
+
+  private resize(): void {
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, this.maxPixelRatio);
+    const w = Math.max(1, Math.round(this.width * dpr));
+    const h = Math.max(1, Math.round(this.height * dpr));
+    if (this.canvas.clientWidth && (this.canvas.width !== w || this.canvas.height !== h)) {
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+  }
+
+  /** Gathers visible sprites, shapes and text and sorts them. Returns how many there are. */
+  private collect(world: World): number {
+    const assets = world.resource(Assets);
+    const S = world.store(Sprite);
+    const H = world.store(Shape2D);
+    const G = world.store(GlobalTransform2D);
+    const O = world.store(SortingOrder);
+    const items = this.items;
+    items.length = 0;
+    this.itemKind.length = 0;
+    this.itemTex.length = 0;
+    textCache.sweep();
+
+    const slot = (i: number) => (this.resolved[i] ??= {} as ResolvedSprite);
+
+    for (const e of world.query([Sprite, GlobalTransform2D])) {
+      if (!G.active[e]) continue;
+      const ref = S.sprite[e];
+      if (!ref) continue;
+      const r = assets.resolve(ref, slot(items.length));
+      if (!r) continue;
+      const gpu = this.gpuTexture(r.texture);
+      if (!gpu) continue;
+      items.push(e);
+      this.itemKind.push(KIND_SPRITE);
+      this.itemTex.push(gpu);
+    }
+
+    for (const e of world.query([Shape2D, GlobalTransform2D])) {
+      if (!G.active[e]) continue;
+      const r = slot(items.length);
+      r.width = H.size.x[e];
+      r.height = H.size.y[e];
+      r.pivotX = 0.5;
+      r.pivotY = 0.5;
+      items.push(e);
+      this.itemKind.push(KIND_SHAPE);
+      this.itemTex.push(null);
+    }
+
+    for (const e of world.query([Text2D, GlobalTransform2D])) {
+      if (!G.active[e]) continue;
+      const img = textImage(world, e);
+      if (!img) continue;
+      const gpu = this.gpuTexture(img.texture);
+      if (!gpu) continue;
+      const r = slot(items.length);
+      r.texture = img.texture;
+      r.u0 = 0;
+      r.u1 = 1;
+      r.v0 = 1;
+      r.v1 = 0;
+      r.width = img.width;
+      r.height = img.height;
+      r.pivotX = img.pivotX;
+      r.pivotY = 0.5;
+      items.push(e);
+      this.itemKind.push(KIND_TEXT);
+      this.itemTex.push(gpu);
+    }
+
+    const n = items.length;
+    if (this.keyLayer.length < n) {
+      const cap = Math.max(n, this.keyLayer.length * 2, 256);
+      this.keyLayer = new Int32Array(cap);
+      this.keyOrder = new Int32Array(cap);
+      this.keyY = new Float32Array(cap);
+      this.keyTex = new Int32Array(cap);
+    }
+    const order = this.order;
+    order.length = n;
+    for (let i = 0; i < n; i++) {
+      const e = items[i];
+      order[i] = i;
+      const sorted = world.has(e, SortingOrder);
+      this.keyLayer[i] = sorted ? O.layer[e] : 0;
+      this.keyOrder[i] = sorted ? O.order[e] : 0;
+      this.keyY[i] = sorted && O.ySort[e] ? -G.matrix.ty[e] : 0;
+      this.keyTex[i] = this.itemTex[i]?.id ?? 0;
+    }
+    const { keyLayer, keyOrder, keyY, keyTex } = this;
+    order.sort(
+      (a, b) =>
+        keyLayer[a] - keyLayer[b] ||
+        keyOrder[a] - keyOrder[b] ||
+        keyY[a] - keyY[b] ||
+        keyTex[a] - keyTex[b] ||
+        items[a] - items[b],
+    );
+    return n;
+  }
+
+  /** Sets up viewProj for a view and returns its visible world-space AABB. */
+  private setView(camM: Mat3, zoom: number, vw: number, vh: number): { minX: number; minY: number; maxX: number; maxY: number } {
+    const view = mat3.invert(camM) ?? mat3.identity();
+    const sx = (2 * zoom) / vw;
+    const sy = (2 * zoom) / vh;
+    const p = this.viewProj;
+    // column-major: scale(sx, sy) * view
+    p[0] = sx * view.a;
+    p[1] = sy * view.b;
+    p[2] = 0;
+    p[3] = sx * view.c;
+    p[4] = sy * view.d;
+    p[5] = 0;
+    p[6] = sx * view.tx;
+    p[7] = sy * view.ty;
+    p[8] = 1;
+
+    // world-space bounds of the view rectangle (handles camera rotation)
+    const hw = vw / (2 * zoom);
+    const hh = vh / (2 * zoom);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const [x, y] of [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]]) {
+      const wx = camM.a * x + camM.c * y + camM.tx;
+      const wy = camM.b * x + camM.d * y + camM.ty;
+      minX = Math.min(minX, wx);
+      maxX = Math.max(maxX, wx);
+      minY = Math.min(minY, wy);
+      maxY = Math.max(maxY, wy);
+    }
+    this.batcher.begin(p);
+    return { minX, minY, maxX, maxY };
+  }
+
+  private drawSprites(
+    world: World,
+    count: number,
+    view: { minX: number; minY: number; maxX: number; maxY: number },
+  ): void {
+    const S = world.store(Sprite);
+    const H = world.store(Shape2D);
+    const X = world.store(Text2D);
+    const g = world.store(GlobalTransform2D).matrix;
+    const items = this.items;
+    const batcher = this.batcher;
+    let drawn = 0;
+
+    for (let k = 0; k < count; k++) {
+      const i = this.order[k];
+      const e = items[i];
+      const r = this.resolved[i];
+      const kind = this.itemKind[i];
+      // quad matrix: global * translate(-pivot * size) * scale(±size)
+      const sprite = kind === KIND_SPRITE;
+      const w = sprite && S.flipX[e] ? -r.width : r.width;
+      const h = sprite && S.flipY[e] ? -r.height : r.height;
+      const ga = g.a[e];
+      const gb = g.b[e];
+      const gc = g.c[e];
+      const gd = g.d[e];
+      const a = ga * w;
+      const b = gb * w;
+      const c = gc * h;
+      const d = gd * h;
+      const tx = g.tx[e] - a * r.pivotX - c * r.pivotY;
+      const ty = g.ty[e] - b * r.pivotX - d * r.pivotY;
+
+      // cull against the camera's view
+      const x0 = tx;
+      const x1 = tx + a;
+      const x2 = tx + c;
+      const x3 = tx + a + c;
+      const y0 = ty;
+      const y1 = ty + b;
+      const y2 = ty + d;
+      const y3 = ty + b + d;
+      if (
+        Math.max(x0, x1, x2, x3) < view.minX ||
+        Math.min(x0, x1, x2, x3) > view.maxX ||
+        Math.max(y0, y1, y2, y3) < view.minY ||
+        Math.min(y0, y1, y2, y3) > view.maxY
+      ) {
+        continue;
+      }
+
+      if (kind === KIND_SHAPE) {
+        const fill = packColor(H.fill.r[e], H.fill.g[e], H.fill.b[e], H.fill.a[e]);
+        const stroke = packColor(H.stroke.r[e], H.stroke.g[e], H.stroke.b[e], H.stroke.a[e]);
+        const mode = H.kind[e] === "circle" ? 2 : 1;
+        batcher.pushShape(a, b, c, d, tx, ty, mode, fill, stroke, H.strokeWidth[e], H.radius[e]);
+      } else {
+        const C = kind === KIND_TEXT ? X.color : S.color;
+        const rgba = packColor(C.r[e], C.g[e], C.b[e], C.a[e]);
+        batcher.push(this.itemTex[i]!.tex, a, b, c, d, tx, ty, r.u0, r.v0, r.u1, r.v1, rgba);
+      }
+      drawn++;
+    }
+    batcher.end();
+    this.stats.sprites += drawn;
+  }
+
+  /** Frees the GPU copy of a texture (e.g. evicted text). */
+  releaseTexture(asset: TextureAsset): void {
+    const gpu = this.textures.get(asset);
+    if (!gpu) return;
+    this.textures.delete(asset);
+    if (!this.contextLost) this.batcher.releaseTexture(gpu.tex);
+  }
+
+  /** Stops using this renderer. */
+  dispose(): void {
+    renderers.delete(this);
+    for (const asset of [...this.textures.keys()]) this.releaseTexture(asset);
+    this.batcher.dispose();
+  }
+
+  private gpuTexture(asset: TextureAsset): GpuTexture | null {
+    if (asset.status !== "ready" || !asset.source) return null;
+    let gpu = this.textures.get(asset);
+    if (gpu && gpu.version === asset.version) return gpu;
+    const gl = this.gl;
+    if (!gpu) {
+      gpu = { tex: gl.createTexture()!, version: -1, id: this.nextTextureId++ };
+      this.textures.set(asset, gpu);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, gpu.tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset.source as TexImageSource);
+    const filter = asset.settings.filter === "nearest" ? gl.NEAREST : gl.LINEAR;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    const wrap = asset.settings.wrap === "repeat" ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+    gpu.version = asset.version;
+    return gpu;
+  }
+}
+
+const scratch = {} as ResolvedSprite;
+
+/**
+ * The matrix that maps the unit square onto an entity's drawn quad (sprite,
+ * shape or text) in world space, or null if it draws nothing. Used for picking and gizmos.
+ */
+export function spriteQuad(world: World, e: Entity): Mat3 | null {
+  if (!world.has(e, GlobalTransform2D)) return null;
+  let w: number;
+  let h: number;
+  let px = 0.5;
+  let py = 0.5;
+  if (world.has(e, Sprite) && world.store(Sprite).sprite[e]) {
+    const S = world.store(Sprite);
+    const r = world.resource(Assets).resolve(S.sprite[e]!, scratch);
+    if (!r) return null;
+    w = S.flipX[e] ? -r.width : r.width;
+    h = S.flipY[e] ? -r.height : r.height;
+    px = r.pivotX;
+    py = r.pivotY;
+  } else if (world.has(e, Shape2D)) {
+    const H = world.store(Shape2D);
+    w = H.size.x[e];
+    h = H.size.y[e];
+  } else if (world.has(e, Text2D)) {
+    const img = textImage(world, e);
+    if (!img) return null;
+    w = img.width;
+    h = img.height;
+    px = img.pivotX;
+  } else return null;
+  const g = globalOf(world, e);
+  const a = g.a * w;
+  const b = g.b * w;
+  const c = g.c * h;
+  const d = g.d * h;
+  return { a, b, c, d, tx: g.tx - a * px - c * py, ty: g.ty - b * px - d * py };
+}
+
+export function globalOf(world: World, e: Entity): Mat3 {
+  const g = world.store(GlobalTransform2D).matrix;
+  return { a: g.a[e], b: g.b[e], c: g.c[e], d: g.d[e], tx: g.tx[e], ty: g.ty[e] };
+}

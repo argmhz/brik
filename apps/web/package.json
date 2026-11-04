@@ -1,0 +1,17 @@
+{
+  "name": "@brik/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@brik/editor": "workspace:*",
+    "solid-js": "1.9.16"
+  },
+  "devDependencies": {
+    "vite-plugin-solid": "2.10.2"
+  }
+}
