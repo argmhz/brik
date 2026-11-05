@@ -7,9 +7,11 @@ lægges på itch.io, GitHub Pages eller en hvilken som helst webserver.
 ## 1. Start editoren
 
 ```bash
-corepack pnpm install
-corepack pnpm editor        # http://localhost:5180
+make editor        # http://localhost:5180
 ```
+
+`make` alene viser alle genveje. Uden make: `corepack pnpm install` og
+derefter `corepack pnpm editor`.
 
 Vælg et projekt på startskærmen:
 
@@ -201,14 +203,13 @@ kræver Rust ([rustup.rs](https://rustup.rs)) og Tauris systempakker
 ([v2.tauri.app/start/prerequisites](https://v2.tauri.app/start/prerequisites/)).
 
 ```bash
-cd apps/desktop
-corepack pnpm dev      # åbner editoren i et vindue
-corepack pnpm build    # laver installere
+make desktop           # åbner editoren i et vindue
+make desktop-build     # laver installere
 ```
 
 `corepack pnpm build` laver installere til det system, du bygger på. På Linux
 ligger `.deb`-filen bagefter i `src-tauri/target/release/bundle/deb/`. Vil du
-kun have den, så kør `corepack pnpm tauri build --bundles deb`.
+kun have den, så kør `make desktop-deb`.
 
 I desktop-appen vælger du projektmappen med en almindelig mappe-dialog, og de
 seneste mapper vises på startskærmen. Byg-vinduet gemmer spillet med en

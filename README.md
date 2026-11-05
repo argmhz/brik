@@ -8,12 +8,24 @@ En web-first 2D game engine med ECS, bygget i TypeScript og WebGL2. Spil eksport
 ## Kom i gang
 
 ```bash
-corepack pnpm install
-corepack pnpm editor     # genererer typer, bygger playeren og starter editoren på http://localhost:5180
-corepack pnpm dev        # starter sprites-demoen på http://localhost:5173
-corepack pnpm test       # kører alle tests
-corepack pnpm typecheck
+make editor        # installerer, hvis det mangler, og starter editoren på http://localhost:5180
+make check         # typecheck og alle tests
+make               # viser alle mål
 ```
+
+| Mål | Hvad det gør |
+|---|---|
+| `make install` | Installerer afhængigheder |
+| `make editor` | Starter editoren på http://localhost:5180 |
+| `make demo` | Starter sprites-demoen på http://localhost:5173 |
+| `make test` / `make test-watch` | Kører tests (én gang eller ved hver ændring) |
+| `make typecheck` / `make check` | Typecheck, eller typecheck og tests |
+| `make build` | Bygger web-editoren til `apps/web/dist` |
+| `make desktop` | Starter desktop-appen (kræver Rust) |
+| `make desktop-build` / `make desktop-deb` | Bygger desktop-appens installere, eller kun `.deb` |
+| `make clean` / `make clean-all` | Sletter byggede filer, eller også `node_modules` og Rust-builds |
+
+Uden make kan du bruge pnpm direkte: `corepack pnpm install`, `corepack pnpm editor`, `corepack pnpm test` og `corepack pnpm typecheck`.
 
 Vil du se det hele i brug, så vælg **Platformer-eksempel** eller **Top-down shooter-eksempel** ved siden af "Opret", når du laver et nyt browser-projekt. Du får en bane med tilemap, en figur med animationer og lyd, mønter (prefab), partikler og UI.
 
