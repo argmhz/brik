@@ -176,5 +176,13 @@ kræver Rust ([rustup.rs](https://rustup.rs)) og Tauris systempakker
 ```bash
 cd apps/desktop
 corepack pnpm dev      # åbner editoren i et vindue
-corepack pnpm build    # laver en installer
+corepack pnpm build    # laver installere
 ```
+
+`corepack pnpm build` laver installere til det system, du bygger på. På Linux
+ligger `.deb`-filen bagefter i `src-tauri/target/release/bundle/deb/`. Vil du
+kun have den, så kør `corepack pnpm tauri build --bundles deb`.
+
+I desktop-appen vælger du projektmappen med en almindelig mappe-dialog, og de
+seneste mapper vises på startskærmen. Byg-vinduet gemmer spillet med en
+almindelig gem-dialog.

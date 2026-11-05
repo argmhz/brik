@@ -12,19 +12,22 @@ export function isTauri(): boolean {
 }
 
 const fsApi = () => import("@tauri-apps/plugin-fs");
-const sep = () => (navigator.userAgent.includes("Windows") ? "\\" : "/");
 
 export class TauriFS implements ProjectFS {
   readonly kind = "tauri" as const;
   readonly name: string;
 
+  /** Path separator of the root: a backslash for Windows paths (C:\Spil, \\server\share), otherwise "/". */
+  private readonly sep: string;
+
   constructor(readonly root: string) {
     this.name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+    this.sep = /^[A-Za-z]:\\|^\\\\/.test(root) ? "\\" : "/";
   }
 
   private abs(path: string): string {
     const rel = joinPath(path);
-    return rel ? `${this.root.replace(/[\\/]+$/, "")}${sep()}${rel.split("/").join(sep())}` : this.root;
+    return rel ? `${this.root.replace(/[\\/]+$/, "")}${this.sep}${rel.split("/").join(this.sep)}` : this.root;
   }
 
   async list(dir = ""): Promise<FsEntry[]> {
@@ -48,7 +51,7 @@ export class TauriFS implements ProjectFS {
   async writeFile(path: string, data: Uint8Array | string): Promise<void> {
     const { writeFile, mkdir } = await fsApi();
     const parent = joinPath(path).split("/").slice(0, -1).join("/");
-    if (parent) await mkdir(this.abs(parent), { recursive: true });
+    await mkdir(this.abs(parent), { recursive: true }); // also creates the root folder if it is missing
     await writeFile(this.abs(path), typeof data === "string" ? new TextEncoder().encode(data) : data);
   }
 

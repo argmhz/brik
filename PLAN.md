@@ -451,10 +451,10 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - [x] Scene-skift i spillet: `this.loadScene("level2")`. Virker både i editorens Play og i det eksporterede spil.
 - [x] Atlas-pakker: MaxRects (best short side fit) i en Web Worker, padding, extrude, power-of-two og flere sider. Atlas-visning med fyldningsgrad og advarsler. Textures med `wrap: repeat` og for store billeder får egne sider.
 - [x] Importers: Aseprite og TexturePacker (JSON hash og array: sprites, pivots, 9-slice fra slices, tags som animationer) samt Tiled (`.tmj`/`.tsj`: tile-lag i alle kodninger, også zlib og gzip, object-lag som entities, collision-lag som `TileMapCollider`)
-- [x] Tauri-desktop-app (`apps/desktop`) med `TauriFS`, native dialoger til at åbne, eksportere og gemme, og ikoner. Koden typecheck'er, men den er **ikke bygget eller kørt endnu**, fordi Rust ikke er installeret på udviklingsmaskinen.
+- [x] Tauri-desktop-app (`apps/desktop`) med `TauriFS`, native dialoger til at åbne, eksportere og gemme, og ikoner. Bygget og testet på Linux: projektmapper, platformer-skabelonen, scripts og Monaco, Play, atlas-worker og eksport virker i appen. `tauri build` giver en `.deb` på 7,6 MB.
 - [x] Eksempelspil som projektskabeloner: 2D-platformer og top-down shooter
 - [x] Dokumentation: [docs/GUIDE.md](docs/GUIDE.md)
-- **Resultat:** En 2D-engine, man kan shippe spil med. Der mangler en kørsel af desktop-appen, før 1.0 kan kaldes færdig.
+- **Resultat:** En 2D-engine, man kan shippe spil med, både i browseren og som desktop-app.
 
 **Kendte begrænsninger i fase 5**
 - Playeren er ca. 1,75 MB (ca. 700 KB som zip), fordi Rapier indlejrer sin WASM. Den kunne lazy-loades, så spil uden fysik bliver små.
@@ -462,6 +462,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - Ingen PWA/offline-indpakning endnu.
 - Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke, kun JSON. Spejlede tiles importeres uden spejling.
 - TexturePacker: Roterede frames understøttes ikke (der gives en advarsel).
+- Desktop-appen er kun bygget og testet på Linux. De native åbn- og gem-dialoger er ikke testet automatisk, og der er ingen signering, auto-opdatering eller builds til Windows og macOS.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
