@@ -191,7 +191,7 @@ i én scene, så 2D-UI og -sprites kan ligge oven på 3D.
 
 ### 4.1 ECS-kerne (`core`)
 - **Archetype-baseret og data-orienteret:** Komponenter gemmes som Structure of Arrays i typed arrays.
-- **Queries:** `all`, `none`, `any`, samt `added()` og `removed()`. `changed` kommer senere.
+- **Queries:** `all`, `none`, `any`, samt `added()`, `removed()` og `changed(C)`.
 - **Lagring:** Komponentdata ligger pr. world og tilgås med `world.store(C).felt[e]`, hvor `e` er entity-indekset.
 - **Systemer i faser:** `startup`, `preUpdate`, `fixedUpdate`, `update`, `postUpdate`, `render`.
 - **Command buffers** til at oprette og slette entities sikkert under iteration.
@@ -380,7 +380,7 @@ Et panel, der åbner, når du dobbeltklikker på en texture.
 - [x] WebGL2-renderer: teksturer, `Camera2D`, `Sprite`, `SortingOrder` og sprite-batcher
 - [x] `SpriteRef` og opslag af sprites. Sprites defineres i kode i denne fase.
 - [x] Input (tastatur, mus og action-mapping)
-- [ ] `changed`-queries (ændringsdetektion på felter) er udskudt. `added` og `removed` virker.
+- [x] `changed`-queries (ændringsdetektion pr. komponent, fase 5.5)
 - **Resultat:** Sprites, der bevæger sig, styret af systemer
 
 ### Fase 2 — Editor-skal
@@ -394,7 +394,7 @@ Et panel, der åbner, når du dobbeltklikker på en texture.
 - [x] Undo/redo for alle ændringer i scenen
 - [x] Asset browser (billeder), hvor en texture kan foldes ud og vise sine sprites
 - [x] Texture-import med `.meta.json` og grid-slicing i inspectoren
-- [ ] Dockbare paneler (træk paneler rundt) er udskudt. Layoutet er fast, men kan ændres i størrelse.
+- [x] Dockbare paneler (fase 5.5)
 - **Resultat:** Man kan bygge en scene visuelt og gemme den lokalt
 
 ### Fase 3 — Scripting og Play mode
@@ -407,7 +407,7 @@ Et panel, der åbner, når du dobbeltklikker på en texture.
 - [x] Hot reload, også når scripts ændres uden for editoren (fx i VS Code)
 - [x] Console med logs og fejl, der linker til linjen i scriptet
 - [ ] Linjenumre i runtime-fejl (stack traces gennem source maps) er udskudt. Kompileringsfejl har linjenumre.
-- [ ] `entity`-felter med `@expose` er udskudt. (Entity-felter på komponenter fik en vælger i fase 4a.)
+- [x] `entity`-felter med `@expose` (fase 5.5)
 - **Resultat:** Man kan lave et simpelt spil i editoren
 
 ### Fase 4 — 2D-indhold
@@ -440,7 +440,6 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 
 **Kendte begrænsninger fra 4a**
 - `CharacterController2D` ignorerer dynamiske kroppe i sine forespørgsler og skubber dem i stedet væk. Den kan derfor endnu ikke stå på løse kasser.
-- Prefab-instanser gemmer deres egen fulde kopi. "Anvend" og "Gendan" virker på hele instansen, og kun placeringen (position, rotation, skala) bevares som en instans-ændring. Ændringer pr. felt spores ikke endnu, og det samme gælder nested prefab-overrides.
 - `Text2D` bruger canvas-tekst i stedet for MSDF. Den er skarp ved normal zoom, men bliver blød, hvis man zoomer meget ind.
 - `Shape2D` har ikke polygon og linje endnu, og `Joint2D` mangler.
 - `CameraFollow2D` holder kameraets centrum inden for `bounds`, men tager ikke højde for, hvor stor visningen er.
@@ -463,6 +462,18 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke, kun JSON. Spejlede tiles importeres uden spejling.
 - TexturePacker: Roterede frames understøttes ikke (der gives en advarsel).
 - Desktop-appen er kun bygget og testet på Linux. De native åbn- og gem-dialoger er ikke testet automatisk, og der er ingen signering, auto-opdatering eller builds til Windows og macOS.
+
+### Fase 5.5 — Editor-oplevelse
+- [x] `query.changed(C)`: entities, hvis komponent er tilføjet eller ændret siden sidste kald. Ændringer gennem `world.write`, `world.add` og views (`this.get(C)` i scripts) markeres automatisk. Direkte skrivning til `world.store(C)` kræver `world.markChanged(e, C)`.
+- [x] `@expose({ type: "entity" })` med entity-vælger i inspectoren. Gemmes som scene-id (`{ $entity: id }`) og følger med, når prefabs spawnes og entities kopieres. Felter af typen prefab, lyd og klip fik også en asset-vælger.
+- [x] Prefab-overrides pr. felt: instansen husker, hvor den afviger fra prefab'en (felter, tilføjede og fjernede komponenter og entities). Når prefab'en ændres, følger alt andet med. Afvigende felter står med fed skrift i inspectoren, og et dobbeltklik henter prefab'ens værdi. Instanser opdateres også, når en scene åbnes, eksporteres eller indlæses med `loadScene`.
+- [x] Nested prefabs: prefabs inde i prefabs opdateres, når den inderste ændres, også i prefab-filerne på disken. En prefab kan ikke indeholde sig selv.
+- [x] Dockbare paneler: træk en fane til en anden zone (venstre, midte, bund, højre), eller brug højreklik-menuen. Layoutet huskes, og ⊞ i menulinjen nulstiller det.
+
+**Kendte begrænsninger i 5.5**
+- Script-felter tæller som ét override (`Scripts.list`), ikke pr. `@expose`-felt.
+- Docking har fire faste zoner. Zoner kan ikke deles yderligere, og paneler kan ikke flyde i egne vinduer.
+- `changed` ser ikke ændringer inde i `ref`-felter (fx arrays), som ændres på stedet.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

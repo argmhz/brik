@@ -219,7 +219,6 @@ export function Hierarchy(props: { editor: Editor }) {
   return (
     <div class="panel" style={{ height: "100%" }}>
       <div class="panel-header">
-        Hierarki
         <span class="spacer" />
         <button
           class="ghost"

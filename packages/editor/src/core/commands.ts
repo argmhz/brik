@@ -15,6 +15,7 @@ import {
   instantiate,
   mat3,
   newSceneId,
+  remapEntityLinks,
   parentOf,
   scriptDisplayName,
   serializeEntities,
@@ -190,7 +191,9 @@ export function remapIds(data: SceneEntityData[], idFor: (old: string) => string
       if (def) {
         for (const key in def.schema) {
           const v = copy[key];
-          if (def.schema[key].kind === "entity" && typeof v === "string" && map.has(v)) copy[key] = map.get(v);
+          const kind = def.schema[key].kind;
+          if (kind === "entity" && typeof v === "string" && map.has(v)) copy[key] = map.get(v);
+          else if (kind === "ref" && v !== null && typeof v === "object") copy[key] = remapEntityLinks(v, (id) => map.get(id));
         }
       }
       components[name] = copy as Record<string, unknown>;

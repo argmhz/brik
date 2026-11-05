@@ -19,6 +19,11 @@ export const PREFAB_EXTENSION = ".prefab.json";
 /** Marks the root of a prefab instance. The editor uses it to update instances when the prefab changes. */
 export const PrefabInstance = defineComponent("PrefabInstance", {
   prefab: withMeta(t.string(""), { hidden: true }),
+  /** Where this instance differs from its prefab (kept up to date by the editor). Null in older scenes. */
+  overrides: withMeta(
+    t.ref<string[] | null>(() => null),
+    { hidden: true },
+  ),
 });
 
 /** Spawns a prefab every `interval` seconds, keeping at most `maxAlive` alive. */

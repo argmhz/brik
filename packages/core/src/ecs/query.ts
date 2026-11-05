@@ -1,6 +1,7 @@
 import { type Archetype, type Mask, maskContains, maskIntersects } from "./archetype";
 import type { ComponentDef } from "./component";
 import type { Entity } from "./entity";
+import type { World } from "./world";
 
 export interface QueryDesc {
   /** Entities must have all of these. */
@@ -25,8 +26,11 @@ export class Query implements Iterable<Entity> {
   private tracking = false;
   private addedBuf: Entity[] = [];
   private removedBuf: Entity[] = [];
+  /** Per component id: the change tick this query has read up to. */
+  private changeSeen = new Map<number, number>();
 
   constructor(
+    private readonly world: World,
     readonly all: Mask,
     readonly none: Mask,
     readonly any: Mask,
@@ -81,6 +85,28 @@ export class Query implements Iterable<Entity> {
     this.tracking = true;
     const out = this.removedBuf;
     this.removedBuf = [];
+    return out;
+  }
+
+  /**
+   * Matching entities whose `def` component was added or changed since the last
+   * call. The first call returns every match that has the component.
+   *
+   * Changes are noticed when they go through `world.write`, `world.add` or a
+   * component view (`this.get(C)` in scripts). Code that writes to
+   * `world.store(C)` directly must call `world.markChanged(e, C)`.
+   */
+  changed(def: ComponentDef): Entity[] {
+    const { ticks, fresh } = this.world._changeTicks(def);
+    const seen = this.changeSeen.get(def.id);
+    const out: Entity[] = [];
+    for (const a of this.archetypes) {
+      for (const e of a.entities) {
+        if (!this.world.has(e, def)) continue;
+        if (fresh || seen === undefined || ticks[e] > seen) out.push(e);
+      }
+    }
+    this.changeSeen.set(def.id, this.world._nextChangeTick());
     return out;
   }
 

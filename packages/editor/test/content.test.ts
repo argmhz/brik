@@ -16,10 +16,15 @@ import {
   MemoryFS,
   addComponent,
   applyToPrefab,
+  computeOverrides,
   createPrefab,
   createProject,
+  deleteEntities,
+  overridesFor,
   placePrefab,
+  revertOverride,
   revertToPrefab,
+  sceneIdOf,
   setEntityRef,
   setValues,
 } from "../src";
@@ -95,6 +100,119 @@ describe("prefabs in the editor", () => {
     await fs.writeFile(path, JSON.stringify(json));
     await editor.db.refresh();
     expect(w.has(findBySceneId(w, id), RigidBody2D)).toBe(true);
+  });
+
+  it("keeps per-field overrides when the prefab changes", async () => {
+    const { fs, editor } = await newEditor();
+    const w = editor.world;
+    const coinId = editor.createEntity("circle", { name: "Coin" });
+    editor.createEntity("text", { name: "Label", parentId: coinId });
+    editor.createEntity("rect", { name: "Shine", parentId: coinId });
+    await createPrefab(editor, coinId);
+    const guid = w.store(PrefabInstance).prefab[findBySceneId(w, coinId)];
+    const otherId = placePrefab(editor, guid, { x: 100, y: 0 })!;
+    const other = () => findBySceneId(w, otherId);
+    const childNamed = (root: string, name: string) => childrenOf(w, findBySceneId(w, root)).find((c) => w.store(Name).value[c] === name);
+
+    // the other instance gets its own name and loses a child
+    const rename = (id: string, from: string, to: string) =>
+      editor.execute(setValues(w, "x", [{ id, component: "Name", before: { value: from }, after: { value: to } }]));
+    rename(otherId, "Coin", "Gold");
+    editor.execute(deleteEntities(w, [sceneIdOf(w, childNamed(otherId, "Shine")!)]));
+    expect(overridesFor(editor, other())).toEqual(new Set(["Name.value"]));
+    const own = w.store(PrefabInstance).overrides[other()]!;
+    expect(own).toHaveLength(2);
+    expect(own.some((k) => k.startsWith("-") && !k.includes(":"))).toBe(true);
+    expect(overridesFor(editor, findBySceneId(w, coinId)).size).toBe(0);
+
+    // change the prefab through the first instance
+    editor.execute(addComponent(w, coinId, Collider2D));
+    rename(sceneIdOf(w, childNamed(coinId, "Label")!), "Label", "Price");
+    await applyToPrefab(editor, coinId);
+    expect(w.has(other(), Collider2D)).toBe(true); // follows the prefab
+    expect(childNamed(otherId, "Price")).toBeDefined();
+    expect(w.store(Name).value[other()]).toBe("Gold"); // keeps its own name
+    expect(childNamed(otherId, "Shine")).toBeUndefined(); // stays removed
+    expect(w.store(Transform2D).position.x[other()]).toBe(100);
+    expect(w.store(PrefabInstance).overrides[findBySceneId(w, coinId)]).toEqual([]);
+
+    // prefab entity ids stay short after applying
+    const file = JSON.parse(await fs.readText(editor.db.pathOf(guid)!)) as { entities: { id: string }[] };
+    expect(file.entities.every((d) => !d.id.includes("/"))).toBe(true);
+
+    // undo takes the whole apply back; redo brings it again
+    editor.undo();
+    expect(w.has(other(), Collider2D)).toBe(false);
+    editor.redo();
+    expect(w.has(other(), Collider2D)).toBe(true);
+
+    // one field can be reverted on its own
+    revertOverride(editor, otherId, "Name.value");
+    expect(w.store(Name).value[other()]).toBe("Coin");
+    expect(childNamed(otherId, "Shine")).toBeUndefined();
+
+    // a prefab edited while the scene is closed is picked up when it opens
+    await editor.saveScene("scenes/test.scene.json");
+    rename(otherId, "Coin", "Silver");
+    await editor.saveScene();
+    const path = editor.db.pathOf(guid)!;
+    const json = JSON.parse(await fs.readText(path));
+    json.entities[0].components.Name = { value: "Coin v2" };
+    json.entities[0].components.RigidBody2D = { type: "static" };
+    await fs.writeFile(path, JSON.stringify(json));
+    const again = await Editor.open(fs, { decode: fakeDecode });
+    await again.openScene("scenes/test.scene.json");
+    const w2 = again.world;
+    const o2 = findBySceneId(w2, otherId);
+    const c2 = findBySceneId(w2, coinId);
+    expect(w2.has(o2, RigidBody2D)).toBe(true);
+    expect(w2.store(Name).value[o2]).toBe("Silver");
+    expect(w2.store(Name).value[c2]).toBe("Coin v2");
+  });
+
+  it("treats fields left out of a prefab file as their defaults", () => {
+    const prefab = { version: 1 as const, entities: [{ id: "p", components: { Collider2D: { shape: "circle" }, Name: { value: "Coin" } } }] };
+    const instance = [
+      {
+        id: "i",
+        components: {
+          Collider2D: { shape: "circle", friction: 0.5, restitution: 0, density: 1, isTrigger: false, offset: { x: 0, y: 0 } },
+          Name: { value: "Coin" },
+          PrefabInstance: { prefab: "g", overrides: [] },
+        },
+      },
+    ];
+    expect(computeOverrides(instance, "i", prefab)).toEqual([]);
+    instance[0].components.Collider2D.friction = 0.9;
+    expect(computeOverrides(instance, "i", prefab)).toEqual(["p:Collider2D.friction"]);
+  });
+
+  it("updates nested prefabs and refuses prefabs inside themselves", async () => {
+    const { fs, editor } = await newEditor();
+    const w = editor.world;
+    const wheelId = editor.createEntity("circle", { name: "Wheel" });
+    await createPrefab(editor, wheelId);
+    const wheel = w.store(PrefabInstance).prefab[findBySceneId(w, wheelId)];
+    const carId = editor.createEntity("rect", { name: "Car" });
+    placePrefab(editor, wheel, { x: 10, y: 0 }, carId);
+    await createPrefab(editor, carId);
+    const car = w.store(PrefabInstance).prefab[findBySceneId(w, carId)];
+    const car2 = placePrefab(editor, car, { x: 0, y: 100 })!;
+    const wheelsOf = (id: string) => childrenOf(w, findBySceneId(w, id)).filter((c) => w.store(Name).value[c] === "Wheel");
+    expect(wheelsOf(car2)).toHaveLength(1);
+
+    // changing the wheel prefab reaches the car prefab file and both cars
+    editor.execute(addComponent(w, wheelId, RigidBody2D));
+    await applyToPrefab(editor, wheelId);
+    for (const id of [carId, car2]) expect(w.has(wheelsOf(id)[0], RigidBody2D)).toBe(true);
+    const carFile = JSON.parse(await fs.readText(editor.db.pathOf(car)!)) as { entities: { components: Record<string, unknown> }[] };
+    expect(carFile.entities.some((d) => d.components.PrefabInstance && d.components.RigidBody2D)).toBe(true);
+    // the wheel keeps its place in the car
+    expect(w.store(Transform2D).position.x[wheelsOf(car2)[0]]).toBe(10);
+
+    // a car inside a wheel, applied to the wheel, would contain itself
+    placePrefab(editor, car, { x: 0, y: 0 }, wheelId);
+    await expect(applyToPrefab(editor, wheelId)).rejects.toThrow(/sig selv/);
   });
 });
 

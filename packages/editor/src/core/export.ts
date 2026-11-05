@@ -9,6 +9,7 @@ import {
 } from "@brik/runtime";
 import { IMAGE_EXTENSIONS, type TextureEntry, isScene } from "./asset-db";
 import type { Editor } from "./editor";
+import { refreshSceneData, resolvePrefabs } from "./prefabs";
 import { extname, walk } from "./fs";
 import { type EsbuildLike, compileScripts, readScripts } from "./scripts";
 
@@ -184,7 +185,7 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
   const paths = await walk(fs);
   const scenes: Record<string, SceneData> = {};
   for (const path of paths.filter(isScene)) {
-    const data = JSON.parse(await fs.readText(path)) as SceneData;
+    const data = refreshSceneData(editor, JSON.parse(await fs.readText(path)) as SceneData);
     scenes[path] = { version: 1, entities: stripEditorOnly(data.entities) };
   }
   const startScene = editor.settings.startScene;
@@ -234,10 +235,11 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
     sounds.push({ guid: s.guid, name: s.name, file });
   }
 
+  const resolved = resolvePrefabs(new Map([...editor.assets.prefabs.values()].map((p) => [p.guid, p.data])));
   const prefabs: GameManifest["prefabs"] = [...editor.assets.prefabs.values()].map((p) => ({
     guid: p.guid,
     name: p.name,
-    entities: stripEditorOnly(p.data.entities),
+    entities: stripEditorOnly((resolved.get(p.guid) ?? p.data).entities),
   }));
 
   const title = settings.title?.trim() || editor.settings.name;

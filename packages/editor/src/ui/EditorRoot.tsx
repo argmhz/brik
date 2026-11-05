@@ -13,18 +13,9 @@ import { Inspector } from "./Inspector";
 import { SceneView } from "./SceneView";
 import { reportError, toast, typingInField, useVersion } from "./hooks";
 import type { SceneController } from "./scene-controller";
-import {
-  type BottomTab,
-  type CenterTab,
-  bottomTab,
-  centerTab,
-  codeActions,
-  openFiles,
-  setBottomTab,
-  setCenterTab,
-  setToolWindow,
-  toolWindow,
-} from "./ui-state";
+import { codeActions, openFiles, setToolWindow, toolWindow } from "./ui-state";
+import { type PanelId, draggingPanel, isShown, layout, resetLayout, showPanel } from "./dock-state";
+import { DockZone, DropStrip } from "./Dock";
 import { SpriteEditor } from "./SpriteEditor";
 import { AnimationEditor } from "./AnimationEditor";
 import { BuildWindow } from "./BuildWindow";
@@ -70,20 +61,6 @@ function Splitter(props: { dir: "v" | "h"; onDrag: (pos: number) => void }) {
         el.addEventListener("pointerup", up);
       }}
     />
-  );
-}
-
-function Tabs<T extends string>(props: { tabs: { id: T; label: () => string }[]; value: () => T; onSelect: (id: T) => void }) {
-  return (
-    <div class="tabs">
-      <For each={props.tabs}>
-        {(t) => (
-          <button class="tab" classList={{ active: props.value() === t.id }} onClick={() => props.onSelect(t.id)}>
-            {t.label()}
-          </button>
-        )}
-      </For>
-    </div>
   );
 }
 
@@ -140,14 +117,14 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
       editor.play.stop();
       return;
     }
-    if (await editor.play.start()) setCenterTab("game");
-    else setBottomTab("console");
+    if (await editor.play.start()) showPanel("game");
+    else showPanel("console");
   };
 
   // jump back to the scene when play stops
   createEffect(
     on(mode, (m, prev) => {
-      if (m === "edit" && prev && prev !== "edit" && centerTab() === "game") setCenterTab("scene");
+      if (m === "edit" && prev && prev !== "edit" && isShown("game")) showPanel("scene");
     }),
   );
 
@@ -163,7 +140,7 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     const key = ev.key.toLowerCase();
     if (mod && key === "s") {
       ev.preventDefault();
-      if (centerTab() === "code" && codeActions.save) codeActions.save();
+      if (isShown("code") && codeActions.save) codeActions.save();
       else save(ev.shiftKey);
       return;
     }
@@ -247,22 +224,60 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
 
   const clampSide = (v: number) => Math.min(Math.max(v, 160), innerWidth * 0.4);
 
-  const centerTabs: { id: CenterTab; label: () => string }[] = [
-    { id: "scene", label: () => "Scene" },
-    { id: "game", label: () => "Spil" },
-    { id: "code", label: () => `Kode${openFiles().length ? ` (${openFiles().length})` : ""}` },
-  ];
-  const bottomTabs: { id: BottomTab; label: () => string }[] = [
-    { id: "assets", label: () => "Assets" },
-    {
-      id: "console",
-      label: () => {
-        consoleV();
-        const errors = editor.console.count("error");
-        return errors ? `Console (${errors} ✕)` : "Console";
-      },
+  const labels: Record<PanelId, () => string> = {
+    hierarchy: () => "Hierarki",
+    inspector: () => "Inspector",
+    scene: () => "Scene",
+    game: () => "Spil",
+    code: () => `Kode${openFiles().length ? ` (${openFiles().length})` : ""}`,
+    assets: () => "Assets",
+    console: () => {
+      consoleV();
+      const errors = editor.console.count("error");
+      return errors ? `Console (${errors} ✕)` : "Console";
     },
-  ];
+  };
+
+  // every panel is created once and moved between dock zones as it is
+  const page = (content: () => unknown) => (<div class="tab-page dock-page">{content() as any}</div>) as HTMLElement;
+  const panels = new Map<PanelId, HTMLElement>([
+    ["hierarchy", page(() => <Hierarchy editor={editor} />)],
+    ["inspector", page(() => <Inspector editor={editor} />)],
+    ["scene", page(() => <SceneView editor={editor} onController={(c) => (controller = c)} />)],
+    ["game", page(() => <GameView editor={editor} />)],
+    [
+      "code",
+      page(() => (
+        <Show when={openFiles().length > 0} fallback={<div class="empty-note">Dobbeltklik på et script i Assets for at åbne det her.</div>}>
+          <Suspense fallback={<div class="empty-note">Indlæser kode-editor…</div>}>
+            <CodePanel editor={editor} />
+          </Suspense>
+        </Show>
+      )),
+    ],
+    ["assets", page(() => <AssetBrowser editor={editor} />)],
+    ["console", page(() => <ConsolePanel editor={editor} />)],
+  ]);
+
+  const has = (z: "left" | "center" | "bottom" | "right") => layout().zones[z].length > 0;
+  /** An empty side zone is hidden, or a thin drop strip while a tab is dragged. */
+  const sideWidth = (z: "left" | "right", size: number) => (has(z) ? `${size}px 4px` : draggingPanel() ? "36px 0px" : "0px 0px");
+  const columns = () => {
+    const [l, lgap] = sideWidth("left", left()).split(" ");
+    const [r, rgap] = sideWidth("right", right()).split(" ");
+    return `${l} ${lgap} 1fr ${rgap} ${r}`;
+  };
+  const rows = () => {
+    if (!has("bottom")) return draggingPanel() ? "1fr 0px 44px" : "1fr 0px 0px";
+    if (!has("center")) return draggingPanel() ? "44px 0px 1fr" : "0px 0px 1fr";
+    return `1fr 4px ${bottom()}px`;
+  };
+  const zone = (z: "left" | "center" | "bottom" | "right") => (
+    // grid cells must always exist, so empty zones render a placeholder
+    <Show when={has(z)} fallback={<Show when={draggingPanel()} fallback={<div />}>{<DropStrip zone={z} />}</Show>}>
+      <DockZone zone={z} panels={panels} labels={labels} />
+    </Show>
+  );
 
   return (
     <div class="editor" classList={{ playing: mode() !== "edit" }} ref={root}>
@@ -314,7 +329,7 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
         <span class="spacer" />
         <Show when={scriptStatus()}>
           {(st) => (
-            <button class={`ghost script-status ${st().cls}`} onClick={() => setBottomTab("console")}>
+            <button class={`ghost script-status ${st().cls}`} onClick={() => showPanel("console")}>
               {st().text}
             </button>
           )}
@@ -330,63 +345,46 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
         <button onClick={downloadZip} title="Download hele projektet (kildefilerne) som .zip">
           Projekt .zip
         </button>
+        <button class="ghost" onClick={resetLayout} title="Sæt panelerne tilbage, hvor de var fra start">
+          ⊞
+        </button>
         <button onClick={close}>Luk projekt</button>
       </div>
-      <div class="workspace" style={{ "grid-template-columns": `${left()}px 4px 1fr 4px ${right()}px` }}>
-        <Hierarchy editor={editor} />
-        <Splitter
-          dir="v"
-          onDrag={(x) => {
-            setLeft(clampSide(x));
-            store("left", left());
-          }}
-        />
-        <div style={{ display: "grid", "grid-template-rows": `1fr 4px ${bottom()}px`, "min-width": 0, "min-height": 0 }}>
-          <div class="panel" style={{ "min-height": 0 }}>
-            <Tabs tabs={centerTabs} value={centerTab} onSelect={setCenterTab} />
-            <div class="tab-page" style={{ display: centerTab() === "scene" ? "flex" : "none" }}>
-              <SceneView editor={editor} onController={(c) => (controller = c)} />
-            </div>
-            <div class="tab-page" style={{ display: centerTab() === "game" ? "flex" : "none" }}>
-              <GameView editor={editor} />
-            </div>
-            <div class="tab-page" style={{ display: centerTab() === "code" ? "flex" : "none" }}>
-              <Show
-                when={openFiles().length > 0}
-                fallback={<div class="empty-note">Dobbeltklik på et script i Assets for at åbne det her.</div>}
-              >
-                <Suspense fallback={<div class="empty-note">Indlæser kode-editor…</div>}>
-                  <CodePanel editor={editor} />
-                </Suspense>
-              </Show>
-            </div>
-          </div>
+      <div class="workspace" style={{ "grid-template-columns": columns() }}>
+        {zone("left")}
+        <Show when={has("left")} fallback={<div />}>
           <Splitter
-            dir="h"
-            onDrag={(y) => {
-              const r = root.getBoundingClientRect();
-              setBottom(Math.min(Math.max(r.bottom - y, 90), r.height * 0.7));
-              store("bottom", bottom());
+            dir="v"
+            onDrag={(x) => {
+              setLeft(clampSide(x));
+              store("left", left());
             }}
           />
-          <div class="panel" style={{ "min-height": 0 }}>
-            <Tabs tabs={bottomTabs} value={bottomTab} onSelect={setBottomTab} />
-            <div class="tab-page" style={{ display: bottomTab() === "assets" ? "flex" : "none" }}>
-              <AssetBrowser editor={editor} />
-            </div>
-            <div class="tab-page" style={{ display: bottomTab() === "console" ? "flex" : "none" }}>
-              <ConsolePanel editor={editor} />
-            </div>
-          </div>
+        </Show>
+        <div style={{ display: "grid", "grid-template-rows": rows(), "min-width": 0, "min-height": 0 }}>
+          {zone("center")}
+          <Show when={has("center") && has("bottom")} fallback={<div />}>
+            <Splitter
+              dir="h"
+              onDrag={(y) => {
+                const r = root.getBoundingClientRect();
+                setBottom(Math.min(Math.max(r.bottom - y, 90), r.height * 0.7));
+                store("bottom", bottom());
+              }}
+            />
+          </Show>
+          {zone("bottom")}
         </div>
-        <Splitter
-          dir="v"
-          onDrag={(x) => {
-            setRight(clampSide(innerWidth - x));
-            store("right", right());
-          }}
-        />
-        <Inspector editor={editor} />
+        <Show when={has("right")} fallback={<div />}>
+          <Splitter
+            dir="v"
+            onDrag={(x) => {
+              setRight(clampSide(innerWidth - x));
+              store("right", right());
+            }}
+          />
+        </Show>
+        {zone("right")}
       </div>
       <Show when={toolWindow()} keyed>
         {(w) =>

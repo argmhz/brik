@@ -40,6 +40,10 @@ Eksemplerne er almindelige projektfiler, så du kan læse og rette alt.
 
 Alt kan fortrydes med Ctrl+Z. Ændringer under Play forsvinder, når du stopper.
 
+Panelerne kan flyttes: træk en fane hen på et andet område, eller højreklik
+fanen og vælg "Flyt til …". Fx kan Scene og Spil ligge ved siden af hinanden.
+Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
+
 ## 3. Grafik
 
 - **Importér** PNG-filer med knappen eller ved at trække dem ind i asset-panelet.
@@ -106,8 +110,26 @@ export class Player extends Behaviour {
 | `this.loadScene("level2")` | Skifter scene |
 | `this.behaviourOf(Andet, e)` | Taler med et andet script |
 
+Et felt kan pege på en anden entity, som du vælger i inspectoren:
+
+```ts
+@expose({ type: "entity" }) target: Entity = -1; // -1 hvis intet er valgt
+```
+
+Felter af typen `"prefab"`, `"audio"` og `"clip"` får en asset-vælger.
+
 Scripts kan også definere egne komponenter (`defineComponent`) og systemer
-(`system("navn", fn, "update")`).
+(`system("navn", fn, "update")`). Et system kan nøjes med at behandle det, der
+har ændret sig:
+
+```ts
+export const follow = system("follow", (world) => {
+  // queries huskes af world, så det er billigt at spørge hver frame
+  for (const e of world.query([Transform2D]).changed(Transform2D)) {
+    // kun entities, der er flyttet siden sidst
+  }
+});
+```
 
 ## 5. Fysik
 
@@ -150,7 +172,12 @@ Højreklik en entity og vælg **Lav prefab**. Træk prefab'en ind i scenen, elle
 lav den fra et script med `this.spawnPrefab("Navn")`.
 
 - Ret en instans og tryk **Anvend** for at opdatere alle instanser.
-- **Gendan** kasserer en instans' ændringer.
+- En instans husker, hvilke felter du har ændret på den. De står med fed skrift
+  i inspectoren og bliver ikke overskrevet, når prefab'en ændres. Dobbeltklik
+  på feltets navn for at hente prefab'ens værdi igen.
+- **Gendan** kasserer alle en instans' ændringer.
+- Prefabs kan indeholde andre prefabs. Ændrer du den inderste, følger de
+  ydre med.
 - `Spawner`-komponenten opretter prefabs løbende.
 
 ## 9. Byg og udgiv

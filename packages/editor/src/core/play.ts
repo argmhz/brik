@@ -18,6 +18,7 @@ import {
   serializeScene,
 } from "@brik/runtime";
 import type { Editor } from "./editor";
+import { refreshSceneData } from "./prefabs";
 
 export type PlayMode = "edit" | "play" | "paused";
 
@@ -77,7 +78,7 @@ export class PlayController {
         }),
       )
       .addPlugin(ScriptsPlugin(registry))
-      .addPlugin(ScenesPlugin(async (path) => JSON.parse(await editor.fs.readText(path)) as SceneData, editor.scenePath));
+      .addPlugin(ScenesPlugin(async (path) => refreshSceneData(editor, JSON.parse(await editor.fs.readText(path)) as SceneData), editor.scenePath));
     this.scriptSystems = registry.systems.map((s) => ({ phase: s.phase, system: s.system }));
     this.mode = "play";
     this.last = -1;

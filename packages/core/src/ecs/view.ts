@@ -32,6 +32,7 @@ export function componentView<S extends Schema>(world: World, def: ComponentDef<
           get: () => store[key][p][e],
           set: (v: number) => {
             store[key][p][e] = v;
+            world.markChanged(e, def);
           },
         });
       }
@@ -40,6 +41,7 @@ export function componentView<S extends Schema>(world: World, def: ComponentDef<
         get: () => sub,
         set: (v: Record<string, number>) => {
           for (const p of parts) if (v[p] !== undefined) store[key][p][e] = v[p];
+          world.markChanged(e, def);
         },
       });
     } else if (kind === "bool") {
@@ -48,6 +50,7 @@ export function componentView<S extends Schema>(world: World, def: ComponentDef<
         get: () => store[key][e] !== 0,
         set: (v: boolean) => {
           store[key][e] = v ? 1 : 0;
+          world.markChanged(e, def);
         },
       });
     } else {
@@ -56,6 +59,7 @@ export function componentView<S extends Schema>(world: World, def: ComponentDef<
         get: () => store[key][e],
         set: (v: unknown) => {
           store[key][e] = v;
+          world.markChanged(e, def);
         },
       });
     }

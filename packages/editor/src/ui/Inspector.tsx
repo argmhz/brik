@@ -12,10 +12,11 @@ import {
   allComponents,
   scriptDisplayName,
   findBySceneId,
+  parentOf,
 } from "@brik/runtime";
-import { For, Match, Show, Switch, createSignal } from "solid-js";
+import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js";
 import { addComponent, addScript, removeComponent, setEntityRef, setValues } from "../core/commands";
-import { applyToPrefab, revertToPrefab } from "../core/prefabs";
+import { applyToPrefab, instanceRootOf, overridesFor, prefabOf, revertOverride, revertToPrefab } from "../core/prefabs";
 import { AssetField, EntityField, MultilineField, TagsField, assetLabel } from "./asset-fields";
 import type { Editor } from "../core/editor";
 import { AssetInspector } from "./AssetInspector";
@@ -45,7 +46,6 @@ export function Inspector(props: { editor: Editor }) {
   return (
     <div class="panel" style={{ height: "100%" }}>
       <div class="panel-header">
-        Inspector
         <span class="spacer" />
         <Show when={editor.selection.length > 1 && (version(), true)}>
           <span style={{ "text-transform": "none" }}>{editor.selection.length} valgt</span>
@@ -68,6 +68,8 @@ function EntityInspector(props: { editor: Editor; id: string; e: Entity }) {
   const world = editor.world;
   const version = useVersion(editor, "world");
   const [collapsed, setCollapsed] = createSignal(new Set<string>());
+  /** Fields and components where this entity differs from its prefab. */
+  const overrides = createMemo(() => (version(), editor.play.active ? new Set<string>() : overridesFor(editor, props.e)));
 
   const components = () => {
     version();
@@ -157,7 +159,9 @@ function EntityInspector(props: { editor: Editor; id: string; e: Entity }) {
                     }}
                   >
                     <span style={{ color: "var(--muted)", "font-size": "9px" }}>{isCollapsed() ? "▶" : "▼"}</span>
-                    {compName}
+                    <span classList={{ overridden: overrides().has(compName) }} title={overrides().has(compName) ? "Findes kun på denne instans, ikke i prefab'en" : undefined}>
+                      {compName}
+                    </span>
                     <span class="spacer" />
                     <button
                       class="ghost danger"
@@ -176,7 +180,16 @@ function EntityInspector(props: { editor: Editor; id: string; e: Entity }) {
                   <Show when={!isCollapsed()}>
                     <div class="component-body">
                       <For each={Object.keys(d().schema).filter((k) => !d().schema[k].meta?.hidden)}>
-                        {(key) => <FieldEditor editor={editor} id={props.id} e={props.e} def={d()} field={key} />}
+                        {(key) => (
+                          <FieldEditor
+                            editor={editor}
+                            id={props.id}
+                            e={props.e}
+                            def={d()}
+                            field={key}
+                            overridden={() => overrides().has(`${compName}.${key}`)}
+                          />
+                        )}
                       </For>
                       <Show when={compName === "TileMap"}>
                         <div style={{ "grid-column": "1 / -1" }}>
@@ -208,46 +221,71 @@ function EntityInspector(props: { editor: Editor; id: string; e: Entity }) {
 
 function PrefabBar(props: { editor: Editor; id: string; e: Entity }) {
   const editor = props.editor;
+  const world = editor.world;
   const version = useVersion(editor, "world", "assets");
-  const guid = () => (version(), editor.world.has(props.e, PrefabInstance) ? editor.world.store(PrefabInstance).prefab[props.e] : null);
+  const guid = () => (version(), prefabOf(world, props.e));
+  const changes = () => (version(), world.has(props.e, PrefabInstance) ? (world.store(PrefabInstance).overrides[props.e]?.length ?? 0) : 0);
+  /** For an entity inside an instance: the instance root. */
+  const owner = () => {
+    version();
+    if (guid()) return -1;
+    const p = parentOf(world, props.e);
+    return p >= 0 ? instanceRootOf(world, p) : -1;
+  };
   return (
-    <Show when={guid()}>
-      {(g) => (
-        <div class="prefab-bar">
-          <span title="Prefab">🧩 {assetLabel(editor, "prefab", g())}</span>
+    <>
+      <Show when={guid()}>
+        {(g) => (
+          <div class="prefab-bar">
+            <span title="Prefab">🧩 {assetLabel(editor, "prefab", g())}</span>
+            <Show when={changes() > 0}>
+              <span class="readonly" title="Felter med fed skrift afviger fra prefab'en">
+                · {changes()} {changes() === 1 ? "ændring" : "ændringer"}
+              </span>
+            </Show>
+            <span class="spacer" />
+            <button
+              title="Gem denne instans' ændringer i prefab'en og opdatér alle instanser"
+              disabled={editor.play.active}
+              onClick={() =>
+                applyToPrefab(editor, props.id).then(
+                  (n) => toast(`Prefab gemt, ${n} ${n === 1 ? "instans" : "instanser"} opdateret`),
+                  reportError,
+                )
+              }
+            >
+              Anvend
+            </button>
+            <button
+              title="Kassér alle ændringer og hent prefab'en igen (placeringen bevares)"
+              disabled={editor.play.active || changes() === 0}
+              onClick={() => revertToPrefab(editor, props.id)}
+            >
+              Gendan
+            </button>
+            <button
+              class="ghost"
+              title="Vis prefab-filen"
+              onClick={() => {
+                const path = editor.db.pathOf(g());
+                if (path) editor.selectAsset(path);
+              }}
+            >
+              ↗
+            </button>
+          </div>
+        )}
+      </Show>
+      <Show when={owner() >= 0}>
+        <div class="prefab-bar part">
+          <span>🧩 Del af {editor.entityName(owner())}</span>
           <span class="spacer" />
-          <button
-            title="Gem denne instans' ændringer i prefab'en og opdatér alle instanser"
-            disabled={editor.play.active}
-            onClick={() =>
-              applyToPrefab(editor, props.id).then(
-                (n) => toast(`Prefab gemt, ${n} ${n === 1 ? "instans" : "instanser"} opdateret`),
-                reportError,
-              )
-            }
-          >
-            Anvend
-          </button>
-          <button
-            title="Kassér ændringer og hent prefab'en igen (placeringen bevares)"
-            disabled={editor.play.active}
-            onClick={() => revertToPrefab(editor, props.id)}
-          >
-            Gendan
-          </button>
-          <button
-            class="ghost"
-            title="Vis prefab-filen"
-            onClick={() => {
-              const path = editor.db.pathOf(g());
-              if (path) editor.selectAsset(path);
-            }}
-          >
-            ↗
+          <button class="ghost" title="Vælg prefab-instansen" onClick={() => editor.select([editor.idOf(owner())])}>
+            Vælg instans
           </button>
         </div>
-      )}
-    </Show>
+      </Show>
+    </>
   );
 }
 
@@ -255,7 +293,7 @@ function prettyLabel(key: string): string {
   return key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
 }
 
-function FieldEditor(props: { editor: Editor; id: string; e: Entity; def: ComponentDef; field: string }) {
+function FieldEditor(props: { editor: Editor; id: string; e: Entity; def: ComponentDef; field: string; overridden: () => boolean }) {
   const editor = props.editor;
   const world = editor.world;
   const version = useVersion(editor, "world");
@@ -387,7 +425,12 @@ function FieldEditor(props: { editor: Editor; id: string; e: Entity; def: Compon
 
   return (
     <>
-      <span class="field-label" title={props.field}>
+      <span
+        class="field-label"
+        classList={{ overridden: props.overridden() }}
+        title={props.overridden() ? "Ændret i forhold til prefab'en. Dobbeltklik for at hente prefab'ens værdi." : props.field}
+        onDblClick={() => props.overridden() && revertOverride(editor, props.id, `${props.def.name}.${props.field}`)}
+      >
         {label}
       </span>
       {editorWidget()}

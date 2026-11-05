@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NULL_REF, World, defineComponent, defineEvent, t, withInit } from "../src";
+import { NULL_REF, World, componentView, defineComponent, defineEvent, t, withInit } from "../src";
 
 const Pos = defineComponent("Test.Pos", { p: t.vec2(), z: t.f32(5) });
 const Vel = defineComponent("Test.Vel", { v: t.vec2(1, 2) });
@@ -165,6 +165,44 @@ describe("Queries", () => {
     w.destroy(a);
     w.remove(b, Pos);
     expect(q.removed()).toEqual([a, b]);
+  });
+
+  it("tracks changed components per query", () => {
+    const w = new World();
+    const q = w.query([Pos]);
+    const other = w.query({ all: [Pos], none: [Vel] });
+    const a = w.spawn([Pos, { z: 1 }]);
+    const b = w.spawn([Pos, { z: 2 }]);
+    expect(q.changed(Pos).sort()).toEqual([a, b]); // first call: every match
+    expect(q.changed(Pos)).toEqual([]);
+
+    w.write(a, Pos, { z: 5 });
+    componentView(w, Pos, b).z = 7;
+    expect(q.changed(Pos).sort()).toEqual([a, b]);
+    expect(q.changed(Pos)).toEqual([]);
+
+    // direct store writes are only seen after markChanged
+    w.store(Pos).z[a] = 9;
+    expect(q.changed(Pos)).toEqual([]);
+    w.markChanged(a, Pos);
+    expect(q.changed(Pos)).toEqual([a]);
+
+    // each query keeps its own place, and new entities count as changed
+    expect(other.changed(Pos).sort()).toEqual([a, b]);
+    const c = w.spawn(Pos);
+    expect(q.changed(Pos)).toEqual([c]);
+    expect(other.changed(Pos)).toEqual([c]);
+  });
+
+  it("keeps change ticks when the world grows", () => {
+    const w = new World({ initialCapacity: 16 });
+    const q = w.query([Pos]);
+    const first = w.spawn(Pos);
+    q.changed(Pos);
+    for (let i = 0; i < 40; i++) w.spawn(Pos);
+    q.changed(Pos);
+    w.write(first, Pos, { z: 3 });
+    expect(q.changed(Pos)).toEqual([first]);
   });
 });
 

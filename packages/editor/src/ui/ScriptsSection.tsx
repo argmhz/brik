@@ -6,11 +6,14 @@ import {
   type SpriteRef,
   Scripts,
   exposedFields,
+  findBySceneId,
+  isEntityLink,
   scriptDisplayName,
 } from "@brik/runtime";
 import { For, Show } from "solid-js";
 import { removeScript, setScriptProp } from "../core/commands";
 import type { Editor } from "../core/editor";
+import { AssetField, EntityField } from "./asset-fields";
 import { Checkbox, Part, SpriteField, TextBox, fromHex, toHex } from "./fields";
 import { useVersion } from "./hooks";
 import { openFile } from "./ui-state";
@@ -152,8 +155,30 @@ function ScriptField(props: {
         );
       case "sprite":
         return <SpriteField editor={editor} value={() => (read() ?? null) as SpriteRef | null} onChange={(v) => commit(v)} />;
+      case "prefab":
+      case "audio":
+      case "clip":
+        return (
+          <AssetField
+            editor={editor}
+            kind={f.type}
+            value={() => (typeof read() === "string" && read()) || null}
+            onChange={(guid) => commit(guid)}
+          />
+        );
       case "entity":
-        return <span class="readonly">entity-felter kommer senere</span>;
+        return (
+          <EntityField
+            editor={editor}
+            value={() => {
+              const v = read();
+              if (typeof v === "number") return v; // live value in play mode
+              return isEntityLink(v) && v.$entity ? findBySceneId(editor.world, v.$entity) : -1;
+            }}
+            onChange={(id) => commit({ $entity: id })}
+            exclude={props.e}
+          />
+        );
       default:
         return <TextBox value={() => String(read() ?? "")} onCommit={(v) => commit(v)} />;
     }

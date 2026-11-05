@@ -23,7 +23,7 @@ import {
   newSceneId,
   serializeScene,
 } from "@brik/runtime";
-import { syncAllInstances } from "./prefabs";
+import { refreshOverrides, refreshSceneData, syncAllInstances } from "./prefabs";
 import { joinPath } from "./fs";
 import { AssetDatabase, type Decoder, SCENE_EXTENSION } from "./asset-db";
 import { createEntities, deleteEntities, duplicateEntities } from "./commands";
@@ -181,6 +181,7 @@ export class Editor {
   }
 
   private afterChange(): void {
+    if (!this.play.active) refreshOverrides(this);
     const alive = this.selection.filter((id) => findBySceneId(this.world, id) >= 0);
     if (alive.length !== this.selection.length) {
       this.selection = alive;
@@ -260,7 +261,9 @@ export class Editor {
   async openScene(path: string): Promise<void> {
     this.play.stop();
     const data = JSON.parse(await this.fs.readText(path)) as SceneData;
-    loadScene(this.world, data);
+    // prefab instances pick up prefab changes made while the scene was closed
+    loadScene(this.world, refreshSceneData(this, data));
+    refreshOverrides(this);
     this.scenePath = path;
     this.resetAfterLoad();
   }

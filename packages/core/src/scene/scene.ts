@@ -185,9 +185,16 @@ export function instantiate(world: World, data: SceneEntityData[], opts: Instant
       if (!def || def === Parent) continue;
       const store = world.store(def) as Record<string, Uint32Array>;
       for (const key in def.schema) {
-        if (def.schema[key].kind !== "entity") continue;
-        const target = resolve(values[key]);
-        store[key][e] = world.ref(target);
+        const kind = def.schema[key].kind;
+        if (kind === "entity") {
+          store[key][e] = world.ref(resolve(values[key]));
+        } else if (kind === "ref" && opts.newIds && hasEntityLinks(values[key])) {
+          // links to entities created here follow them to their new ids
+          (store as unknown as Record<string, unknown[]>)[key][e] = remapEntityLinks(values[key], (old) => {
+            const target = created.get(old);
+            return target !== undefined ? world.store(SceneId).id[target] : undefined;
+          });
+        }
       }
     }
     const parentId = item.components[Parent.name]?.entity;
@@ -197,6 +204,41 @@ export function instantiate(world: World, data: SceneEntityData[], opts: Instant
   });
 
   return entities;
+}
+
+/**
+ * A link to an entity inside free-form data (a `ref` field), saved as its scene
+ * id. Used for entity fields exposed by scripts: `{ $entity: "a1b2" }`.
+ */
+export interface EntityLink {
+  $entity: string | null;
+}
+
+export function isEntityLink(v: unknown): v is EntityLink {
+  return typeof v === "object" && v !== null && "$entity" in v;
+}
+
+/** A copy of `value` with every EntityLink id passed through `map` (ids it returns undefined for are kept). */
+export function remapEntityLinks<T>(value: T, map: (id: string) => string | undefined): T {
+  if (isEntityLink(value)) {
+    const id = value.$entity;
+    return { ...value, $entity: id === null ? null : (map(id) ?? id) } as T;
+  }
+  if (Array.isArray(value)) return value.map((v) => remapEntityLinks(v, map)) as T;
+  if (typeof value === "object" && value !== null) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = remapEntityLinks(v, map);
+    return out as T;
+  }
+  return value;
+}
+
+/** True if the data contains an EntityLink anywhere. */
+function hasEntityLinks(value: unknown): boolean {
+  if (isEntityLink(value)) return true;
+  if (Array.isArray(value)) return value.some(hasEntityLinks);
+  if (typeof value === "object" && value !== null) return Object.values(value).some(hasEntityLinks);
+  return false;
 }
 
 /** Strips entity fields (resolved separately) and leaves everything else as is. */

@@ -33,6 +33,7 @@ import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
 import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, playAnimation } from "@brik/render";
 import { GlobalTransform2D, mat3 } from "@brik/core";
+import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
 import { Scenes } from "./scenes";
 
@@ -101,6 +102,7 @@ function decorate(target: unknown, key: string | FieldContext, opts: ExposeOptio
  * class Player extends Behaviour {
  *   @expose speed = 120;
  *   @expose({ type: "sprite" }) hurtSprite: SpriteRef | null = null;
+ *   @expose({ type: "entity" }) target: Entity = -1; // -1 when nothing is picked
  * }
  * ```
  */
@@ -535,7 +537,9 @@ export class BehaviourRuntime {
     const target = slot.inst as unknown as Record<string, unknown>;
     for (const [k, v] of Object.entries(props)) {
       // only push values that changed since last time, so runtime state isn't reset every frame
-      if (JSON.stringify(slot.applied[k]) !== JSON.stringify(v)) target[k] = clone(v);
+      if (JSON.stringify(slot.applied[k]) === JSON.stringify(v)) continue;
+      // entity fields are saved as scene ids and become entities here (-1 if not found)
+      target[k] = isEntityLink(v) ? (v.$entity ? findBySceneId(slot.inst.world, v.$entity) : -1) : clone(v);
     }
     slot.applied = props;
   }

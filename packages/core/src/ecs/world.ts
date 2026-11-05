@@ -51,6 +51,9 @@ export class World {
   private queryList: Query[] = [];
   private resources = new Map<unknown, unknown>();
   private channels = new Map<EventType<any>, EventChannel<any>>();
+  /** Per component id: the change tick of each entity. Allocated when a query first asks for changes. */
+  private changeTicks: (Uint32Array | undefined)[] = [];
+  private changeTick = 1;
 
   /** Deferred structural changes. Flushed after every system. */
   readonly commands: Commands;
@@ -141,7 +144,10 @@ export class World {
   add<S extends Schema>(e: Entity, def: ComponentDef<S>, init?: Init<S>): this {
     this.assertAlive(e);
     if (this.has(e, def)) {
-      if (init) writeEntity(def.schema, this.store(def), e, init);
+      if (init) {
+        writeEntity(def.schema, this.store(def), e, init);
+        this.markChanged(e, def);
+      }
       return this;
     }
     for (const req of def.options.requires ?? []) {
@@ -156,6 +162,7 @@ export class World {
       from.addEdges.set(def.id, to);
       to.removeEdges.set(def.id, from);
     }
+    this.markChanged(e, def);
     this.moveEntity(e, from, to);
     def.options.onAdd?.(this, e);
     return this;
@@ -207,6 +214,32 @@ export class World {
   write<S extends Schema>(e: Entity, def: ComponentDef<S>, values: Init<S>): void {
     if (!this.has(e, def)) throw new Error(`Brik: entity ${e} has no ${def.name}`);
     writeEntity(def.schema, this.store(def), e, values as Record<string, unknown>);
+    this.markChanged(e, def);
+  }
+
+  // ----------------------------------------------------------------- changes
+
+  /**
+   * Marks a component as changed, so `query.changed(def)` reports the entity.
+   * `world.write`, `world.add` and component views (`this.get(C)` in scripts)
+   * do this for you. Call it yourself after writing to `world.store(def)` directly.
+   */
+  markChanged(e: Entity, def: ComponentDef): void {
+    const ticks = this.changeTicks[def.id];
+    if (ticks !== undefined) ticks[e] = this.changeTick;
+  }
+
+  /** @internal Change ticks for a component; `fresh` is true when tracking just started. */
+  _changeTicks(def: ComponentDef): { ticks: Uint32Array; fresh: boolean } {
+    let ticks = this.changeTicks[def.id];
+    const fresh = ticks === undefined;
+    if (!ticks) ticks = this.changeTicks[def.id] = new Uint32Array(this.capacity);
+    return { ticks, fresh };
+  }
+
+  /** @internal Ends a change-reading pass: returns the tick read up to and starts a new one. */
+  _nextChangeTick(): number {
+    return this.changeTick++;
   }
 
   /** The components an entity has. */
@@ -228,7 +261,7 @@ export class World {
     const key = `${maskKey(all)}|${maskKey(none)}|${maskKey(any)}`;
     let q = this.queries.get(key);
     if (!q) {
-      q = new Query(all, none, any);
+      q = new Query(this, all, none, any);
       for (const arch of this.archetypes) q._tryAdd(arch);
       this.queries.set(key, q);
       this.queryList.push(q);
@@ -335,6 +368,13 @@ export class World {
     for (let id = 0; id < this.stores.length; id++) {
       const s = this.stores[id];
       if (s) allocStore(this.componentDefs[id]!.schema, capacity, s);
+    }
+    for (let id = 0; id < this.changeTicks.length; id++) {
+      const old = this.changeTicks[id];
+      if (!old) continue;
+      const next = new Uint32Array(capacity);
+      next.set(old);
+      this.changeTicks[id] = next;
     }
     this.capacity = capacity;
   }

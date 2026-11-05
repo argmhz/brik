@@ -1,7 +1,14 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   App,
+  Assets,
   Behaviour,
+  BehaviourRuntime,
+  type Entity,
+  type SceneEntityData,
+  expose,
+  instantiate,
+  spawnPrefab,
   CharacterController2D,
   Collider2D,
   GamePlugins,
@@ -189,5 +196,38 @@ describe("sprite meta", () => {
     );
     expect(meta.slicing.mode).toBe("manual");
     expect(meta.sprites[0].border).toEqual({ l: 8, b: 6, r: 8, t: 6 });
+  });
+});
+
+describe("exposed entity fields", () => {
+  it("resolves scene ids to entities, also in spawned prefab copies", () => {
+    class Follower extends Behaviour {
+      @expose({ type: "entity" }) target: Entity = -1;
+    }
+    const registry = new ScriptRegistry();
+    registry.load({ "f.ts": { Follower } });
+    const app = new App().addPlugin(GamePlugins()).addPlugin(ScriptsPlugin(registry));
+    const w = app.world;
+    const script = (id: string | null) => ({ list: [{ script: "f.ts#Follower", props: { target: { $entity: id } } }] });
+    const data: SceneEntityData[] = [
+      { id: "leader", components: { Transform2D: {} } },
+      { id: "follower", components: { Transform2D: {}, Scripts: script("leader") } },
+      { id: "lost", components: { Transform2D: {}, Scripts: script("nobody") } },
+    ];
+    const [leader, follower, lost] = instantiate(w, data);
+    app.update(1 / 60);
+    const rt = w.resource(BehaviourRuntime);
+    expect(rt.find(follower, Follower)!.target).toBe(leader);
+    expect(rt.find(lost, Follower)!.target).toBe(-1);
+
+    // a prefab copy points at its own copy of the leader
+    w.resource(Assets).addPrefab({ guid: "p1", name: "Pair", data: { version: 1, entities: data.slice(0, 2) } });
+    const root = spawnPrefab(w, "Pair");
+    app.update(1 / 60);
+    const copies = w.query([Scripts]).toArray().filter((e) => e !== follower && e !== lost);
+    expect(copies).toHaveLength(1);
+    const copyTarget = rt.find(copies[0], Follower)!.target;
+    expect(copyTarget).toBe(root);
+    expect(copyTarget).not.toBe(leader);
   });
 });
