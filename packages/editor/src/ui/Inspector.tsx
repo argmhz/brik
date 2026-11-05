@@ -20,6 +20,7 @@ import { AssetField, EntityField, MultilineField, TagsField, assetLabel } from "
 import type { Editor } from "../core/editor";
 import { AssetInspector } from "./AssetInspector";
 import { ScriptsSection } from "./ScriptsSection";
+import { TilePalette } from "./TilePalette";
 import { MenuItem, openPopup } from "./Popup";
 import { Checkbox, Part, SpriteField, TextBox, fromHex, toHex } from "./fields";
 import { reportError, toast, useVersion } from "./hooks";
@@ -177,6 +178,11 @@ function EntityInspector(props: { editor: Editor; id: string; e: Entity }) {
                       <For each={Object.keys(d().schema).filter((k) => !d().schema[k].meta?.hidden)}>
                         {(key) => <FieldEditor editor={editor} id={props.id} e={props.e} def={d()} field={key} />}
                       </For>
+                      <Show when={compName === "TileMap"}>
+                        <div style={{ "grid-column": "1 / -1" }}>
+                          <TilePalette editor={editor} e={props.e} id={props.id} />
+                        </div>
+                      </Show>
                       <Show when={Object.keys(d().schema).length === 0}>
                         <span class="field-label" style={{ "grid-column": "1 / -1" }}>
                           Ingen felter
@@ -284,7 +290,7 @@ function FieldEditor(props: { editor: Editor; id: string; e: Entity; def: Compon
     if (meta.editor === "sprite") {
       return <SpriteField editor={editor} value={() => read() as SpriteRef | null} onChange={(v) => commit(v)} />;
     }
-    if (meta.editor === "clip" || meta.editor === "prefab" || meta.editor === "audio") {
+    if (meta.editor === "clip" || meta.editor === "prefab" || meta.editor === "audio" || meta.editor === "texture") {
       return <AssetField editor={editor} kind={meta.editor} value={() => (read() as string | null) ?? null} onChange={(v) => commit(v)} />;
     }
     if (meta.editor === "tags") return <TagsField value={() => read() as string[]} onCommit={(v) => commit(v)} />;

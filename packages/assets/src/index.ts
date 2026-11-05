@@ -30,6 +30,15 @@ export interface SpriteDef {
   rect: Rect;
   /** Normalized pivot, y up: (0.5, 0.5) is the center, (0.5, 0) bottom-center. */
   pivot: Vec2;
+  /** 9-slice borders in pixels (left, bottom, right, top). Missing means no 9-slice. */
+  border?: SpriteBorder;
+}
+
+export interface SpriteBorder {
+  l: number;
+  b: number;
+  r: number;
+  t: number;
 }
 
 export interface TextureSettings {
@@ -82,6 +91,10 @@ export interface ResolvedSprite {
   height: number;
   pivotX: number;
   pivotY: number;
+  /** 9-slice borders in world units, or null. */
+  border: SpriteBorder | null;
+  /** Pixels per world unit of the texture. */
+  ppu: number;
 }
 
 export interface GridSliceOptions {
@@ -166,13 +179,14 @@ export class Assets {
 
   defineSprite(
     texture: TextureAsset,
-    def: { name: string; rect: Rect; pivot?: Vec2; id?: string },
+    def: { name: string; rect: Rect; pivot?: Vec2; id?: string; border?: SpriteBorder },
   ): SpriteRef {
     const sprite: SpriteDef = {
       id: def.id ?? newGuid(),
       name: def.name,
       rect: { ...def.rect },
       pivot: def.pivot ? { ...def.pivot } : { x: 0.5, y: 0.5 },
+      ...(def.border ? { border: { ...def.border } } : {}),
     };
     texture.sprites.set(sprite.id, sprite);
     const ref = { texture: texture.guid, id: sprite.id };
@@ -250,12 +264,14 @@ export class Assets {
     let h = tex.height;
     let px = 0.5;
     let py = 0.5;
+    let border: SpriteBorder | undefined;
     if (ref.id !== "") {
       const def = tex.sprites.get(ref.id);
       if (!def) return null;
       ({ x, y, w, h } = def.rect);
       px = def.pivot.x;
       py = def.pivot.y;
+      border = def.border;
     }
     const ppu = tex.settings.pixelsPerUnit;
     const r = out ?? ({} as ResolvedSprite);
@@ -268,6 +284,8 @@ export class Assets {
     r.height = h / ppu;
     r.pivotX = px;
     r.pivotY = py;
+    r.ppu = ppu;
+    r.border = border ? { l: border.l / ppu, b: border.b / ppu, r: border.r / ppu, t: border.t / ppu } : null;
     return r;
   }
 

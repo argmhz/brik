@@ -1,6 +1,7 @@
 import { Assets, frameAt } from "@brik/assets";
 import { type App, type Entity, GlobalTransform2D, Parent, Time, Transform2D, type World, defineEvent } from "@brik/core";
 import { CameraFollow2D, Sprite, SpriteAnimator } from "./components";
+import { ParticlesPlugin } from "./particles";
 
 export interface AnimationEventData {
   entity: Entity;
@@ -102,11 +103,12 @@ export function followCameras(world: World): void {
   }
 }
 
-/** SpriteAnimator and CameraFollow2D. Works without a renderer (e.g. in the editor's play mode). */
+/** SpriteAnimator, CameraFollow2D and particles. Works without a renderer (e.g. in the editor's play mode). */
 export const SpriteLogicPlugin = {
   name: "brik:sprite-logic",
   build(app: App) {
     app.addSystem("update", { name: "sprite.animate", run: animateSprites });
     app.addSystem("postUpdate", { name: "camera.follow", run: followCameras });
+    app.addPlugin(ParticlesPlugin);
   },
 };

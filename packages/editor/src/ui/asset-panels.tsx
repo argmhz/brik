@@ -5,6 +5,7 @@ import { placePrefab } from "../core/prefabs";
 import { MenuItem, openPopup } from "./Popup";
 import { NumberBox, SpriteThumb, TextBox, allSprites, spriteLabel } from "./fields";
 import { reportError, toast, useVersion } from "./hooks";
+import { setToolWindow } from "./ui-state";
 
 // ------------------------------------------------------------------ animation clips
 
@@ -97,6 +98,11 @@ export function ClipInspector(props: { editor: Editor; path: string }) {
     <Show when={draft()} fallback={<div class="empty-note">Filen kunne ikke læses</div>}>
       {(c) => (
         <>
+          <div class="button-row">
+            <button class="primary" onClick={() => setToolWindow({ kind: "animation", path: props.path })}>
+              Åbn tidslinje
+            </button>
+          </div>
           <div class="clip-preview">
             <SpriteThumb editor={editor} sprite={() => c().frames[current()]?.sprite ?? null} size={96} />
             <div class="button-row" style={{ padding: "4px 0 0" }}>

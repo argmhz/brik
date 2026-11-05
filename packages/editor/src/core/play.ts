@@ -5,6 +5,7 @@ import {
   BehaviourRuntime,
   GamePlugins,
   Input,
+  Particles,
   type Phase,
   Physics,
   type SceneData,
@@ -115,6 +116,7 @@ export class PlayController {
       ["audio", () => (world.tryResource(AudioSystem)?.stopAll(), world.tryResource(Audio)?.stopAll())],
       ["physics", () => world.tryResource(Physics)?.reset()],
       ["tweens", () => world.tryResource(Tweens)?.clear()],
+      ["particles", () => world.tryResource(Particles)?.clear()],
       ["commands", () => world.commands.flush()],
     ];
     for (const [what, fn] of cleanups) {

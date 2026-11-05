@@ -864,3 +864,200 @@ textarea:focus {
 .button-row .spacer {
   flex: 1;
 }
+
+/* ------------------------------------------------------------- tool windows (sprite, animation) */
+
+.tool-window {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #18191d);
+}
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel, #1f2025);
+}
+.tool-header .spacer,
+.anim-controls .spacer {
+  flex: 1;
+}
+.tool-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.tool-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #141518;
+}
+.tool-canvas canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.tool-hint {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.tool-side {
+  width: 320px;
+  flex: none;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--panel, #1f2025);
+}
+.sprite-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+.sprite-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.sprite-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.sprite-row.selected {
+  background: var(--accent-soft);
+}
+.anim-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.anim-preview {
+  flex: 1;
+  position: relative;
+  background: #141518;
+  min-height: 120px;
+}
+.anim-preview canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.anim-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.anim-controls select,
+.anim-controls input[type="range"] {
+  width: auto;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.timeline {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 92px;
+  padding: 22px 10px 8px;
+  overflow-x: auto;
+  background: #1a1b1f;
+  cursor: text;
+}
+.tl-frame {
+  position: relative;
+  flex: none;
+  height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: #26282e;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: grab;
+  overflow: visible;
+}
+.tl-frame.selected {
+  border-color: var(--accent);
+}
+.tl-frame.current {
+  background: #2f3646;
+}
+.tl-frame.drop-before {
+  box-shadow: -3px 0 0 var(--accent);
+}
+.tl-frame.drop-after {
+  box-shadow: 3px 0 0 var(--accent);
+}
+.tl-ms {
+  font: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+}
+.tl-event {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #ffcc00;
+}
+.tl-resize {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.tl-resize:hover {
+  background: var(--accent);
+}
+.palette {
+  padding: 0 8px 12px;
+}
+.palette-group {
+  padding: 6px 0 2px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.palette-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.palette-item {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.palette-item:hover,
+.palette-item.selected {
+  border-color: var(--accent);
+}

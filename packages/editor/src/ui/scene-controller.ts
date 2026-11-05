@@ -1,6 +1,16 @@
 import {
   Camera2D,
   Collider2D,
+  ParticleEmitter2D,
+  Particles,
+  TileMap,
+  type TileData,
+  UICanvas,
+  UILayout,
+  UIRect,
+  type World,
+  cellAt,
+  tileKey,
   type Entity,
   GlobalTransform2D,
   type Mat3,
@@ -18,6 +28,7 @@ import {
 import { type FieldChange, setValues, topLevel, worldMatrix } from "../core/commands";
 import type { Editor } from "../core/editor";
 import { placePrefab } from "../core/prefabs";
+import { fillRect, floodFill, lineCells, setTilesCommand } from "../core/tiles";
 import { assetKindOf, clipThumb } from "./asset-fields";
 import { spriteLabel } from "./fields";
 import { DND, typingInField } from "./hooks";
@@ -43,6 +54,16 @@ interface DragItem {
 
 type Drag =
   | { kind: "pan"; lastX: number; lastY: number }
+  | {
+      kind: "paint";
+      e: Entity;
+      id: string;
+      before: TileData;
+      after: TileData;
+      last: { x: number; y: number };
+      start: { x: number; y: number };
+      erase: boolean;
+    }
   | {
       kind: "transform";
       handle: Handle;
@@ -114,9 +135,29 @@ export class SceneController {
   private frame(): void {
     if (this.container.clientWidth === 0) return; // tab hidden
     const world = this.editor.world;
-    if (!this.editor.play.active) propagateTransforms.run(world);
+    if (!this.editor.play.active) {
+      propagateTransforms.run(world);
+      this.previewParticles();
+    }
     this.renderer.renderView(world, this.editor.view);
     this.drawOverlay();
+  }
+
+  private lastFrame = 0;
+
+  /** In edit mode, selected particle emitters run so their effect can be tuned. */
+  private previewParticles(): void {
+    const world = this.editor.world;
+    const now = performance.now();
+    const dt = this.lastFrame ? Math.min(0.1, (now - this.lastFrame) / 1000) : 0;
+    this.lastFrame = now;
+    const selected = new Set(this.editor.selectedEntities().filter((e) => world.has(e, ParticleEmitter2D)));
+    const particles = world.tryResource(Particles);
+    if (selected.size === 0) {
+      particles?.clear();
+      return;
+    }
+    (particles ?? world.insertResource(new Particles(world))).update(dt, { only: (e) => selected.has(e), preview: true });
   }
 
   private drawOverlay(): void {
@@ -133,9 +174,11 @@ export class SceneController {
     if (this.editor.showGrid) this.drawGrid(ctx);
     this.drawCameras(ctx);
     this.drawColliders(ctx);
+    this.drawUI(ctx);
     this.drawIcons(ctx);
     this.drawSelection(ctx);
-    this.drawGizmo(ctx);
+    if (this.paintTarget() >= 0) this.drawTilePaint(ctx);
+    else this.drawGizmo(ctx);
   }
 
   private drawGrid(ctx: CanvasRenderingContext2D): void {
@@ -197,6 +240,119 @@ export class SceneController {
     ctx.restore();
   }
 
+  // ---------------------------------------------------------------- tile painting
+
+  /** The TileMap entity being painted, or -1 when no tile tool is active. */
+  paintTarget(): Entity {
+    const editor = this.editor;
+    if (!editor.tileTool || editor.play.active || editor.selection.length !== 1) return -1;
+    const e = editor.selectedEntities()[0];
+    return e !== undefined && editor.world.has(e, TileMap) ? e : -1;
+  }
+
+  private hoverCell(e: Entity): { x: number; y: number } {
+    return cellAt(this.editor.world, e, this.cursor);
+  }
+
+  private beginPaint(p: Vec2, shift: boolean): void {
+    const editor = this.editor;
+    const world = editor.world;
+    const e = this.paintTarget();
+    this.cursor = this.screenToWorld(p.x, p.y);
+    const cell = this.hoverCell(e);
+    const M = world.store(TileMap);
+    const before = M.tiles[e];
+    const tool = editor.tileTool!;
+    if (tool === "pick") {
+      editor.setTileTool("paint", before[tileKey(cell.x, cell.y)] ?? editor.tileSprite);
+      return;
+    }
+    const after: TileData = { ...before };
+    const sprite = tool === "erase" || shift ? null : editor.tileSprite;
+    if (sprite === null && tool !== "erase" && !shift) return; // nothing chosen to paint with
+    if (tool === "fill") {
+      if (floodFill(after, cell.x, cell.y, sprite) > 0) {
+        M.tiles[e] = after;
+        editor.push(setTilesCommand(world, editor.idOf(e), before, after, "Fyld tiles"));
+      }
+      return;
+    }
+    M.tiles[e] = after;
+    this.drag = { kind: "paint", e, id: editor.idOf(e), before, after, last: cell, start: cell, erase: sprite === null };
+    if (tool === "paint" || tool === "erase") fillRect(after, cell.x, cell.y, cell.x, cell.y, sprite);
+    editor.emit("world");
+  }
+
+  private continuePaint(drag: Extract<Drag, { kind: "paint" }>): void {
+    const editor = this.editor;
+    const world = editor.world;
+    if (!world.isAlive(drag.e)) return;
+    const cell = this.hoverCell(drag.e);
+    if (cell.x === drag.last.x && cell.y === drag.last.y) return;
+    const tool = editor.tileTool;
+    if (tool === "rect") {
+      // preview: start from the original tiles each time
+      const next: TileData = { ...drag.before };
+      fillRect(next, drag.start.x, drag.start.y, cell.x, cell.y, drag.erase ? null : editor.tileSprite);
+      for (const k of Object.keys(drag.after)) delete drag.after[k];
+      Object.assign(drag.after, next);
+    } else {
+      const sprite = drag.erase ? null : editor.tileSprite;
+      for (const [x, y] of lineCells(drag.last.x, drag.last.y, cell.x, cell.y)) fillRect(drag.after, x, y, x, y, sprite);
+    }
+    drag.last = cell;
+    // a new revision makes physics (and anything else watching) rebuild while dragging in play-less edit mode
+    world.store(TileMap).revision[drag.e]++;
+    editor.emit("world");
+  }
+
+  private endPaint(drag: Extract<Drag, { kind: "paint" }>): void {
+    const editor = this.editor;
+    if (JSON.stringify(drag.before) === JSON.stringify(drag.after)) {
+      editor.world.store(TileMap).tiles[drag.e] = drag.before;
+      return;
+    }
+    const label = drag.erase ? "Slet tiles" : editor.tileTool === "rect" ? "Tegn rektangel" : "Mal tiles";
+    editor.push(setTilesCommand(editor.world, drag.id, drag.before, drag.after, label));
+  }
+
+  /** Grid lines around the cursor and the hovered cell, while painting. */
+  private drawTilePaint(ctx: CanvasRenderingContext2D): void {
+    const e = this.paintTarget();
+    if (e < 0) return;
+    const world = this.editor.world;
+    const M = world.store(TileMap);
+    const tw = M.tileSize.x[e];
+    const th = M.tileSize.y[e];
+    const g = this.globalOf(e);
+    const cell = this.hoverCell(e);
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    const R = 12;
+    for (let i = -R; i <= R + 1; i++) {
+      this.segment(ctx, g, (cell.x + i) * tw, (cell.y - R) * th, (cell.x + i) * tw, (cell.y + R + 1) * th);
+      this.segment(ctx, g, (cell.x - R) * tw, (cell.y + i) * th, (cell.x + R + 1) * tw, (cell.y + i) * th);
+    }
+    const erase = this.editor.tileTool === "erase";
+    ctx.strokeStyle = erase ? "#ff5c6c" : "#ffcc00";
+    ctx.lineWidth = 2;
+    this.polygon(ctx, g, cell.x * tw, cell.y * th, (cell.x + 1) * tw, (cell.y + 1) * th);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  private segment(ctx: CanvasRenderingContext2D, m: Mat3, x0: number, y0: number, x1: number, y1: number): void {
+    const a = mat3.transformPoint(m, { x: x0, y: y0 });
+    const b = mat3.transformPoint(m, { x: x1, y: y1 });
+    const sa = this.worldToScreen(a.x, a.y);
+    const sb = this.worldToScreen(b.x, b.y);
+    ctx.beginPath();
+    ctx.moveTo(sa.x, sa.y);
+    ctx.lineTo(sb.x, sb.y);
+    ctx.stroke();
+  }
+
   /** Collider outlines: green for solid, dashed yellow for triggers. */
   private drawColliders(ctx: CanvasRenderingContext2D): void {
     const world = this.editor.world;
@@ -246,11 +402,50 @@ export class SceneController {
     ctx.restore();
   }
 
+  /**
+   * UI is laid out for the reference game size and drawn as outlines inside the
+   * first camera's frame, so it can be seen (and selected UI shows up) while editing.
+   */
+  private drawUI(ctx: CanvasRenderingContext2D): void {
+    const world = this.editor.world;
+    if (world.query([UICanvas]).isEmpty()) return;
+    const C = world.store(Camera2D);
+    const cams = world.query([Camera2D, GlobalTransform2D]).toArray().sort((a, b) => C.priority[a] - C.priority[b]);
+    const cam = cams[0];
+    if (cam === undefined) return;
+    this.uiLayout.update(world, GAME_REFERENCE.w, GAME_REFERENCE.h);
+    const g = this.globalOf(cam);
+    const z = C.zoom[cam];
+    const selected = new Set(this.editor.selectedEntities());
+    ctx.save();
+    ctx.font = "10px system-ui, sans-serif";
+    for (const el of this.uiLayout.elements) {
+      const r = el.rect;
+      // screen pixels (y up from bottom-left) -> camera-local world units
+      const x0 = (r.x - GAME_REFERENCE.w / 2) / z;
+      const y0 = (r.y - GAME_REFERENCE.h / 2) / z;
+      const sel = selected.has(el.e);
+      ctx.strokeStyle = sel ? "#4c8dff" : "rgba(140,170,255,0.35)";
+      ctx.lineWidth = sel ? 1.5 : 1;
+      this.polygon(ctx, g, x0, y0, x0 + r.w / z, y0 + r.h / z);
+      ctx.stroke();
+      if (sel) {
+        const p = mat3.transformPoint(g, { x: x0, y: y0 + r.h / z });
+        const s = this.worldToScreen(p.x, p.y);
+        ctx.fillStyle = "#4c8dff";
+        ctx.fillText(this.editor.entityName(el.e), s.x + 2, s.y - 3);
+      }
+    }
+    ctx.restore();
+  }
+
+  private uiLayout = new UILayout();
+
   /** Entities without a visible sprite get a small icon so they can be seen and clicked. */
   private drawIcons(ctx: CanvasRenderingContext2D): void {
     const world = this.editor.world;
     for (const e of world.query([Transform2D, GlobalTransform2D])) {
-      if (spriteQuad(world, e)) continue;
+      if (spriteQuad(world, e) || isUI(world, e)) continue;
       const g = this.globalOf(e);
       const p = this.worldToScreen(g.tx, g.ty);
       ctx.fillStyle = world.has(e, Camera2D) ? "rgba(255,255,255,0.8)" : "rgba(200,205,220,0.6)";
@@ -388,7 +583,7 @@ export class SceneController {
     const G = world.store(GlobalTransform2D);
     // icons (entities without sprites) are drawn on top, so test them first
     for (const e of world.query([Transform2D, GlobalTransform2D])) {
-      if (spriteQuad(world, e)) continue;
+      if (spriteQuad(world, e) || isUI(world, e)) continue;
       const p = this.worldToScreen(G.matrix.tx[e], G.matrix.ty[e]);
       if (Math.hypot(sx - p.x, sy - p.y) <= 9) return e;
     }
@@ -466,6 +661,10 @@ export class SceneController {
     }
     if (ev.button !== 0) return;
     const editor = this.editor;
+    if (this.paintTarget() >= 0) {
+      this.beginPaint(p, ev.shiftKey);
+      return;
+    }
     const handle = this.hitGizmo(p.x, p.y);
     if (handle) {
       this.beginTransform(handle, p);
@@ -523,8 +722,13 @@ export class SceneController {
     this.onInfo?.();
     const drag = this.drag;
     if (!drag) {
-      const hover = this.hitGizmo(p.x, p.y);
-      this.container.style.cursor = this.spaceDown ? "grab" : hover ? "pointer" : "";
+      const painting = this.paintTarget() >= 0;
+      const hover = !painting && this.hitGizmo(p.x, p.y);
+      this.container.style.cursor = this.spaceDown ? "grab" : painting ? "crosshair" : hover ? "pointer" : "";
+      return;
+    }
+    if (drag.kind === "paint") {
+      this.continuePaint(drag);
       return;
     }
     if (drag.kind === "pan") {
@@ -603,6 +807,10 @@ export class SceneController {
     this.drag = null;
     this.container.style.cursor = "";
     if (this.container.hasPointerCapture(ev.pointerId)) this.container.releasePointerCapture(ev.pointerId);
+    if (drag?.kind === "paint") {
+      this.endPaint(drag);
+      return;
+    }
     if (!drag || drag.kind !== "transform" || !drag.moved) return;
     const world = this.editor.world;
     const changes: FieldChange[] = drag.items
@@ -693,4 +901,8 @@ export class SceneController {
     v.zoom = Math.min(16, Math.max(0.05, Math.min(this.width / (w * 1.4), this.height / (h * 1.4))));
     this.onInfo?.();
   }
+}
+
+function isUI(world: World, e: Entity): boolean {
+  return world.has(e, UIRect) || world.has(e, UICanvas);
 }

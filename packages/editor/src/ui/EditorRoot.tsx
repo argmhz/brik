@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createSignal, lazy, on, onCleanup, onMount, Suspense } from "solid-js";
 import { SCENE_EXTENSION } from "../core/asset-db";
-import type { Editor } from "../core/editor";
+import type { Editor, TileTool } from "../core/editor";
+import { TileMap } from "@brik/runtime";
 import { basename, joinPath } from "../core/fs";
 import { exportZip } from "../core/zip";
 import { AssetBrowser } from "./AssetBrowser";
@@ -20,7 +21,11 @@ import {
   openFiles,
   setBottomTab,
   setCenterTab,
+  setToolWindow,
+  toolWindow,
 } from "./ui-state";
+import { SpriteEditor } from "./SpriteEditor";
+import { AnimationEditor } from "./AnimationEditor";
 
 // Monaco is big, so the code editor is only loaded when first opened
 const CodePanel = lazy(() => import("./CodeEditor"));
@@ -150,8 +155,14 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     }),
   );
 
+  const tileKeys: Record<string, TileTool> = { b: "paint", x: "erase", g: "fill", u: "rect", i: "pick" };
+  const tileMapSelected = () => {
+    const e = editor.selectedEntities();
+    return e.length === 1 && editor.world.has(e[0], TileMap);
+  };
+
   const onKey = (ev: KeyboardEvent) => {
-    if (ev.defaultPrevented) return;
+    if (ev.defaultPrevented || toolWindow()) return;
     const mod = ev.ctrlKey || ev.metaKey;
     const key = ev.key.toLowerCase();
     if (mod && key === "s") {
@@ -180,6 +191,8 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
       // while the game runs, plain keys belong to the game
       return;
     } else if (key === "delete" || key === "backspace") editor.deleteSelection();
+    else if (tileKeys[key] && tileMapSelected()) editor.setTileTool(tileKeys[key], undefined);
+    else if (key === "escape" && editor.tileTool) editor.setTileTool(null);
     else if (key === "w") editor.setTool("move");
     else if (key === "e") editor.setTool("rotate");
     else if (key === "r") editor.setTool("scale");
@@ -371,6 +384,15 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
         />
         <Inspector editor={editor} />
       </div>
+      <Show when={toolWindow()} keyed>
+        {(w) =>
+          w.kind === "sprite" ? (
+            <SpriteEditor editor={editor} path={w.path} onClose={() => setToolWindow(null)} />
+          ) : (
+            <AnimationEditor editor={editor} path={w.path} onClose={() => setToolWindow(null)} />
+          )
+        }
+      </Show>
     </div>
   );
 }

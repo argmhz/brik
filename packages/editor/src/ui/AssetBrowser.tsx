@@ -5,7 +5,7 @@ import type { Editor } from "../core/editor";
 import { type FsEntry, joinPath, splitPath } from "../core/fs";
 import { defaultScene, sceneToJson } from "../core/project";
 import { isScriptFile, scriptTemplate, toClassName } from "../core/scripts";
-import { openFile } from "./ui-state";
+import { openFile, setToolWindow } from "./ui-state";
 import { openSceneSafely } from "./AssetInspector";
 import { MenuItem, openPopup } from "./Popup";
 import { SpriteThumb } from "./fields";
@@ -232,6 +232,8 @@ export function AssetBrowser(props: { editor: Editor }) {
                       if (entry.kind === "directory") setDir(entry.path);
                       else if (isScene(entry.path)) openSceneSafely(editor, entry.path);
                       else if (isScriptFile(entry.path)) openFile(entry.path);
+                      else if (isImage(entry.path)) setToolWindow({ kind: "sprite", path: entry.path });
+                      else if (assetKindOf(entry.path) === "clip") setToolWindow({ kind: "animation", path: entry.path });
                     }}
                     onContextMenu={(ev) => contextMenu(ev, entry)}
                   >

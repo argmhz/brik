@@ -16,18 +16,25 @@ import { createProject, isProject } from "../core/project";
 import { scriptTemplate } from "../core/scripts";
 import { importZip } from "../core/zip";
 import { reportError } from "./hooks";
+import { platformerFiles } from "./platformer-template";
 import { sampleMeta, samplePng } from "./sample-art";
 
+export type Template = "empty" | "platformer";
+
 /** Makes `fs` a Brik project if it isn't one. Returns false if the user said no. */
-export async function ensureProject(fs: ProjectFS, name: string, ask: boolean): Promise<boolean> {
+export async function ensureProject(fs: ProjectFS, name: string, ask: boolean, template: Template = "empty"): Promise<boolean> {
   if (await isProject(fs)) return true;
   const empty = (await walk(fs)).length === 0;
   if (ask && !empty && !confirm(`"${fs.name}" er ikke et Brik-projekt. Vil du oprette et projekt i mappen?`)) return false;
-  await createProject(fs, name, {
-    "assets/sample.png": await samplePng(),
-    "assets/sample.png.meta.json": sampleMeta(newGuid()),
-    "scripts/Rotator.ts": scriptTemplate("Rotator"),
-  });
+  const files =
+    template === "platformer"
+      ? await platformerFiles()
+      : {
+          "assets/sample.png": await samplePng(),
+          "assets/sample.png.meta.json": sampleMeta(newGuid()),
+          "scripts/Rotator.ts": scriptTemplate("Rotator"),
+        };
+  await createProject(fs, name, files);
   return true;
 }
 
@@ -35,6 +42,7 @@ export function StartScreen(props: { onOpen: (fs: ProjectFS) => void }) {
   const [projects, { refetch }] = createResource(() => listBrowserProjects().catch(() => [] as string[]));
   const [last] = createResource(() => lastFolder());
   const [newName, setNewName] = createSignal("");
+  const [template, setTemplate] = createSignal<Template>("empty");
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
   let zipInput!: HTMLInputElement;
@@ -65,7 +73,7 @@ export function StartScreen(props: { onOpen: (fs: ProjectFS) => void }) {
       if (!name) return;
       if ((projects() ?? []).includes(name)) throw new Error(`Der findes allerede et projekt med navnet "${name}"`);
       const fs = await openBrowserProject(name, true);
-      await ensureProject(fs, name, false);
+      await ensureProject(fs, name, false, template());
       props.onOpen(fs);
     });
 
@@ -165,6 +173,15 @@ export function StartScreen(props: { onOpen: (fs: ProjectFS) => void }) {
               value={newName()}
               onInput={(ev) => setNewName(ev.currentTarget.value)}
             />
+            <select
+              value={template()}
+              onChange={(ev) => setTemplate(ev.currentTarget.value as Template)}
+              title="Hvad projektet starter med"
+              style={{ width: "auto" }}
+            >
+              <option value="empty">Tomt projekt</option>
+              <option value="platformer">Platformer-eksempel</option>
+            </select>
             <button class="primary" type="submit" disabled={busy() || !newName().trim()}>
               Opret
             </button>

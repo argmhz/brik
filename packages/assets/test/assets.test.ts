@@ -84,3 +84,26 @@ describe("Texture meta", () => {
     expect(() => assets.sprite("sheet_1")).toThrow();
   });
 });
+
+import { autoSliceRects } from "../src";
+
+describe("auto slicing", () => {
+  it("finds separate blobs, merges overlaps, sorts in rows", () => {
+    const w = 20;
+    const h = 10;
+    const px = new Uint8Array(w * h * 4);
+    const fill = (x0: number, y0: number, x1: number, y1: number) => {
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) px[(y * w + x) * 4 + 3] = 255;
+    };
+    fill(10, 1, 13, 3); // second in the top row
+    fill(1, 1, 4, 4); // first in the top row
+    fill(3, 3, 3, 3); // inside the first, merged
+    fill(2, 7, 6, 8); // bottom row
+    px[(9 * w + 19) * 4 + 3] = 255; // 1px noise, dropped
+    expect(autoSliceRects(px, w, h)).toEqual([
+      { x: 1, y: 1, w: 4, h: 4 },
+      { x: 10, y: 1, w: 4, h: 3 },
+      { x: 2, y: 7, w: 5, h: 2 },
+    ]);
+  });
+});

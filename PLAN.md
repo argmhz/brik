@@ -423,15 +423,22 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - [x] Behaviour-hooks: `onCollisionEnter/Exit`, `onTriggerEnter/Exit`, `onAnimationEvent`, `onAnimationFinished` og `onTimer`. Hjælpere: `moveCharacter`, `tween`, `after`, `every`, `playSound`, `playAnimation` og `spawnPrefab`.
 - [x] Editor: entity-felter med vælger og træk-og-slip, asset-felter (klip, lyd, prefab), collider-gizmos og nye entity-typer i hierarkiet
 
-**4b (næste)**
-- [ ] Sprite-editor: auto- og manuel slicing, pivot og 9-slice
-- [ ] Animations-tidslinje med træk-og-slip og onion skin
-- [ ] `TileMap` og tilemap-maler (med automatiske colliders)
-- [ ] UI: `UICanvas`, `UIRect`, `UIImage`, `UIText` og `UIButton`
-- [ ] `ParticleEmitter2D`
-- [ ] Et lille eksempelspil (platformer), der bruger det hele
+**4b (færdig)**
+- [x] Sprite-editor (fuldskærm): grid, automatisk slicing ud fra gennemsigtighed, manuel tegning, flytning og ændring af rektangler, pivot (træk eller presets) og 9-slice-kanter (træk eller tal). Automatisk slicing beholder eksisterende sprites' id, navn og pivot-punkt, så animationer ikke går i stykker. Har egen fortryd.
+- [x] Animations-tidslinje (fuldskærm): frames med bredde efter varighed, flyt ved at trække, træk kanten for at ændre varighed, palette med træk-og-slip, onion skin, pivot-justeret forhåndsvisning, events (dobbeltklik), afspilningshastighed og fortryd
+- [x] `TileMap` (lag = flere TileMaps) og `TileMapCollider`, der samler tiles til få bokse. Tile-maler i scene view med pensel, viskelæder, fyld, rektangel og pipette, palette i inspectoren og undo pr. strøg.
+- [x] UI: `UICanvas` (fit, expand, constant), `UIRect` (ankre i stil med Unity), `UIImage` (farve, sprite eller 9-slice), `UIText` og `UIButton` (hover, pressed, `UIClick` og `onClick`). UI vises i Spil-fanen og som omrids i scene view.
+- [x] `ParticleEmitter2D` med rate, burst, levetid, fart, spredning, tyngdekraft, størrelse og farve over tid, sprite eller runde partikler og auto-destroy. Forhåndsvises i scene view, når den er valgt.
+- [x] Platformer-eksempel som projektskabelon: genereret pixel art og lyd, animationer, prefabs, tilemap-bane, UI og to scripts
 
-**Kendte begrænsninger i 4a**
+**Kendte begrænsninger i 4b**
+- UI er kun i skærm-koordinater (ingen world-space canvas). Der er ingen `UILayout` (flexbox), og `UISlider`, `UIToggle` og `UITextInput` mangler.
+- UI-elementer kan endnu ikke vælges eller trækkes direkte i scene view. Det sker i hierarkiet og inspectoren.
+- Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener. Der er ingen auto-tiling (regel-tiles) endnu.
+- Partikler simulerer kun i world space og har ingen kollision.
+- `Sprite` har ikke 9-slice i verdenen. Det har kun `UIImage`.
+
+**Kendte begrænsninger fra 4a**
 - `CharacterController2D` ignorerer dynamiske kroppe i sine forespørgsler og skubber dem i stedet væk. Den kan derfor endnu ikke stå på løse kasser.
 - Prefab-instanser gemmer deres egen fulde kopi. "Anvend" og "Gendan" virker på hele instansen, og kun placeringen (position, rotation, skala) bevares som en instans-ændring. Ændringer pr. felt spores ikke endnu, og det samme gælder nested prefab-overrides.
 - `Text2D` bruger canvas-tekst i stedet for MSDF. Den er skarp ved normal zoom, men bliver blød, hvis man zoomer meget ind.

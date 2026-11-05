@@ -33,6 +33,7 @@ export function resetUiState(): void {
   setOpenFiles([]);
   setActiveFile(null);
   setRevealAt(null);
+  setToolWindow(null);
 }
 
 /** Hooks the code editor registers so global shortcuts and the unload warning can reach it. */
@@ -40,3 +41,7 @@ export const codeActions: { save: (() => Promise<void>) | null; dirty: (() => bo
   save: null,
   dirty: null,
 };
+
+/** A full-screen tool window: the sprite editor (textures) or the animation editor (clips). */
+export type ToolWindow = { kind: "sprite" | "animation"; path: string } | null;
+export const [toolWindow, setToolWindow] = createSignal<ToolWindow>(null);

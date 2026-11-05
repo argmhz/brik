@@ -95,6 +95,9 @@ importers:
       '@brik/core':
         specifier: workspace:*
         version: link:../core
+      '@brik/input':
+        specifier: workspace:*
+        version: link:../input
 
   packages/runtime:
     dependencies:

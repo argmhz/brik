@@ -31,7 +31,7 @@ import {
 } from "@brik/core";
 import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
-import { AnimationEvent, AnimationFinished, playAnimation } from "@brik/render";
+import { AnimationEvent, AnimationFinished, Particles, UIClick, playAnimation } from "@brik/render";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
 
 // ------------------------------------------------------------------ exposed fields
@@ -190,6 +190,8 @@ export abstract class Behaviour {
   onAnimationFinished?(clip: string): void;
   /** The entity's Timer component ran out. */
   onTimer?(): void;
+  /** This entity's UIButton was clicked. */
+  onClick?(): void;
 
   get time(): Time {
     return this.world.resource(Time);
@@ -241,6 +243,11 @@ export abstract class Behaviour {
     return spawnPrefab(this.world, prefab, opts);
   }
 
+  /** Emits particles from an entity's ParticleEmitter2D right away (default: this entity). */
+  emitParticles(count: number, e: Entity = this.entity): void {
+    this.world.resource(Particles).emit(e, count);
+  }
+
   /** Moves this entity's CharacterController2D, sliding along walls. Returns the actual movement. */
   moveCharacter(dx: number, dy: number): Vec2 {
     return this.physics.moveCharacter(this.entity, dx, dy);
@@ -286,6 +293,11 @@ export abstract class Behaviour {
     this.world.commands.run((w) => {
       if (w.isAlive(e)) destroyRecursive(w, e);
     });
+  }
+
+  /** The running instance of a Behaviour class on an entity (default: this one), e.g. to call its methods. */
+  behaviourOf<T extends Behaviour>(cls: abstract new () => T, e: Entity = this.entity): T | undefined {
+    return this.world.resource(BehaviourRuntime).find(e, cls);
   }
 
   /** The first entity with this name, or -1. */
@@ -447,6 +459,12 @@ export class BehaviourRuntime {
     });
   }
 
+  /** The first instance of `cls` (or a subclass) on an entity. */
+  find<T extends Behaviour>(e: Entity, cls: abstract new () => T): T | undefined {
+    for (const s of this.slots.get(e) ?? []) if (s?.inst instanceof cls) return s.inst as T;
+    return undefined;
+  }
+
   /** Calls a hook on every started Behaviour of an entity. */
   dispatch(e: Entity, method: HookName, arg: unknown): void {
     const slots = this.slots.get(e);
@@ -508,7 +526,8 @@ type HookName =
   | "onTriggerExit"
   | "onAnimationEvent"
   | "onAnimationFinished"
-  | "onTimer";
+  | "onTimer"
+  | "onClick";
 
 function call(s: Slot, method: HookName, arg?: unknown): void {
   try {
@@ -536,6 +555,7 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
       const anim = reader(AnimationEvent);
       const animDone = reader(AnimationFinished);
       const timers = reader(TimerFinished);
+      const clicks = reader(UIClick);
       const dispatchEvents = () => {
         for (const [r, hook] of pairs) {
           for (const { a, b } of r.read()) {
@@ -549,6 +569,7 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
           runtime.dispatch(ev.entity, "onAnimationFinished", clip?.name ?? ev.clip);
         }
         for (const ev of timers.read()) runtime.dispatch(ev.entity, "onTimer", undefined);
+        for (const ev of clicks.read()) runtime.dispatch(ev.entity, "onClick", undefined);
       };
       app.addSystem("fixedUpdate", {
         name: "behaviours.fixedUpdate",

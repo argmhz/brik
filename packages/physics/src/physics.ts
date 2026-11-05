@@ -4,7 +4,10 @@ import {
   type Entity,
   GlobalTransform2D,
   Parent,
+  TileMap,
+  TileMapCollider,
   Time,
+  mergeTileRects,
   Transform2D,
   type Vec2,
   type World,
@@ -68,6 +71,22 @@ interface ColliderEntry {
   sig: string;
 }
 
+interface TileMapEntry {
+  ref: number;
+  body: RAPIER.RigidBody;
+  colliders: RAPIER.Collider[];
+  sig: string;
+}
+
+const objectIds = new WeakMap<object, number>();
+let nextObjectId = 1;
+/** A stable number per object, to notice when a tile map's data was replaced. */
+function objectId(o: object): number {
+  let id = objectIds.get(o);
+  if (id === undefined) objectIds.set(o, (id = nextObjectId++));
+  return id;
+}
+
 interface CharacterEntry {
   ref: number;
   controller: RAPIER.KinematicCharacterController;
@@ -86,6 +105,7 @@ export class Physics {
   private bodies = new Map<Entity, BodyEntry>();
   private colliders = new Map<Entity, ColliderEntry>();
   private characters = new Map<Entity, CharacterEntry>();
+  private tilemaps = new Map<Entity, TileMapEntry>();
   private byHandle = new Map<number, Entity>();
 
   constructor(
@@ -216,6 +236,7 @@ export class Physics {
     this.bodies.clear();
     this.colliders.clear();
     this.characters.clear();
+    this.tilemaps.clear();
     this.byHandle.clear();
   }
 
@@ -321,6 +342,8 @@ export class Physics {
       this.makeCollider(e, body, scale, sig, mass);
     }
 
+    this.syncTileMaps();
+
     // character controllers
     const CC = world.store(CharacterController2D);
     for (const e of world.query([CharacterController2D, Collider2D])) {
@@ -339,6 +362,68 @@ export class Physics {
       this.characters.set(e, { ref: world.ref(e), controller: c, sig });
     }
     return true;
+  }
+
+  private syncTileMaps(): void {
+    const world = this.world;
+    const rw = this.rw!;
+    const R = rapier!;
+    for (const [e, t] of this.tilemaps) {
+      if (world.ref(e) !== t.ref || !world.has(e, TileMapCollider)) this.dropTileMap(e);
+    }
+    const M = world.store(TileMap);
+    const TC = world.store(TileMapCollider);
+    const ppm = this.pixelsPerMeter;
+    for (const e of world.query([TileMapCollider, TileMap])) {
+      const pos = this.worldPos(e);
+      const rot = this.worldRotation(e);
+      const scale = this.worldScale(e);
+      const sig = [
+        objectId(M.tiles[e]),
+        M.revision[e],
+        M.tileSize.x[e],
+        M.tileSize.y[e],
+        pos.x,
+        pos.y,
+        rot,
+        scale.x,
+        scale.y,
+        TC.friction[e],
+        TC.isTrigger[e],
+      ].join("|");
+      const old = this.tilemaps.get(e);
+      if (old?.sig === sig) continue;
+      if (old) this.dropTileMap(e);
+      const body = rw.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(pos.x / ppm, pos.y / ppm).setRotation(rot));
+      const tw = (M.tileSize.x[e] * scale.x) / ppm;
+      const th = (M.tileSize.y[e] * scale.y) / ppm;
+      const colliders: RAPIER.Collider[] = [];
+      for (const r of mergeTileRects(M.tiles[e])) {
+        const desc = R.ColliderDesc.cuboid((r.w * tw) / 2, (r.h * th) / 2)
+          .setTranslation((r.x + r.w / 2) * tw, (r.y + r.h / 2) * th)
+          .setFriction(TC.friction[e])
+          .setSensor(TC.isTrigger[e] !== 0)
+          .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS)
+          .setActiveCollisionTypes(R.ActiveCollisionTypes.DEFAULT | R.ActiveCollisionTypes.KINEMATIC_FIXED);
+        const c = rw.createCollider(desc, body);
+        this.byHandle.set(c.handle, e);
+        colliders.push(c);
+      }
+      this.tilemaps.set(e, { ref: world.ref(e), body, colliders, sig });
+    }
+  }
+
+  private dropTileMap(e: Entity): void {
+    const t = this.tilemaps.get(e);
+    if (!t) return;
+    for (const c of t.colliders) this.byHandle.delete(c.handle);
+    this.rw?.removeRigidBody(t.body);
+    this.tilemaps.delete(e);
+  }
+
+  /** Number of boxes making up a tile map's colliders. */
+  tileColliderCount(e: Entity): number {
+    return this.tilemaps.get(e)?.colliders.length ?? 0;
   }
 
   private makeBody(e: Entity, type: string, explicit: boolean, sig: string): BodyEntry {

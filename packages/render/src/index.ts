@@ -6,6 +6,8 @@ import { SpriteLogicPlugin } from "./systems";
 export * from "./components";
 export * from "./renderer";
 export * from "./systems";
+export * from "./particles";
+export * from "./ui";
 export { TextCache, layoutLines, type TextImage, type TextStyle } from "./text";
 export { SpriteBatcher, packColor } from "./sprite-batcher";
 

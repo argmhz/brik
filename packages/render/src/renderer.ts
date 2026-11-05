@@ -1,12 +1,16 @@
 import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
-import { type Entity, GlobalTransform2D, type Mat3, type Vec2, type World, mat3 } from "@brik/core";
+import { type Entity, GlobalTransform2D, type Mat3, TileMap, type Vec2, type World, mat3, parseTileKey } from "@brik/core";
 import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
+import { ParticleEmitter2D, Particles } from "./particles";
+import { UIImage, UILayout, UIText } from "./ui";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle } from "./text";
 
 const KIND_SPRITE = 0;
 const KIND_SHAPE = 1;
 const KIND_TEXT = 2;
+const KIND_TILEMAP = 3;
+const KIND_PARTICLES = 4;
 
 const renderers = new Set<Renderer>();
 
@@ -166,7 +170,97 @@ export class Renderer {
       this.drawSprites(world, count, bounds);
     }
     gl.disable(gl.SCISSOR_TEST);
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    this.drawUI(world);
     this.stats.drawCalls = this.batcher.drawCalls;
+  }
+
+  /** Lays out and draws every UICanvas in screen space, on top of the world. */
+  drawUI(world: World): void {
+    const layout = world.tryResource(UILayout) ?? world.insertResource(new UILayout());
+    layout.update(world, this.width, this.height);
+    if (layout.elements.length === 0) return;
+    const p = this.viewProj;
+    p.fill(0);
+    p[0] = 2 / this.width;
+    p[4] = 2 / this.height;
+    p[6] = -1;
+    p[7] = -1;
+    p[8] = 1;
+    this.batcher.begin(p);
+    const assets = world.resource(Assets);
+    const I = world.store(UIImage);
+    const X = world.store(UIText);
+    const r = {} as ResolvedSprite;
+    for (const el of layout.elements) {
+      const e = el.e;
+      const { x, y, w, h } = el.rect;
+      if (world.has(e, UIImage)) {
+        const rgba = packColor(I.color.r[e], I.color.g[e], I.color.b[e], I.color.a[e]);
+        const ref = I.sprite[e];
+        const res = ref ? assets.resolve(ref, r) : null;
+        const gpu = res ? this.gpuTexture(res.texture) : null;
+        if (res && gpu) {
+          if (res.border) this.nineSlice(gpu.tex, res, x, y, w, h, el.scale, rgba);
+          else this.batcher.push(gpu.tex, w, 0, 0, h, x, y, res.u0, res.v0, res.u1, res.v1, rgba);
+        } else if (!ref) {
+          this.batcher.pushShape(w, 0, 0, h, x, y, 1, rgba, 0, 0, 0);
+        }
+        this.stats.sprites++;
+      }
+      if (world.has(e, UIText) && X.text[e]) {
+        style.text = X.text[e];
+        style.size = X.size[e] * el.scale;
+        style.font = X.font[e];
+        style.align = X.align[e];
+        style.bold = X.bold[e] !== 0;
+        style.maxWidth = X.wrap[e] ? w : 0;
+        style.lineHeight = 1.2;
+        const img = textCache.get(style);
+        const gpu = img && this.gpuTexture(img.texture);
+        if (img && gpu) {
+          const anchorX = style.align === "left" ? x : style.align === "right" ? x + w : x + w / 2;
+          const tx = anchorX - img.width * img.pivotX;
+          const ty = y + h / 2 - img.height / 2;
+          const rgba = packColor(X.color.r[e], X.color.g[e], X.color.b[e], X.color.a[e]);
+          this.batcher.push(gpu.tex, img.width, 0, 0, img.height, tx, ty, 0, 1, 1, 0, rgba);
+          this.stats.sprites++;
+        }
+      }
+    }
+    this.batcher.end();
+  }
+
+  /** Draws a sprite stretched to a rect with fixed-size corners (borders are in source pixels times `scale`). */
+  private nineSlice(tex: WebGLTexture, r: ResolvedSprite, x: number, y: number, w: number, h: number, scale: number, rgba: number): void {
+    const b = r.border!;
+    const ppu = r.ppu;
+    // border sizes on screen, shrunk if the rect is too small
+    let l = b.l * ppu * scale;
+    let rr = b.r * ppu * scale;
+    let bt = b.b * ppu * scale;
+    let tp = b.t * ppu * scale;
+    const fx = Math.min(1, w / Math.max(1e-6, l + rr));
+    const fy = Math.min(1, h / Math.max(1e-6, bt + tp));
+    l *= fx;
+    rr *= fx;
+    bt *= fy;
+    tp *= fy;
+    const sw = r.width;
+    const sh = r.height;
+    // uv columns/rows (v0 is the bottom edge)
+    const us = [r.u0, r.u0 + ((r.u1 - r.u0) * b.l) / sw, r.u1 - ((r.u1 - r.u0) * b.r) / sw, r.u1];
+    const vs = [r.v0, r.v0 + ((r.v1 - r.v0) * b.b) / sh, r.v1 - ((r.v1 - r.v0) * b.t) / sh, r.v1];
+    const xs = [x, x + l, x + w - rr, x + w];
+    const ys = [y, y + bt, y + h - tp, y + h];
+    for (let j = 0; j < 3; j++) {
+      for (let i = 0; i < 3; i++) {
+        const qw = xs[i + 1] - xs[i];
+        const qh = ys[j + 1] - ys[j];
+        if (qw <= 0 || qh <= 0) continue;
+        this.batcher.push(tex, qw, 0, 0, qh, xs[i], ys[j], us[i], vs[j], us[i + 1], vs[j + 1], rgba);
+      }
+    }
   }
 
   /**
@@ -301,6 +395,41 @@ export class Renderer {
       this.itemTex.push(gpu);
     }
 
+    const M = world.store(TileMap);
+    for (const e of world.query([TileMap, GlobalTransform2D])) {
+      if (!G.active[e]) continue;
+      const guid = M.tileset[e];
+      const tex = guid ? assets.textures.get(guid) : undefined;
+      if (!tex) continue;
+      const gpu = this.gpuTexture(tex);
+      if (!gpu) continue;
+      const r = slot(items.length);
+      r.texture = tex;
+      items.push(e);
+      this.itemKind.push(KIND_TILEMAP);
+      this.itemTex.push(gpu);
+    }
+
+    const particles = world.tryResource(Particles);
+    if (particles) {
+      const PE = world.store(ParticleEmitter2D);
+      for (const [e, pool] of particles.pools) {
+        if (pool.count === 0 || !world.isAlive(e) || !world.has(e, ParticleEmitter2D)) continue;
+        if (world.has(e, GlobalTransform2D) && !G.active[e]) continue;
+        const r = slot(items.length);
+        let gpu: GpuTexture | null = null;
+        const ref = PE.sprite[e];
+        if (ref) {
+          if (!assets.resolve(ref, r)) continue;
+          gpu = this.gpuTexture(r.texture);
+          if (!gpu) continue;
+        }
+        items.push(e);
+        this.itemKind.push(KIND_PARTICLES);
+        this.itemTex.push(gpu);
+      }
+    }
+
     const n = items.length;
     if (this.keyLayer.length < n) {
       const cap = Math.max(n, this.keyLayer.length * 2, 256);
@@ -386,6 +515,14 @@ export class Renderer {
       const e = items[i];
       const r = this.resolved[i];
       const kind = this.itemKind[i];
+      if (kind === KIND_TILEMAP) {
+        drawn += this.drawTileMap(world, e, r.texture, this.itemTex[i]!.tex, view);
+        continue;
+      }
+      if (kind === KIND_PARTICLES) {
+        drawn += this.drawParticles(world, e, r, this.itemTex[i]?.tex ?? null);
+        continue;
+      }
       // quad matrix: global * translate(-pivot * size) * scale(±size)
       const sprite = kind === KIND_SPRITE;
       const w = sprite && S.flipX[e] ? -r.width : r.width;
@@ -433,6 +570,82 @@ export class Renderer {
     }
     batcher.end();
     this.stats.sprites += drawn;
+  }
+
+  /** Pushes every visible tile of a TileMap. Returns how many were drawn. */
+  private drawTileMap(
+    world: World,
+    e: Entity,
+    tex: TextureAsset,
+    gl: WebGLTexture,
+    view: { minX: number; minY: number; maxX: number; maxY: number },
+  ): number {
+    const M = world.store(TileMap);
+    const g = world.store(GlobalTransform2D).matrix;
+    const tw = M.tileSize.x[e];
+    const th = M.tileSize.y[e];
+    const a = g.a[e] * tw;
+    const b = g.b[e] * tw;
+    const c = g.c[e] * th;
+    const d = g.d[e] * th;
+    const ox = g.tx[e];
+    const oy = g.ty[e];
+    // a tile's world AABB is its origin plus this extent (handles rotation)
+    const exMinX = Math.min(0, a, c, a + c);
+    const exMaxX = Math.max(0, a, c, a + c);
+    const exMinY = Math.min(0, b, d, b + d);
+    const exMaxY = Math.max(0, b, d, b + d);
+    const rgba = packColor(M.color.r[e], M.color.g[e], M.color.b[e], M.color.a[e]);
+    const tiles = M.tiles[e];
+    const iw = 1 / tex.width;
+    const ih = 1 / tex.height;
+    let drawn = 0;
+    for (const key in tiles) {
+      const def = tex.sprites.get(tiles[key]);
+      if (!def) continue;
+      const [x, y] = parseTileKey(key);
+      const tx = ox + a * x + c * y;
+      const ty = oy + b * x + d * y;
+      if (tx + exMaxX < view.minX || tx + exMinX > view.maxX || ty + exMaxY < view.minY || ty + exMinY > view.maxY) continue;
+      const rc = def.rect;
+      // inset by a hair so neighbouring sprites in the sheet don't bleed in at odd zoom levels
+      const u0 = (rc.x + 0.01) * iw;
+      const u1 = (rc.x + rc.w - 0.01) * iw;
+      const v0 = (rc.y + rc.h - 0.01) * ih;
+      const v1 = (rc.y + 0.01) * ih;
+      this.batcher.push(gl, a, b, c, d, tx, ty, u0, v0, u1, v1, rgba);
+      drawn++;
+    }
+    return drawn;
+  }
+
+  private drawParticles(world: World, e: Entity, r: ResolvedSprite, tex: WebGLTexture | null): number {
+    const pool = world.resource(Particles).pools.get(e);
+    if (!pool) return 0;
+    const P = world.store(ParticleEmitter2D);
+    const s0 = P.startSize[e];
+    const s1 = P.endSize[e];
+    const c0 = P.startColor;
+    const c1 = P.endColor;
+    // sprites keep their aspect ratio; size is the larger side
+    const aspect = tex ? r.width / Math.max(1e-6, r.height) : 1;
+    for (let i = 0; i < pool.count; i++) {
+      const k = pool.age[i] / pool.life[i];
+      const size = s0 + (s1 - s0) * k;
+      const w = aspect >= 1 ? size : size * aspect;
+      const h = aspect >= 1 ? size / aspect : size;
+      const rgba = packColor(
+        c0.r[e] + (c1.r[e] - c0.r[e]) * k,
+        c0.g[e] + (c1.g[e] - c0.g[e]) * k,
+        c0.b[e] + (c1.b[e] - c0.b[e]) * k,
+        c0.a[e] + (c1.a[e] - c0.a[e]) * k,
+      );
+      const tx = pool.x[i] - w / 2;
+      const ty = pool.y[i] - h / 2;
+      if (tex) this.batcher.push(tex, w, 0, 0, h, tx, ty, r.u0, r.v0, r.u1, r.v1, rgba);
+      else this.batcher.pushShape(w, 0, 0, h, tx, ty, 2, rgba, 0, 0, 0);
+    }
+    return pool.count;
   }
 
   /** Frees the GPU copy of a texture (e.g. evicted text). */

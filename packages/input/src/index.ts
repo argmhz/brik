@@ -161,6 +161,13 @@ export class Input {
     this.cleanup = [];
   }
 
+  /** Moves the pointer (CSS pixels, y down), e.g. from tests. Applied next frame. */
+  injectPointer(x: number, y: number): void {
+    this.pendingMove.x = x;
+    this.pendingMove.y = y;
+    this.pointer.inside = true;
+  }
+
   /** Feeds a synthetic event, e.g. from tests or an on-screen touch button. */
   inject(type: "down" | "up", code: Binding): void {
     this.queue.push({ type, code });

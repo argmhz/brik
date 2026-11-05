@@ -1,0 +1,212 @@
+import type { SpriteRef } from "@brik/assets";
+import {
+  type App,
+  type Entity,
+  GlobalTransform2D,
+  type Rect,
+  type World,
+  childrenOf,
+  defineComponent,
+  defineEvent,
+  parentOf,
+  t,
+  withMeta,
+} from "@brik/core";
+import { Input } from "@brik/input";
+
+/**
+ * The root of a screen-space UI. Its descendants with a UIRect are laid out on
+ * the screen (not in the world) and drawn on top of everything.
+ */
+export const UICanvas = defineComponent("UICanvas", {
+  /** constant: 1 unit = 1 CSS pixel. fit / expand: scale `referenceSize` to fit inside / cover the screen. */
+  scaleMode: t.enum(["fit", "expand", "constant"] as const, "fit"),
+  referenceSize: t.vec2(960, 540),
+  /** Higher draws on top of other canvases. */
+  order: t.i32(0),
+});
+
+/**
+ * Where a UI element sits in its parent, like Unity's RectTransform. With equal
+ * anchors the element has a fixed `size`; with anchorMin != anchorMax it
+ * stretches, and `size` is added to the stretched size.
+ */
+export const UIRect = defineComponent("UIRect", {
+  anchorMin: t.vec2(0.5, 0.5),
+  anchorMax: t.vec2(0.5, 0.5),
+  pivot: t.vec2(0.5, 0.5),
+  /** Offset of the pivot from the anchor point. */
+  position: t.vec2(0, 0),
+  size: t.vec2(160, 40),
+});
+
+/** A colored rectangle or a sprite (9-sliced if the sprite has borders). */
+export const UIImage = defineComponent(
+  "UIImage",
+  {
+    sprite: withMeta(t.ref<SpriteRef | null>(() => null), { editor: "sprite" }),
+    color: t.color(1, 1, 1, 1),
+  },
+  { requires: [UIRect] },
+);
+
+export const UIText = defineComponent(
+  "UIText",
+  {
+    text: withMeta(t.string("Tekst"), { editor: "multiline" }),
+    size: withMeta(t.f32(20), { min: 1, step: 1 }),
+    color: t.color(1, 1, 1, 1),
+    font: t.string("sans-serif"),
+    align: t.enum(["center", "left", "right"] as const, "center"),
+    bold: t.bool(false),
+    wrap: t.bool(true),
+  },
+  { requires: [UIRect] },
+);
+
+/** Makes a UIRect clickable. Tints its UIImage and sends `UIClick`. */
+export const UIButton = defineComponent(
+  "UIButton",
+  {
+    interactable: t.bool(true),
+    normal: t.color(1, 1, 1, 1),
+    hover: t.color(0.9, 0.93, 1, 1),
+    pressed: t.color(0.7, 0.75, 0.85, 1),
+    disabled: t.color(0.6, 0.6, 0.6, 0.6),
+    hovered: withMeta(t.bool(false), { hidden: true }),
+    down: withMeta(t.bool(false), { hidden: true }),
+  },
+  { requires: [UIRect] },
+);
+
+/** A UIButton was clicked (pressed and released over it). */
+export const UIClick = defineEvent<{ entity: Entity }>("UIClick");
+
+export interface UIElement {
+  e: Entity;
+  /** CSS pixels, origin bottom-left of the screen, y up. */
+  rect: Rect;
+  /** UI units -> CSS pixels for this element's canvas. */
+  scale: number;
+}
+
+/** Laid out UI. Available as a resource: `world.resource(UILayout)`. */
+export class UILayout {
+  /** Elements in draw order (later ones on top). */
+  elements: UIElement[] = [];
+  readonly byEntity = new Map<Entity, UIElement>();
+  screenW = 0;
+  screenH = 0;
+
+  /** Recomputes every rect for a screen of `w` x `h` CSS pixels. */
+  update(world: World, w: number, h: number): void {
+    this.screenW = w;
+    this.screenH = h;
+    this.elements = [];
+    this.byEntity.clear();
+    const C = world.store(UICanvas);
+    const canvases = world
+      .query([UICanvas])
+      .toArray()
+      .sort((a, b) => C.order[a] - C.order[b] || a - b);
+    for (const c of canvases) {
+      if (!isActive(world, c)) continue;
+      const rw = Math.max(1, C.referenceSize.x[c]);
+      const rh = Math.max(1, C.referenceSize.y[c]);
+      const mode = C.scaleMode[c];
+      const scale = mode === "constant" ? 1 : mode === "fit" ? Math.min(w / rw, h / rh) : Math.max(w / rw, h / rh);
+      const root: Rect = { x: 0, y: 0, w: w / scale, h: h / scale };
+      for (const child of childrenOf(world, c)) this.visit(world, child, root, scale);
+    }
+  }
+
+  /** The topmost interactable button under a point (CSS pixels, y down), or -1. */
+  buttonAt(world: World, x: number, yDown: number): Entity {
+    const y = this.screenH - yDown;
+    for (let i = this.elements.length - 1; i >= 0; i--) {
+      const el = this.elements[i];
+      const r = el.rect;
+      if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
+      if (world.has(el.e, UIButton)) return el.e;
+      // images and text block clicks to what is under them
+      if (world.has(el.e, UIImage)) return -1;
+    }
+    return -1;
+  }
+
+  private visit(world: World, e: Entity, parent: Rect, scale: number): void {
+    if (!isActive(world, e)) return;
+    let rect = parent;
+    if (world.has(e, UIRect)) {
+      rect = layoutRect(world, e, parent);
+      const el: UIElement = {
+        e,
+        rect: { x: rect.x * scale, y: rect.y * scale, w: rect.w * scale, h: rect.h * scale },
+        scale,
+      };
+      this.elements.push(el);
+      this.byEntity.set(e, el);
+    }
+    for (const child of childrenOf(world, e)) this.visit(world, child, rect, scale);
+  }
+}
+
+function isActive(world: World, e: Entity): boolean {
+  return !world.has(e, GlobalTransform2D) || world.store(GlobalTransform2D).active[e] !== 0;
+}
+
+/** Places a UIRect inside its parent's rect (all in UI units, y up). */
+export function layoutRect(world: World, e: Entity, p: Rect): Rect {
+  const U = world.store(UIRect);
+  const aMinX = p.x + U.anchorMin.x[e] * p.w;
+  const aMinY = p.y + U.anchorMin.y[e] * p.h;
+  const aMaxX = p.x + U.anchorMax.x[e] * p.w;
+  const aMaxY = p.y + U.anchorMax.y[e] * p.h;
+  const w = Math.max(0, aMaxX - aMinX + U.size.x[e]);
+  const h = Math.max(0, aMaxY - aMinY + U.size.y[e]);
+  const px = aMinX + (aMaxX - aMinX) * U.pivot.x[e] + U.position.x[e];
+  const py = aMinY + (aMaxY - aMinY) * U.pivot.y[e] + U.position.y[e];
+  return { x: px - w * U.pivot.x[e], y: py - h * U.pivot.y[e], w, h };
+}
+
+/** The UICanvas an element belongs to, or -1. */
+export function canvasOf(world: World, e: Entity): Entity {
+  for (let p = e; p >= 0; p = parentOf(world, p)) if (world.has(p, UICanvas)) return p;
+  return -1;
+}
+
+/** Hover, press and click for UIButtons. Uses the layout from the last rendered frame. */
+export function updateButtons(world: World): void {
+  const layout = world.resource(UILayout);
+  const input = world.tryResource(Input);
+  const B = world.store(UIButton);
+  const I = world.store(UIImage);
+  const hit = input?.pointer.inside ? layout.buttonAt(world, input.pointer.x, input.pointer.y) : -1;
+  const mouse = input?.key("Mouse0");
+  for (const e of world.query([UIButton])) {
+    const enabled = B.interactable[e] !== 0;
+    const over = enabled && hit === e;
+    B.hovered[e] = over ? 1 : 0;
+    if (over && mouse?.pressed) B.down[e] = 1;
+    if (mouse?.released || !enabled) {
+      if (B.down[e] && over && mouse?.released) world.emit(UIClick, { entity: e });
+      B.down[e] = 0;
+    }
+    if (world.has(e, UIImage)) {
+      const c = !enabled ? B.disabled : B.down[e] && over ? B.pressed : over ? B.hover : B.normal;
+      I.color.r[e] = c.r[e];
+      I.color.g[e] = c.g[e];
+      I.color.b[e] = c.b[e];
+      I.color.a[e] = c.a[e];
+    }
+  }
+}
+
+/** UI layout and buttons. The renderer draws the UI. */
+export const UIPlugin = {
+  name: "brik:ui",
+  build(app: App) {
+    if (!app.world.hasResource(UILayout)) app.world.insertResource(new UILayout());
+    app.addSystem("preUpdate", { name: "ui.buttons", run: updateButtons });
+  },
+};

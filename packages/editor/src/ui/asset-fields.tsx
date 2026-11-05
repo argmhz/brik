@@ -6,11 +6,11 @@ import { MenuItem, openPopup } from "./Popup";
 import { SpriteThumb } from "./fields";
 import { DND } from "./hooks";
 
-export type AssetKind = "clip" | "prefab" | "audio";
+export type AssetKind = "clip" | "prefab" | "audio" | "texture";
 
-const ICONS: Record<AssetKind, string> = { clip: "🎞", prefab: "🧩", audio: "🔊" };
+const ICONS: Record<AssetKind, string> = { clip: "🎞", prefab: "🧩", audio: "🔊", texture: "🖼" };
 
-export function assetKindOf(path: string): AssetKind | null {
+export function assetKindOf(path: string): Exclude<AssetKind, "texture"> | null {
   if (isClip(path)) return "clip";
   if (isPrefab(path)) return "prefab";
   if (isAudio(path)) return "audio";
@@ -19,6 +19,11 @@ export function assetKindOf(path: string): AssetKind | null {
 
 /** Assets of one kind: guid, name and path. */
 export function assetsOfKind(editor: Editor, kind: AssetKind): { guid: string; name: string; path: string }[] {
+  if (kind === "texture") {
+    return [...editor.db.textures.values()]
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map((t) => ({ guid: t.meta.guid, name: t.asset.name, path: t.path }));
+  }
   const map = kind === "clip" ? editor.db.clips : kind === "prefab" ? editor.db.prefabs : editor.db.sounds;
   return [...map.values()].sort((a, b) => a.path.localeCompare(b.path)).map((e) => ({ guid: e.guid, name: e.name, path: e.path }));
 }
@@ -31,6 +36,13 @@ export function assetLabel(editor: Editor, kind: AssetKind, guid: string | null)
 /** First frame of a clip, for thumbnails. */
 export function clipThumb(editor: Editor, guid: string | null): SpriteRef | null {
   return guid ? (editor.assets.clips.get(guid)?.frames[0]?.sprite ?? null) : null;
+}
+
+/** Thumbnail for an asset: a clip's first frame or a whole texture. */
+function thumbOf(editor: Editor, kind: AssetKind, guid: string | null): SpriteRef | null {
+  if (kind === "clip") return clipThumb(editor, guid);
+  if (kind === "texture") return guid ? { texture: guid, id: "" } : null;
+  return null;
 }
 
 /** Picks a clip, prefab or sound. Accepts drops from the asset browser. */
@@ -50,8 +62,8 @@ export function AssetField(props: {
         <For each={list}>
           {(a) => (
             <MenuItem onClick={() => props.onChange(a.guid)}>
-              <Show when={props.kind === "clip"} fallback={<span>{ICONS[props.kind]}</span>}>
-                <SpriteThumb editor={editor} sprite={() => clipThumb(editor, a.guid)} />
+              <Show when={props.kind === "clip" || props.kind === "texture"} fallback={<span>{ICONS[props.kind]}</span>}>
+                <SpriteThumb editor={editor} sprite={() => thumbOf(editor, props.kind, a.guid)} />
               </Show>
               {a.name}
               <span class="readonly">{a.path}</span>
@@ -65,6 +77,10 @@ export function AssetField(props: {
     ));
   };
   const droppedGuid = (ev: DragEvent): string | null => {
+    if (props.kind === "texture") {
+      const raw = ev.dataTransfer?.getData(DND.sprite);
+      return raw ? (JSON.parse(raw) as SpriteRef).texture : null;
+    }
     const path = ev.dataTransfer?.getData(DND.asset);
     if (!path || assetKindOf(path) !== props.kind) return null;
     return assetsOfKind(editor, props.kind).find((a) => a.path === path)?.guid ?? null;
@@ -73,15 +89,15 @@ export function AssetField(props: {
     <button
       class="sprite-field"
       onClick={open}
-      onDragOver={(ev) => ev.dataTransfer?.types.includes(DND.asset) && ev.preventDefault()}
+      onDragOver={(ev) => (ev.dataTransfer?.types.includes(DND.asset) || ev.dataTransfer?.types.includes(DND.sprite)) && ev.preventDefault()}
       onDrop={(ev) => {
         const guid = droppedGuid(ev);
         if (guid) props.onChange(guid);
       }}
       title="Vælg, eller træk en fil hertil fra assets"
     >
-      <Show when={props.kind === "clip"} fallback={<span class="sprite-thumb icon">{ICONS[props.kind]}</span>}>
-        <SpriteThumb editor={editor} sprite={() => clipThumb(editor, props.value())} />
+      <Show when={props.kind === "clip" || props.kind === "texture"} fallback={<span class="sprite-thumb icon">{ICONS[props.kind]}</span>}>
+        <SpriteThumb editor={editor} sprite={() => thumbOf(editor, props.kind, props.value())} />
       </Show>
       <span>{assetLabel(editor, props.kind, props.value())}</span>
     </button>

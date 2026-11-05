@@ -4,7 +4,7 @@ import { isAudio, isClip, isImage, isPrefab, isScene, textureName } from "../cor
 import { ClipInspector, MakeAnimation, PrefabInspector, SoundInspector } from "./asset-panels";
 import type { Editor } from "../core/editor";
 import { isScriptFile } from "../core/scripts";
-import { openFile } from "./ui-state";
+import { openFile, setToolWindow } from "./ui-state";
 import { NumberBox } from "./fields";
 import { reportError, toast, useVersion } from "./hooks";
 
@@ -19,6 +19,11 @@ export function AssetInspector(props: { editor: Editor; path: string }) {
       </div>
       <Switch fallback={<div class="empty-note">Ingen indstillinger for denne filtype</div>}>
         <Match when={isImage(props.path) && (version(), editor.db.textures.get(props.path))}>
+          <div class="button-row">
+            <button class="primary" onClick={() => setToolWindow({ kind: "sprite", path: props.path })}>
+              Åbn sprite-editor
+            </button>
+          </div>
           <TextureInspector editor={editor} path={props.path} />
           <MakeAnimation editor={editor} path={props.path} />
         </Match>
@@ -75,7 +80,7 @@ export async function openSceneSafely(editor: Editor, path: string): Promise<voi
 
 type GridSlicing = Extract<Slicing, { mode: "grid" }>;
 
-const PIVOTS: { label: string; value: [number, number] }[] = [
+export const PIVOTS: { label: string; value: [number, number] }[] = [
   { label: "Midt", value: [0.5, 0.5] },
   { label: "Bund midt", value: [0.5, 0] },
   { label: "Top midt", value: [0.5, 1] },
@@ -184,12 +189,15 @@ function TextureInspector(props: { editor: Editor; path: string }) {
               slicing:
                 mode === "grid"
                   ? { mode: "grid", cell: [cell, cell], offset: [0, 0], spacing: [0, 0], pivot: [0.5, 0.5] }
-                  : { mode: "single" },
+                  : mode === "manual"
+                    ? { mode: "manual" }
+                    : { mode: "single" },
             });
           }}
         >
           <option value="single">Hele billedet</option>
           <option value="grid">Grid</option>
+          <option value="manual">Manuel</option>
         </select>
         <Show when={grid()}>
           {(g) => (

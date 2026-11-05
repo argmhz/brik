@@ -12,9 +12,9 @@ export function GameView(props: { editor: Editor }) {
   let container!: HTMLDivElement;
   let canvas!: HTMLCanvasElement;
   let raf = 0;
+  let renderer: Renderer | undefined;
 
   onMount(() => {
-    let renderer: Renderer;
     try {
       renderer = new Renderer(canvas);
     } catch (err) {
@@ -28,13 +28,14 @@ export function GameView(props: { editor: Editor }) {
       const world = editor.world;
       if (!editor.play.active) propagateTransforms.run(world);
       setNoCamera(world.query([Camera2D]).isEmpty());
-      renderer.render(world);
+      renderer!.render(world);
     };
     raf = requestAnimationFrame(frame);
   });
 
   onCleanup(() => {
     cancelAnimationFrame(raf);
+    renderer?.dispose();
     if (editor.play.element === container) editor.play.element = null;
   });
 

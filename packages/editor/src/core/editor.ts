@@ -13,7 +13,9 @@ import {
   SceneId,
   Transform2D,
   type SpriteRef,
+  UICanvas,
   type World,
+  parentOf,
   clearWorld,
   findBySceneId,
   loadScene,
@@ -34,7 +36,26 @@ import type { EsbuildLike } from "./scripts";
 import { type ProjectSettings, defaultScene, readProject, sceneToJson, writeProject } from "./project";
 
 export type Tool = "move" | "rotate" | "scale";
-export type EntityKind = "empty" | "sprite" | "camera" | "rect" | "circle" | "text" | "animated" | "sound";
+/** Tile painting tools. Active while a TileMap is selected and a tool is chosen. */
+export type TileTool = "paint" | "erase" | "fill" | "rect" | "pick";
+
+export type EntityKind =
+  | "empty"
+  | "sprite"
+  | "camera"
+  | "rect"
+  | "circle"
+  | "text"
+  | "animated"
+  | "sound"
+  | "tilemap"
+  | "particles"
+  | "ui-canvas"
+  | "ui-image"
+  | "ui-text"
+  | "ui-button";
+
+const UI_KINDS = new Set<EntityKind>(["ui-image", "ui-text", "ui-button"]);
 export type EditorEvent = "world" | "selection" | "assets" | "scene" | "settings" | "scripts" | "console" | "play";
 
 export interface EditorOptions {
@@ -72,6 +93,9 @@ export class Editor {
   snap = false;
   gridSize = 16;
   showGrid = true;
+  /** Tile painting: the active tool (null = normal selection) and the sprite id to paint. */
+  tileTool: TileTool | null = null;
+  tileSprite: string | null = null;
   /** The scene view camera. */
   view = { x: 0, y: 0, zoom: 2 };
 
@@ -204,6 +228,12 @@ export class Editor {
     this.emit("settings");
   }
 
+  setTileTool(tool: TileTool | null, sprite?: string | null): void {
+    this.tileTool = tool;
+    if (sprite !== undefined) this.tileSprite = sprite;
+    this.emit("settings");
+  }
+
   setSnap(snap: boolean): void {
     this.snap = snap;
     this.emit("settings");
@@ -299,6 +329,12 @@ export class Editor {
       text: "Tekst",
       animated: "Animation",
       sound: "Lyd",
+      tilemap: "Tilemap",
+      particles: "Partikler",
+      "ui-canvas": "UI Canvas",
+      "ui-image": "Billede",
+      "ui-text": "UI-tekst",
+      "ui-button": "Knap",
     };
     const components: SceneEntityData["components"] = {
       Name: { value: opts.name ?? names[kind] },
@@ -310,10 +346,62 @@ export class Editor {
     if (kind === "rect") components.Shape2D = { kind: "rect", size: { x: 32, y: 32 }, fill: { r: 0.36, g: 0.62, b: 0.95, a: 1 } };
     if (kind === "circle") components.Shape2D = { kind: "circle", size: { x: 32, y: 32 }, fill: { r: 0.95, g: 0.55, b: 0.3, a: 1 } };
     if (kind === "text") components.Text2D = { text: "Tekst", size: 16 };
+    if (kind === "tilemap") {
+      // start with the first sliced texture as tileset, if there is one
+      const sheet = [...this.db.textures.values()].find((t) => t.meta.sprites.length > 1);
+      const cell = sheet?.meta.sprites[0]?.rect;
+      components.TileMap = {
+        tileset: sheet?.meta.guid ?? null,
+        tileSize: { x: cell?.w ?? 16, y: cell?.h ?? 16 },
+      };
+      components.TileMapCollider = {};
+    }
+    if (kind === "particles") components.ParticleEmitter2D = {};
+    if (kind === "ui-canvas") components.UICanvas = {};
+    if (kind === "ui-image") components.UIImage = { color: { r: 0.2, g: 0.22, b: 0.28, a: 0.9 } };
+    if (kind === "ui-text") components.UIText = { text: "Tekst" };
+    if (kind === "ui-button") {
+      components.UIRect = { size: { x: 180, y: 48 } };
+      components.UIImage = { color: { r: 0.3, g: 0.55, b: 1, a: 1 } };
+      components.UIButton = {};
+    }
     Object.assign(components, opts.extra);
-    this.execute(createEntities(this.world, `Opret ${components.Name.value}`, [{ id, components }], opts.parentId));
+    const data: SceneEntityData[] = [{ id, components }];
+    let parentId = opts.parentId ?? null;
+    // UI elements must live under a UICanvas: use the nearest one, or make one
+    if (UI_KINDS.has(kind) && !this.underCanvas(parentId)) {
+      const canvas = this.world.query([UICanvas]).first();
+      if (canvas >= 0) parentId = this.idOf(canvas);
+      else {
+        const canvasId = newSceneId();
+        data.unshift({ id: canvasId, components: { Name: { value: "UI Canvas" }, Transform2D: {}, UICanvas: {} } });
+        components.Parent = { entity: canvasId };
+        parentId = null;
+      }
+    }
+    if (kind === "ui-button") {
+      // a button gets a label child
+      data.push({
+        id: newSceneId(),
+        components: {
+          Name: { value: "Tekst" },
+          Transform2D: {},
+          Parent: { entity: id },
+          UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 0, y: 0 } },
+          UIText: { text: "Knap", size: 20 },
+        },
+      });
+    }
+    this.execute(createEntities(this.world, `Opret ${components.Name.value}`, data, parentId));
     this.select([id]);
     return id;
+  }
+
+  private underCanvas(id: string | null): boolean {
+    for (let e = id ? findBySceneId(this.world, id) : -1; e >= 0; e = parentOf(this.world, e)) {
+      if (this.world.has(e, UICanvas)) return true;
+    }
+    return false;
   }
 
   deleteSelection(): void {

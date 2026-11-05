@@ -10,3 +10,4 @@ export * from "./core/script-host";
 export * from "./core/console-log";
 export * from "./core/play";
 export * from "./core/prefabs";
+export * from "./core/tiles";
