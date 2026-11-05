@@ -107,3 +107,45 @@ describe("auto slicing", () => {
     ]);
   });
 });
+
+import { packRects } from "../src";
+
+describe("atlas packing", () => {
+  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a, gap: number) =>
+    a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+
+  it("packs without overlap (padding and extrude kept), inside the pages", () => {
+    let seed = 1;
+    const rnd = (n: number) => 1 + ((seed = (seed * 16807) % 2147483647) % n);
+    const items = Array.from({ length: 120 }, (_, i) => ({ id: `s${i}`, w: rnd(64), h: rnd(64) }));
+    const r = packRects(items, { maxSize: 512, padding: 2, extrude: 1 });
+    expect(r.items).toHaveLength(120);
+    expect(r.oversized).toEqual([]);
+    for (const a of r.items) {
+      const page = r.pages[a.page];
+      expect(a.x - 1).toBeGreaterThanOrEqual(0);
+      expect(a.y - 1).toBeGreaterThanOrEqual(0);
+      expect(a.x + a.w + 1).toBeLessThanOrEqual(page.w);
+      expect(a.y + a.h + 1).toBeLessThanOrEqual(page.h);
+      for (const b of r.items) {
+        // own pixels + extrude (1) on each side + padding (2) between neighbours
+        if (a !== b && a.page === b.page) expect(overlaps(a, b, 2 + 2)).toBe(false);
+      }
+    }
+    expect(r.pages[0].used).toBeGreaterThan(0.5);
+  });
+
+  it("opens new pages when full, reports oversized items, and rounds to powers of two", () => {
+    const r = packRects(
+      [
+        { id: "a", w: 200, h: 200 },
+        { id: "b", w: 200, h: 200 },
+        { id: "huge", w: 300, h: 10 },
+      ],
+      { maxSize: 256, padding: 0, extrude: 0, pot: true },
+    );
+    expect(r.oversized).toEqual(["huge"]);
+    expect(r.pages).toHaveLength(2);
+    expect(r.pages[0]).toMatchObject({ w: 256, h: 256 });
+  });
+});

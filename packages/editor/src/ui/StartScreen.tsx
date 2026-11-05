@@ -13,13 +13,15 @@ import {
   walk,
 } from "../core/fs";
 import { createProject, isProject } from "../core/project";
+import { TauriFS, isTauri, pickTauriFolder, recentTauriFolders, rememberTauriFolder } from "../core/tauri-fs";
 import { scriptTemplate } from "../core/scripts";
 import { importZip } from "../core/zip";
 import { reportError } from "./hooks";
 import { platformerFiles } from "./platformer-template";
+import { shooterFiles } from "./shooter-template";
 import { sampleMeta, samplePng } from "./sample-art";
 
-export type Template = "empty" | "platformer";
+export type Template = "empty" | "platformer" | "shooter";
 
 /** Makes `fs` a Brik project if it isn't one. Returns false if the user said no. */
 export async function ensureProject(fs: ProjectFS, name: string, ask: boolean, template: Template = "empty"): Promise<boolean> {
@@ -29,7 +31,9 @@ export async function ensureProject(fs: ProjectFS, name: string, ask: boolean, t
   const files =
     template === "platformer"
       ? await platformerFiles()
-      : {
+      : template === "shooter"
+        ? await shooterFiles()
+        : {
           "assets/sample.png": await samplePng(),
           "assets/sample.png.meta.json": sampleMeta(newGuid()),
           "scripts/Rotator.ts": scriptTemplate("Rotator"),
@@ -98,7 +102,52 @@ export function StartScreen(props: { onOpen: (fs: ProjectFS) => void }) {
           <p>Web-first 2D game engine. Vælg et projekt for at komme i gang.</p>
         </div>
 
-        <div class="start-section">
+        <Show when={isTauri()}>
+          <div class="start-section">
+            <h2>Mappe på din computer</h2>
+            <p>Projekter er almindelige mapper, så du kan bruge git og dine egne værktøjer ved siden af.</p>
+            <div class="inline-form">
+              <button
+                class="primary"
+                disabled={busy()}
+                onClick={() =>
+                  run(async () => {
+                    const fs = await pickTauriFolder();
+                    if (fs && (await ensureProject(fs, fs.name, true, template()))) props.onOpen(fs);
+                  })
+                }
+              >
+                Åbn eller opret mappe…
+              </button>
+            </div>
+            <For each={recentTauriFolders()}>
+              {(path) => (
+                <div class="project-row">
+                  <span class="name" title={path}>
+                    {path.split(/[\\/]/).pop()}
+                  </span>
+                  <span class="readonly" style={{ flex: 1, overflow: "hidden", "text-overflow": "ellipsis" }}>
+                    {path}
+                  </span>
+                  <button
+                    disabled={busy()}
+                    onClick={() =>
+                      run(async () => {
+                        const fs = new TauriFS(path);
+                        rememberTauriFolder(path);
+                        if (await ensureProject(fs, fs.name, true, template())) props.onOpen(fs);
+                      })
+                    }
+                  >
+                    Åbn
+                  </button>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
+
+        <div class="start-section" style={{ display: isTauri() ? "none" : undefined }}>
           <h2>Mappe på din computer</h2>
           <Show
             when={supportsFolderPicker()}
@@ -181,6 +230,7 @@ export function StartScreen(props: { onOpen: (fs: ProjectFS) => void }) {
             >
               <option value="empty">Tomt projekt</option>
               <option value="platformer">Platformer-eksempel</option>
+              <option value="shooter">Top-down shooter-eksempel</option>
             </select>
             <button class="primary" type="submit" disabled={busy() || !newName().trim()}>
               Opret

@@ -1,18 +1,21 @@
 # Brik
 
-En web-first 2D game engine med ECS, bygget i TypeScript og WebGL2. Se [PLAN.md](PLAN.md) for hele planen.
+En web-first 2D game engine med ECS, bygget i TypeScript og WebGL2. Spil eksporteres som en statisk mappe, der kan lægges på itch.io eller enhver webserver.
+
+- **[Kom i gang-guide](docs/GUIDE.md)**
+- [PLAN.md](PLAN.md) beskriver hele planen og status.
 
 ## Kom i gang
 
 ```bash
 corepack pnpm install
-corepack pnpm editor     # genererer typer og starter editoren på http://localhost:5180
+corepack pnpm editor     # genererer typer, bygger playeren og starter editoren på http://localhost:5180
 corepack pnpm dev        # starter sprites-demoen på http://localhost:5173
 corepack pnpm test       # kører alle tests
 corepack pnpm typecheck
 ```
 
-Vil du se det hele i brug, så vælg **Platformer-eksempel** ved siden af "Opret", når du laver et nyt browser-projekt. Du får en bane med tilemap, en figur med animationer og lyd, mønter (prefab), partikler og UI.
+Vil du se det hele i brug, så vælg **Platformer-eksempel** eller **Top-down shooter-eksempel** ved siden af "Opret", når du laver et nyt browser-projekt. Du får en bane med tilemap, en figur med animationer og lyd, mønter (prefab), partikler og UI.
 
 ## Editor-værktøjer
 
@@ -31,8 +34,10 @@ Vil du se det hele i brug, så vælg **Platformer-eksempel** ved siden af "Opret
 | `@brik/render` | WebGL2-renderer, `Camera2D`, `Sprite`, `Shape2D`, `Text2D`, `SpriteAnimator`, `CameraFollow2D`, partikler og UI |
 | `@brik/physics` | Rapier 2D: `RigidBody2D`, `Collider2D`, `CharacterController2D`, events og raycast |
 | `@brik/audio` | WebAudio: `AudioSource`, `AudioListener` og busser |
-| `@brik/runtime` | Samler det hele: `createGame({ canvas })`, scripts og prefabs |
-| `@brik/editor` | Editor-kerne (projekter, undo/redo, asset-database) og UI (`@brik/editor/ui`) |
+| `@brik/runtime` | Samler det hele: `createGame({ canvas })`, scripts, prefabs og scene-skift |
+| `@brik/player` | Kører et eksporteret spil (`game.json`). Bygges til `brik.js`. |
+| `@brik/editor` | Editor-kerne (projekter, undo/redo, asset-database, eksport, importers) og UI (`@brik/editor/ui`) |
+| `apps/desktop` | Editoren som Tauri-desktop-app |
 
 ## Licens
 

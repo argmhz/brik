@@ -9,6 +9,7 @@ import {
   type Phase,
   Physics,
   type SceneData,
+  ScenesPlugin,
   ScriptsPlugin,
   type System,
   Tweens,
@@ -75,7 +76,8 @@ export class PlayController {
           physics: editor.settings.physics,
         }),
       )
-      .addPlugin(ScriptsPlugin(registry));
+      .addPlugin(ScriptsPlugin(registry))
+      .addPlugin(ScenesPlugin(async (path) => JSON.parse(await editor.fs.readText(path)) as SceneData, editor.scenePath));
     this.scriptSystems = registry.systems.map((s) => ({ phase: s.phase, system: s.system }));
     this.mode = "play";
     this.last = -1;

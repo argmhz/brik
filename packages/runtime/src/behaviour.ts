@@ -31,8 +31,10 @@ import {
 } from "@brik/core";
 import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
-import { AnimationEvent, AnimationFinished, Particles, UIClick, playAnimation } from "@brik/render";
+import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, playAnimation } from "@brik/render";
+import { GlobalTransform2D, mat3 } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
+import { Scenes } from "./scenes";
 
 // ------------------------------------------------------------------ exposed fields
 
@@ -248,6 +250,33 @@ export abstract class Behaviour {
     this.world.resource(Particles).emit(e, count);
   }
 
+  /**
+   * The mouse position in the world, seen through the main (lowest priority)
+   * camera. Useful for aiming. Uses the screen size from the last rendered frame.
+   */
+  pointerWorld(): Vec2 {
+    const world = this.world;
+    const p = this.input.pointer;
+    const layout = world.tryResource(UILayout);
+    const C = world.store(Camera2D);
+    const cam = world
+      .query([Camera2D, GlobalTransform2D])
+      .toArray()
+      .sort((a, b) => C.priority[a] - C.priority[b])[0];
+    if (cam === undefined || !layout?.screenW) return { x: p.x, y: p.y };
+    const g = world.store(GlobalTransform2D).matrix;
+    const zoom = C.zoom[cam];
+    const local = { x: (p.x - layout.screenW / 2) / zoom, y: -(p.y - layout.screenH / 2) / zoom };
+    return mat3.transformPoint({ a: g.a[cam], b: g.b[cam], c: g.c[cam], d: g.d[cam], tx: g.tx[cam], ty: g.ty[cam] }, local);
+  }
+
+  /** Switches to another scene at the start of the next frame, e.g. `this.loadScene("level2")`. */
+  loadScene(name: string): void {
+    const scenes = this.world.tryResource(Scenes);
+    if (!scenes) throw new Error("Brik: scene switching is not available here");
+    scenes.load(name);
+  }
+
   /** Moves this entity's CharacterController2D, sliding along walls. Returns the actual movement. */
   moveCharacter(dx: number, dy: number): Vec2 {
     return this.physics.moveCharacter(this.entity, dx, dy);
@@ -373,6 +402,8 @@ export class ScriptRegistry {
 // ------------------------------------------------------------------ runtime
 
 interface Slot {
+  /** Entity ref when created, so a recycled entity index gets a fresh instance. */
+  ref: number;
   id: string;
   cls: BehaviourClass;
   inst: Behaviour;
@@ -414,7 +445,7 @@ export class BehaviourRuntime {
         const entry = list[i];
         const cls = this.registry.behaviours.get(entry.script);
         let slot = slots[i];
-        if (slot && slot.id !== entry.script) {
+        if (slot && (slot.id !== entry.script || slot.ref !== world.ref(e))) {
           this.destroySlot(slot);
           slot = undefined as unknown as Slot;
         }
@@ -486,7 +517,7 @@ export class BehaviourRuntime {
     const inst = new cls();
     inst.world = world;
     inst.entity = e;
-    const slot: Slot = { id: entry.script, cls, inst, applied: {}, started: false };
+    const slot: Slot = { ref: world.ref(e), id: entry.script, cls, inst, applied: {}, started: false };
     this.applyProps(slot, entry.props);
     return slot;
   }

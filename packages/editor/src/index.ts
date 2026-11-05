@@ -11,3 +11,6 @@ export * from "./core/console-log";
 export * from "./core/play";
 export * from "./core/prefabs";
 export * from "./core/tiles";
+export * from "./core/export";
+export * from "./core/importers";
+export * from "./core/tauri-fs";

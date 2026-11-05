@@ -68,7 +68,8 @@ export class Renderer {
   readonly gl: WebGL2RenderingContext;
   readonly stats: RenderStats = { sprites: 0, drawCalls: 0, cameras: 0 };
   private batcher!: SpriteBatcher;
-  private textures = new Map<TextureAsset, GpuTexture>();
+  /** Keyed by the image, so textures packed onto one atlas page share one GPU texture. */
+  private textures = new Map<object, GpuTexture>();
   private nextTextureId = 1;
   private contextLost = false;
   private warnedNoCamera = false;
@@ -650,27 +651,29 @@ export class Renderer {
 
   /** Frees the GPU copy of a texture (e.g. evicted text). */
   releaseTexture(asset: TextureAsset): void {
-    const gpu = this.textures.get(asset);
-    if (!gpu) return;
-    this.textures.delete(asset);
+    const key = asset.source;
+    const gpu = key ? this.textures.get(key) : undefined;
+    if (!gpu || !key) return;
+    this.textures.delete(key);
     if (!this.contextLost) this.batcher.releaseTexture(gpu.tex);
   }
 
   /** Stops using this renderer. */
   dispose(): void {
     renderers.delete(this);
-    for (const asset of [...this.textures.keys()]) this.releaseTexture(asset);
+    for (const gpu of this.textures.values()) this.batcher.releaseTexture(gpu.tex);
+    this.textures.clear();
     this.batcher.dispose();
   }
 
   private gpuTexture(asset: TextureAsset): GpuTexture | null {
     if (asset.status !== "ready" || !asset.source) return null;
-    let gpu = this.textures.get(asset);
+    let gpu = this.textures.get(asset.source);
     if (gpu && gpu.version === asset.version) return gpu;
     const gl = this.gl;
     if (!gpu) {
       gpu = { tex: gl.createTexture()!, version: -1, id: this.nextTextureId++ };
-      this.textures.set(asset, gpu);
+      this.textures.set(asset.source, gpu);
     }
     gl.bindTexture(gl.TEXTURE_2D, gpu.tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset.source as TexImageSource);

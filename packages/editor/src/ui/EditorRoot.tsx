@@ -4,6 +4,7 @@ import type { Editor, TileTool } from "../core/editor";
 import { TileMap } from "@brik/runtime";
 import { basename, joinPath } from "../core/fs";
 import { exportZip } from "../core/zip";
+import { saveBytes } from "../core/tauri-fs";
 import { AssetBrowser } from "./AssetBrowser";
 import { ConsolePanel } from "./Console";
 import { GameView } from "./GameView";
@@ -26,6 +27,7 @@ import {
 } from "./ui-state";
 import { SpriteEditor } from "./SpriteEditor";
 import { AnimationEditor } from "./AnimationEditor";
+import { BuildWindow } from "./BuildWindow";
 
 // Monaco is big, so the code editor is only loaded when first opened
 const CodePanel = lazy(() => import("./CodeEditor"));
@@ -122,13 +124,7 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
 
   const downloadZip = async () => {
     try {
-      const data = await exportZip(editor.fs);
-      const url = URL.createObjectURL(new Blob([data as BlobPart], { type: "application/zip" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${editor.settings.name}.zip`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await saveBytes(`${editor.settings.name}.zip`, await exportZip(editor.fs), "application/zip");
     } catch (err) {
       reportError(err, "Eksport fejlede");
     }
@@ -272,7 +268,7 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     <div class="editor" classList={{ playing: mode() !== "edit" }} ref={root}>
       <div class="menubar">
         <span class="title">Brik</span>
-        <span class="scene-name" title={editor.fs.kind === "fsa" ? "Mappe på disken" : "Browser-projekt"}>
+        <span class="scene-name" title={editor.fs.kind === "fsa" || editor.fs.kind === "tauri" ? "Mappe på disken" : "Browser-projekt"}>
           {editor.settings.name} · {sceneTitle()}
           <span class="dirty-dot">{(scene(), editor.dirty) ? " ●" : ""}</span>
         </span>
@@ -323,8 +319,16 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
             </button>
           )}
         </Show>
-        <button onClick={downloadZip} title="Download hele projektet som .zip">
-          Eksportér .zip
+        <button
+          class="primary"
+          disabled={mode() !== "edit"}
+          onClick={() => setToolWindow({ kind: "build", path: "" })}
+          title="Byg spillet til web (itch.io, GitHub Pages …)"
+        >
+          Byg spil
+        </button>
+        <button onClick={downloadZip} title="Download hele projektet (kildefilerne) som .zip">
+          Projekt .zip
         </button>
         <button onClick={close}>Luk projekt</button>
       </div>
@@ -388,6 +392,8 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
         {(w) =>
           w.kind === "sprite" ? (
             <SpriteEditor editor={editor} path={w.path} onClose={() => setToolWindow(null)} />
+          ) : w.kind === "build" ? (
+            <BuildWindow editor={editor} onClose={() => setToolWindow(null)} />
           ) : (
             <AnimationEditor editor={editor} path={w.path} onClose={() => setToolWindow(null)} />
           )

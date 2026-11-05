@@ -1,4 +1,5 @@
 import { type PhysicsOptions, type SceneData, newSceneId } from "@brik/runtime";
+import type { BuildSettings } from "./export";
 import type { ProjectFS } from "./fs";
 
 export const PROJECT_FILE = "brik.project.json";
@@ -10,6 +11,8 @@ export interface ProjectSettings {
   startScene: string;
   /** Gravity and scale for the physics world. Defaults are used for anything left out. */
   physics?: PhysicsOptions;
+  /** Export settings (atlas packing, title). */
+  build?: BuildSettings;
 }
 
 export async function isProject(fs: ProjectFS): Promise<boolean> {
@@ -23,6 +26,7 @@ export async function readProject(fs: ProjectFS): Promise<ProjectSettings> {
     version: 1,
     startScene: p.startScene ?? "scenes/main.scene.json",
     ...(p.physics ? { physics: p.physics } : {}),
+    ...(p.build ? { build: p.build } : {}),
   };
 }
 

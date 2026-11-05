@@ -13,6 +13,10 @@
     "fflate": "0.8.2",
     "solid-js": "1.9.16",
     "esbuild-wasm": "0.24.0",
-    "monaco-editor": "0.52.0"
+    "monaco-editor": "0.52.0",
+    "@brik/assets": "workspace:*",
+    "@tauri-apps/api": "2.12.4",
+    "@tauri-apps/plugin-fs": "2.7.1",
+    "@tauri-apps/plugin-dialog": "2.8.3"
   }
 }

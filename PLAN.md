@@ -386,7 +386,7 @@ Et panel, der åbner, når du dobbeltklikker på en texture.
 ### Fase 2 — Editor-skal
 - [x] Editor-layout med paneler (Solid.js), som kan ændres i størrelse
 - [x] `ProjectFS`: File System Access (mappe på disken), OPFS (browser-projekter) og import/eksport som .zip
-- [ ] `ProjectFS` til Tauri flyttes til fase 5 sammen med desktop-appen
+- [x] `ProjectFS` til Tauri (`TauriFS`, fase 5)
 - [x] Hierarchy med træk-og-slip, omdøbning og højreklik-menu
 - [x] Inspector, der genereres automatisk ud fra skemaer og felt-metadata
 - [x] 2D scene view med pan/zoom, grid, snap, selektion og gizmos (flyt, rotér, skalér)
@@ -447,13 +447,21 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - **Resultat (4a+4b):** Et rigtigt 2D-spil, fx en platformer med UI og lyd
 
 ### Fase 5 — Udgivelse
-- [ ] Build/eksport til statisk web og zip til itch.io
-- [ ] Tauri-desktop-app
-- [ ] Atlas-pakker (MaxRects i en Web Worker) og atlas-visning i editoren
-- [ ] Importers til Aseprite, TexturePacker og Tiled
-- [ ] Eksempelspil: 2D platformer og top-down shooter
-- [ ] Dokumentation og "kom i gang"-guide
-- **Resultat:** Version 1.0, en 2D-engine, man kan shippe spil med
+- [x] Build/eksport til statisk web: `index.html` med loading-skærm, `brik.js` (player), `game.json`, atlas-sider, lyde og minificerede scripts. Eksport som `.zip` til itch.io eller direkte til en mappe. Byg-vindue med rapport over filstørrelser.
+- [x] Scene-skift i spillet: `this.loadScene("level2")`. Virker både i editorens Play og i det eksporterede spil.
+- [x] Atlas-pakker: MaxRects (best short side fit) i en Web Worker, padding, extrude, power-of-two og flere sider. Atlas-visning med fyldningsgrad og advarsler. Textures med `wrap: repeat` og for store billeder får egne sider.
+- [x] Importers: Aseprite og TexturePacker (JSON hash og array: sprites, pivots, 9-slice fra slices, tags som animationer) samt Tiled (`.tmj`/`.tsj`: tile-lag i alle kodninger, også zlib og gzip, object-lag som entities, collision-lag som `TileMapCollider`)
+- [x] Tauri-desktop-app (`apps/desktop`) med `TauriFS`, native dialoger til at åbne, eksportere og gemme, og ikoner. Koden typecheck'er, men den er **ikke bygget eller kørt endnu**, fordi Rust ikke er installeret på udviklingsmaskinen.
+- [x] Eksempelspil som projektskabeloner: 2D-platformer og top-down shooter
+- [x] Dokumentation: [docs/GUIDE.md](docs/GUIDE.md)
+- **Resultat:** En 2D-engine, man kan shippe spil med. Der mangler en kørsel af desktop-appen, før 1.0 kan kaldes færdig.
+
+**Kendte begrænsninger i fase 5**
+- Playeren er ca. 1,75 MB (ca. 700 KB som zip), fordi Rapier indlejrer sin WASM. Den kunne lazy-loades, så spil uden fysik bliver små.
+- Atlas-pakkeren pakker hele billeder. Sprites inde i et sprite sheet trimmes ikke enkeltvis, og der er kun extrude om hele billedet. Rotation i atlas er ikke understøttet.
+- Ingen PWA/offline-indpakning endnu.
+- Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke, kun JSON. Spejlede tiles importeres uden spejling.
+- TexturePacker: Roterede frames understøttes ikke (der gives en advarsel).
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

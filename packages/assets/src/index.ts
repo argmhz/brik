@@ -4,6 +4,7 @@ import type { TextureMeta } from "./meta";
 
 export * from "./meta";
 export * from "./clip";
+export * from "./atlas";
 
 /** A saved entity tree, stored as `<name>.prefab.json`. */
 export interface PrefabAsset {
@@ -59,6 +60,11 @@ export class TextureAsset {
   version = 0;
   readonly sprites = new Map<string, SpriteDef>();
   ready: Promise<TextureAsset>;
+  /**
+   * Where this texture sits inside its source image, when several textures share
+   * one atlas page (exported games). Null means the whole source.
+   */
+  region: Rect | null = null;
 
   constructor(
     readonly guid: string,
@@ -258,10 +264,10 @@ export class Assets {
   resolve(ref: SpriteRef, out?: ResolvedSprite): ResolvedSprite | null {
     const tex = this.textures.get(ref.texture);
     if (!tex || tex.status !== "ready") return null;
-    let x = 0;
-    let y = 0;
-    let w = tex.width;
-    let h = tex.height;
+    let x = tex.region?.x ?? 0;
+    let y = tex.region?.y ?? 0;
+    let w = tex.region?.w ?? tex.width;
+    let h = tex.region?.h ?? tex.height;
     let px = 0.5;
     let py = 0.5;
     let border: SpriteBorder | undefined;

@@ -18,7 +18,8 @@ import {
   prefabToJson,
   textureMetaToJson,
 } from "@brik/runtime";
-import { type ProjectFS, basename, extname, joinPath, walk } from "./fs";
+import { type ProjectFS, basename, dirname, extname, joinPath, walk } from "./fs";
+import { type TiledMap, detectJson, importSpriteSheet, importTiledMap, tilesetSprites } from "./importers";
 
 export const IMAGE_EXTENSIONS: Record<string, string> = {
   ".png": "image/png",
@@ -79,6 +80,83 @@ export function isAudio(path: string): boolean {
 /** Asset name from a path: the file name without its (double) extension. */
 export function assetName(path: string): string {
   return basename(path).replace(/(\.anim\.json|\.prefab\.json|\.scene\.json|\.[^.]+)$/, "");
+}
+
+export interface ImportReport {
+  created: string[];
+  warnings: string[];
+}
+
+/** Converts tool JSON files that were just imported (see importers.ts). */
+async function convertToolFiles(db: AssetDatabase, fs: ProjectFS, paths: string[]): Promise<ImportReport> {
+  const report: ImportReport = { created: [], warnings: [] };
+  for (const path of paths) {
+    let data: unknown;
+    try {
+      data = JSON.parse(await fs.readText(path));
+    } catch {
+      continue;
+    }
+    const kind = detectJson(data);
+    const dir = dirname(path);
+    const base = basename(path).replace(/\.(json|tmj|tsj)$/i, "");
+    try {
+      if (kind === "aseprite" || kind === "texturepacker") {
+        const sheet = importSpriteSheet(data as Parameters<typeof importSpriteSheet>[0], base);
+        const image = joinPath(dir, basename(sheet.image));
+        const entry = db.textures.get(image);
+        if (!entry) {
+          report.warnings.push(`${path}: billedet ${sheet.image} mangler. Importér det sammen med JSON-filen.`);
+          continue;
+        }
+        await db.saveMeta(image, { ...entry.meta, slicing: { mode: "manual" }, sprites: sheet.sprites });
+        report.created.push(metaPath(image));
+        for (const c of sheet.clips) {
+          const clipPath = joinPath(dir, `${base}_${c.name}${ANIMATION_EXTENSION}`);
+          const old = db.clips.get(clipPath);
+          await db.saveClip(clipPath, {
+            guid: old?.guid ?? newGuid(),
+            name: `${base}_${c.name}`,
+            mode: c.mode,
+            frames: c.frames.map((f) => ({ sprite: { texture: entry.meta.guid, id: f.id }, duration: f.duration })),
+            events: [],
+          });
+          report.created.push(clipPath);
+        }
+        report.warnings.push(...sheet.warnings.map((w) => `${basename(path)}: ${w}`));
+      } else if (kind === "tiled-map") {
+        const map = data as TiledMap;
+        const tilesets: (TiledMap["tilesets"][number] & { image?: string })[] = [];
+        for (const ts of map.tilesets) {
+          if (ts.source) {
+            // external tileset (.tsj / .json); .tsx (XML) isn't supported
+            const src = joinPath(dir, ts.source);
+            if (!src.endsWith(".tsx") && (await fs.exists(src))) tilesets.push({ ...(JSON.parse(await fs.readText(src)) as object), firstgid: ts.firstgid } as never);
+            else report.warnings.push(`${basename(path)}: tilesettet ${ts.source} mangler (eller er XML). Eksportér det som JSON (.tsj) og importér det med.`);
+          } else tilesets.push(ts);
+        }
+        const guids = new Map<object, string>();
+        for (const ts of tilesets) {
+          const image = ts.image ? joinPath(dir, ts.image.split("/").pop()!) : "";
+          const entry = db.textures.get(image);
+          if (!entry) {
+            report.warnings.push(`${basename(path)}: billedet ${ts.image} til tilesettet "${ts.name}" mangler`);
+            continue;
+          }
+          await db.saveMeta(image, { ...entry.meta, settings: { ...entry.meta.settings, filter: "nearest" }, slicing: { mode: "manual" }, sprites: tilesetSprites(ts) });
+          guids.set(ts, entry.meta.guid);
+        }
+        const result = importTiledMap(map, base, tilesets.filter((t) => guids.has(t)), (t) => guids.get(t)!);
+        const prefabPath = joinPath(dir, `${base}${PREFAB_EXTENSION}`);
+        await db.savePrefab(prefabPath, { version: 1, entities: result.entities });
+        report.created.push(prefabPath);
+        report.warnings.push(...result.warnings.map((w) => `${basename(path)}: ${w}`));
+      }
+    } catch (err) {
+      report.warnings.push(`${basename(path)}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  return report;
 }
 
 export interface JsonAssetEntry {
@@ -297,7 +375,11 @@ export class AssetDatabase {
     return undefined;
   }
 
-  /** Copies files (e.g. dropped from the desktop) into a project folder and imports them. */
+  /**
+   * Copies files (e.g. dropped from the desktop) into a project folder and
+   * imports them. JSON from Aseprite, TexturePacker and Tiled is converted:
+   * sprite sheets get their sprites and animations, Tiled maps become prefabs.
+   */
   async importFiles(files: { name: string; bytes: Uint8Array }[], dir = "assets"): Promise<string[]> {
     const paths: string[] = [];
     for (const f of files) {
@@ -306,6 +388,11 @@ export class AssetDatabase {
       paths.push(path);
     }
     await this.refresh();
+    this.lastImport = await convertToolFiles(this, this.fs, paths.filter((p) => p.endsWith(".json") || p.endsWith(".tmj") || p.endsWith(".tsj")));
+    if (this.lastImport.created.length > 0) await this.refresh();
     return paths;
   }
+
+  /** What the last `importFiles` converted, and any warnings. */
+  lastImport: ImportReport = { created: [], warnings: [] };
 }

@@ -288,9 +288,9 @@ export class RestartButton extends Behaviour {
 
 // ------------------------------------------------------------------ helpers
 
-const json = (v: unknown) => `${JSON.stringify(v, null, 2)}\n`;
+export const json = (v: unknown) => `${JSON.stringify(v, null, 2)}\n`;
 
-function gridMeta(guid: string, cell: number, names: string[]): string {
+export function gridMeta(guid: string, cell: number, names: string[]): string {
   return json({
     guid,
     importer: "texture",
@@ -300,9 +300,9 @@ function gridMeta(guid: string, cell: number, names: string[]): string {
   });
 }
 
-type Px = (c: string, x: number, y: number, w?: number, h?: number) => void;
+export type Px = (c: string, x: number, y: number, w?: number, h?: number) => void;
 
-async function png(w: number, h: number, draw: (px: Px) => void): Promise<Uint8Array> {
+export async function png(w: number, h: number, draw: (px: Px) => void): Promise<Uint8Array> {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
@@ -403,7 +403,7 @@ function drawPanel(px: Px): void {
 
 const RATE = 22050;
 
-function tone(freqs: number[], durations: number[], wave: "square" | "sine", volume: number): Float32Array {
+export function tone(freqs: number[], durations: number[], wave: "square" | "sine", volume: number): Float32Array {
   const total = durations.reduce((a, b) => a + b, 0);
   const out = new Float32Array(Math.round(total * RATE));
   let i = 0;
@@ -420,7 +420,7 @@ function tone(freqs: number[], durations: number[], wave: "square" | "sine", vol
   return out;
 }
 
-function sweep(f0: number, f1: number, dur: number, volume: number): Float32Array {
+export function sweep(f0: number, f1: number, dur: number, volume: number): Float32Array {
   const n = Math.round(dur * RATE);
   const out = new Float32Array(n);
   let phase = 0;
@@ -432,7 +432,7 @@ function sweep(f0: number, f1: number, dur: number, volume: number): Float32Arra
   return out;
 }
 
-function noise(dur: number, volume: number): Float32Array {
+export function noise(dur: number, volume: number): Float32Array {
   const n = Math.round(dur * RATE);
   const out = new Float32Array(n);
   let s = 7;
@@ -444,7 +444,7 @@ function noise(dur: number, volume: number): Float32Array {
 }
 
 /** 16-bit mono PCM WAV. */
-function wav(samples: Float32Array): Uint8Array {
+export function wav(samples: Float32Array): Uint8Array {
   const buf = new ArrayBuffer(44 + samples.length * 2);
   const v = new DataView(buf);
   const str = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));

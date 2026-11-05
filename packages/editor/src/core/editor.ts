@@ -283,6 +283,13 @@ export class Editor {
     return target;
   }
 
+  /** Changes and saves project settings. */
+  async updateSettings(patch: Partial<ProjectSettings>): Promise<void> {
+    this.settings = { ...this.settings, ...patch };
+    await writeProject(this.fs, this.settings);
+    this.emit("settings");
+  }
+
   async setStartScene(path: string): Promise<void> {
     this.settings = { ...this.settings, startScene: path };
     await writeProject(this.fs, this.settings);

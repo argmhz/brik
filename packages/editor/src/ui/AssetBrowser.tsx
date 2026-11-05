@@ -43,7 +43,15 @@ export function AssetBrowser(props: { editor: Editor }) {
     try {
       await editor.db.importFiles(list, dir() || "assets");
       if (!dir()) setDir("assets");
-      toast(`${list.length} fil${list.length === 1 ? "" : "er"} importeret`);
+      const report = editor.db.lastImport;
+      for (const w of report.warnings) editor.log("warn", `Import: ${w}`);
+      const extra = report.created.length ? `, ${report.created.length} oprettet (sprites, animationer, prefabs)` : "";
+      toast(
+        report.warnings.length
+          ? `Importeret med ${report.warnings.length} advarsel${report.warnings.length === 1 ? "" : "r"}. Se Console.`
+          : `${list.length} fil${list.length === 1 ? "" : "er"} importeret${extra}`,
+        report.warnings.length > 0,
+      );
       editor.emit("assets");
     } catch (err) {
       reportError(err, "Import fejlede");
@@ -168,7 +176,7 @@ export function AssetBrowser(props: { editor: Editor }) {
           ref={fileInput}
           type="file"
           multiple
-          accept="image/*,audio/*,.json"
+          accept="image/*,audio/*,.json,.tmj,.tsj"
           style={{ display: "none" }}
           onChange={(ev) => {
             if (ev.currentTarget.files) importFiles(ev.currentTarget.files);

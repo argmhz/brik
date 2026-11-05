@@ -37,7 +37,11 @@ export function exposeRuntime(): void {
  * `modules: { "<path>": exports }`. Imports of "brik" resolve to the running
  * engine; relative imports resolve between project files.
  */
-export async function compileScripts(esbuild: EsbuildLike, files: Record<string, string>): Promise<CompileResult> {
+export async function compileScripts(
+  esbuild: EsbuildLike,
+  files: Record<string, string>,
+  opts: { minify?: boolean } = {},
+): Promise<CompileResult> {
   const paths = Object.keys(files).sort();
   if (paths.length === 0) return { code: "export const modules = {};", errors: [] };
 
@@ -87,7 +91,10 @@ export async function compileScripts(esbuild: EsbuildLike, files: Record<string,
       write: false,
       format: "esm",
       target: "es2022",
-      sourcemap: "inline",
+      sourcemap: opts.minify ? false : "inline",
+      minify: !!opts.minify,
+      // class names are shown in logs and used for default exports, so keep them
+      keepNames: true,
       logLevel: "silent",
       plugins: [plugin],
       tsconfigRaw: { compilerOptions: { experimentalDecorators: true, useDefineForClassFields: false } },

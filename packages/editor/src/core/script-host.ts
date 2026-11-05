@@ -36,6 +36,12 @@ export class ScriptHost {
       : editor.world.insertResource(new ScriptRegistry());
   }
 
+  /** The compiler, for other builds (e.g. exporting the game). */
+  compiler(): Promise<EsbuildLike> {
+    if (!this.getEsbuild) return Promise.reject(new Error("Scripts er ikke slået til i denne editor"));
+    return this.getEsbuild();
+  }
+
   get enabled(): boolean {
     return !!this.getEsbuild;
   }

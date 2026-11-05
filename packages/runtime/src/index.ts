@@ -6,6 +6,8 @@ export * from "@brik/physics";
 export * from "@brik/audio";
 export * from "./behaviour";
 export * from "./prefab";
+export * from "./scenes";
+export * from "./manifest";
 
 import { AssetsPlugin } from "@brik/assets";
 import { AudioPlugin } from "@brik/audio";

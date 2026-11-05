@@ -43,5 +43,5 @@ export const codeActions: { save: (() => Promise<void>) | null; dirty: (() => bo
 };
 
 /** A full-screen tool window: the sprite editor (textures) or the animation editor (clips). */
-export type ToolWindow = { kind: "sprite" | "animation"; path: string } | null;
+export type ToolWindow = { kind: "sprite" | "animation" | "build"; path: string } | null;
 export const [toolWindow, setToolWindow] = createSignal<ToolWindow>(null);
