@@ -214,3 +214,35 @@ kun have den, så kør `make desktop-deb`.
 I desktop-appen vælger du projektmappen med en almindelig mappe-dialog, og de
 seneste mapper vises på startskærmen. Byg-vinduet gemmer spillet med en
 almindelig gem-dialog.
+
+## 11. AI
+
+Brik har en MCP-server (`packages/mcp`), så en AI-klient kan arbejde direkte i
+den åbne editor. AI'en kan:
+- se scenen, komponenternes felter og projektets assets,
+- oprette og ændre entities, komponenter, prefabs og scener,
+- skrive scripts (den får kompileringsfejl tilbage med det samme) og sætte dem på,
+- trykke Play, gå frem et antal frames, læse konsollen og tage skærmbilleder af
+  Scene- og Spil-visningen.
+
+Hver ændring vises med det samme og kan fortrydes med Ctrl+Z. Det, AI'en gør,
+står også i Console. Scenen gemmes kun, når AI'en kalder `save_scene`.
+
+**Sådan forbinder du**
+1. Åbn projektet i editoren og klik **AI** i menulinjen.
+   - Grå prik: AI er slået fra.
+   - Gul prik: editoren venter på MCP-serveren.
+   - Grøn prik: AI er forbundet.
+2. Start MCP-serveren fra din AI-klient:
+   - **Claude Code** i dette repo: `.mcp.json` er allerede sat op. Godkend
+     serveren "brik", første gang Claude Code spørger.
+   - **Andre klienter** (fx Claude Desktop): tilføj en MCP-server med kommandoen
+     `node` og argumentet `/sti/til/brik/packages/mcp/src/server.mjs`.
+
+Server og editor finder hinanden på `ws://127.0.0.1:5181`. Porten kan ændres med
+miljøvariablen `BRIK_MCP_PORT`, men editoren bruger altid 5181. Kun editoren selv
+(localhost eller desktop-appen) må forbinde, ikke andre hjemmesider. Er AI'en
+forbundet, men skal ikke længere arbejde, så klik **AI** igen.
+
+Til fejlsøgning kan serveren startes alene med `make mcp`. Den venter så på
+editoren og skriver i terminalen, når den forbinder.

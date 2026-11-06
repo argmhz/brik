@@ -475,6 +475,17 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - Docking har fire faste zoner. Zoner kan ikke deles yderligere, og paneler kan ikke flyde i egne vinduer.
 - `changed` ser ikke ændringer inde i `ref`-felter (fx arrays), som ændres på stedet.
 
+### Fase 5.6 — AI via MCP
+- [x] `@brik/mcp`: MCP-server (stdio) med 31 værktøjer til at se, ændre, scripte, afprøve og tage skærmbilleder i den åbne editor.
+- [x] Bridge over WebSocket på `127.0.0.1:5181`. Editoren forbinder, når brugeren klikker **AI**. Andre origins end editorens bliver afvist.
+- [x] Alle ændringer går gennem editorens kommandoer, så de vises live og kan fortrydes. Fejl forklarer, hvad AI'en skal gøre i stedet (fx feltnavne og tilladte værdier).
+- [x] `.mcp.json` til Claude Code, `make mcp` og afsnit 11 i guiden.
+
+**Næste skridt for AI**
+- `CLAUDE.md` i projekt-skabelonerne, så AI'er kender Brik-API'et uden MCP.
+- Headless-tilstand: MCP-serveren åbner selv projektet i Node, når editoren ikke kører.
+- AI-chat inde i editoren.
+
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
 - [ ] PBR, lys, shadows og post-processing

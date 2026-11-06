@@ -36,6 +36,16 @@ Vil du se det hele i brug, så vælg **Platformer-eksempel** eller **Top-down sh
 - **Tile-maler:** Opret en Tilemap i hierarkiet, vælg en tile i inspectoren, og mal i scene view. Genveje: B pensel, X viskelæder, G fyld, U rektangel, I pipette og Esc for at stoppe. Shift+klik sletter.
 - **UI:** Opret "Knap", "Tekst" eller "Billede" i hierarkiet. Der laves automatisk et UI Canvas. Se resultatet i Spil-fanen.
 
+## AI (MCP)
+
+En AI-klient, fx Claude Code eller Claude Desktop, kan arbejde i den åbne editor. Den kan oprette entities, sætte komponenter, skrive og sætte scripts på, trykke Play og tage skærmbilleder. Du ser hver ændring med det samme, og alt kan fortrydes med Ctrl+Z.
+
+1. Start editoren (`make editor`) og åbn et projekt.
+2. Klik **AI** i menulinjen. Prikken bliver gul, mens editoren venter på serveren.
+3. Start MCP-serveren fra din AI-klient. I Claude Code sker det automatisk via `.mcp.json` i dette repo, når du godkender serveren. Prikken bliver grøn.
+
+Se [guiden](docs/GUIDE.md#11-ai) for opsætning af andre klienter.
+
 ## Pakker
 
 | Pakke | Indhold |
@@ -49,6 +59,7 @@ Vil du se det hele i brug, så vælg **Platformer-eksempel** eller **Top-down sh
 | `@brik/runtime` | Samler det hele: `createGame({ canvas })`, scripts, prefabs og scene-skift |
 | `@brik/player` | Kører et eksporteret spil (`game.json`). Bygges til `brik.js`. |
 | `@brik/editor` | Editor-kerne (projekter, undo/redo, asset-database, eksport, importers) og UI (`@brik/editor/ui`) |
+| `@brik/mcp` | MCP-server, der lader AI-klienter som Claude Code arbejde i den åbne editor |
 | `apps/desktop` | Editoren som Tauri-desktop-app |
 
 ## Licens

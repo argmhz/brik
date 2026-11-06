@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "brik": {
+      "command": "node",
+      "args": ["packages/mcp/src/server.mjs"]
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { For, createSignal, onCleanup, onMount } from "solid-js";
+import { captures } from "./captures";
 import type { Editor, Tool } from "../core/editor";
 import { useVersion } from "./hooks";
 import { SceneController } from "./scene-controller";
@@ -28,6 +29,8 @@ export function SceneView(props: { editor: Editor; onController?: (c: SceneContr
     try {
       controller = new SceneController(editor, container, canvas, overlay);
       controller.onInfo = updateInfo;
+      const c = controller;
+      captures.scene = () => c.capture();
       props.onController?.(controller);
       updateInfo();
     } catch (err) {
@@ -35,6 +38,7 @@ export function SceneView(props: { editor: Editor; onController?: (c: SceneContr
     }
   });
   onCleanup(() => {
+    captures.scene = undefined;
     controller?.dispose();
     props.onController?.(null);
   });

@@ -7,7 +7,7 @@ TAURI   := $(DESKTOP)/src-tauri
 export PATH := $(HOME)/.cargo/bin:$(PATH)
 
 .DEFAULT_GOAL := help
-.PHONY: help install editor demo test test-watch typecheck check types player \
+.PHONY: help install editor demo mcp test test-watch typecheck check types player \
         build desktop desktop-build desktop-deb clean clean-all
 
 help: ## Viser denne hjælp
@@ -28,6 +28,9 @@ editor: node_modules ## Starter editoren på http://localhost:5180
 
 demo: node_modules ## Starter sprites-demoen på http://localhost:5173
 	$(PNPM) dev
+
+mcp: node_modules ## Starter MCP-serveren alene (til fejlsøgning; AI-klienter starter den selv)
+	node packages/mcp/src/server.mjs
 
 test: node_modules ## Kører alle tests
 	$(PNPM) test

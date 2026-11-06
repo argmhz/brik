@@ -1159,3 +1159,33 @@ textarea:focus {
   font-size: 11px;
   background: var(--panel);
 }
+
+/* ------------------------------------------------------------- AI bridge */
+
+.ai-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.ai-status.waiting .ai-dot {
+  background: #e0b341;
+  animation: ai-pulse 1.2s ease-in-out infinite;
+}
+.ai-status.connected .ai-dot {
+  background: #3fbf6f;
+  box-shadow: 0 0 6px #3fbf6f;
+}
+.ai-status.connected {
+  color: var(--text);
+}
+@keyframes ai-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

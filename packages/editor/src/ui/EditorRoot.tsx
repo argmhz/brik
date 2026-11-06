@@ -16,6 +16,7 @@ import type { SceneController } from "./scene-controller";
 import { codeActions, openFiles, setToolWindow, toolWindow } from "./ui-state";
 import { type PanelId, draggingPanel, isShown, layout, resetLayout, showPanel } from "./dock-state";
 import { DockZone, DropStrip } from "./Dock";
+import { AI_PORT, aiActivity, aiState, startAiConnection } from "./ai-connection";
 import { SpriteEditor } from "./SpriteEditor";
 import { AnimationEditor } from "./AnimationEditor";
 import { BuildWindow } from "./BuildWindow";
@@ -191,6 +192,19 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     editor.emit("assets");
   };
   let poll: ReturnType<typeof setInterval>;
+  const ai = startAiConnection(editor);
+  onCleanup(() => ai.dispose());
+  const aiTitle = () => {
+    const state = aiState();
+    const head =
+      state === "off"
+        ? "AI er slået fra. Klik for at lade en AI (fx Claude Code) arbejde i editoren via Brik-MCP-serveren."
+        : state === "waiting"
+          ? `Venter på Brik-MCP-serveren på port ${AI_PORT}. Start den fra din AI-klient. Klik for at slå AI fra.`
+          : "AI er forbundet. Alle AI-ændringer kan fortrydes med Ctrl+Z. Klik for at afbryde.";
+    const recent = aiActivity();
+    return recent.length ? `${head}\n\nSeneste:\n${recent.join("\n")}` : head;
+  };
 
   onMount(() => {
     // handle for debugging from the browser console
@@ -334,6 +348,10 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
             </button>
           )}
         </Show>
+        <button class={`ghost ai-status ${aiState()}`} title={aiTitle()} onClick={() => ai.setEnabled(aiState() === "off")}>
+          <span class="ai-dot" />
+          AI
+        </button>
         <button
           class="primary"
           disabled={mode() !== "edit"}

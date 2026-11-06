@@ -143,6 +143,20 @@ export class SceneController {
     this.drawOverlay();
   }
 
+  /** Draws a frame now and returns it (with gizmos) as a PNG data URL, or null while the view is hidden. */
+  capture(): string | null {
+    if (this.container.clientWidth === 0) return null;
+    this.frame();
+    const out = document.createElement("canvas");
+    out.width = this.canvas.width;
+    out.height = this.canvas.height;
+    const ctx = out.getContext("2d")!;
+    // read the WebGL canvas in the same task as the draw, before it is cleared
+    ctx.drawImage(this.canvas, 0, 0);
+    ctx.drawImage(this.overlay, 0, 0, out.width, out.height);
+    return out.toDataURL("image/png");
+  }
+
   private lastFrame = 0;
 
   /** In edit mode, selected particle emitters run so their effect can be tuned. */

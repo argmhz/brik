@@ -1,0 +1,25 @@
+{
+  "name": "@brik/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "MCP server that lets AI clients work in a running Brik editor",
+  "bin": {
+    "brik-mcp": "./src/server.mjs"
+  },
+  "scripts": {
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "ws": "8.22.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@brik/editor": "workspace:*",
+    "@brik/runtime": "workspace:*",
+    "@types/node": "20.19.42",
+    "@types/ws": "8.18.2"
+  }
+}
