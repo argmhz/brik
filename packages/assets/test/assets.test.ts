@@ -108,6 +108,45 @@ describe("auto slicing", () => {
   });
 });
 
+import { cellForCount, gridCount, guessGrid } from "../src";
+
+describe("grids from images", () => {
+  // a strip of 8 figures, 25 px apart, on a background with faint specks (like AI images)
+  const w = 200;
+  const h = 40;
+  const strip = () => {
+    const px = new Uint8Array(w * h * 4);
+    for (let i = 0; i < 8; i++) {
+      for (let y = 8; y < 34; y++) for (let x = i * 25 + 5; x < i * 25 + 19; x++) px[(y * w + x) * 4 + 3] = 220;
+    }
+    for (let k = 0; k < 400; k++) px[((k * 7919) % (w * h)) * 4 + 3] = 1 + (k % 12);
+    return px;
+  };
+
+  it("ignores nearly invisible pixels when finding sprites", () => {
+    const px = strip();
+    expect(autoSliceRects(px, w, h)).toHaveLength(8);
+    // counting every non-zero pixel finds the specks too
+    expect(autoSliceRects(px, w, h, { alphaThreshold: 0 }).length).toBeGreaterThan(8);
+  });
+
+  it("guesses one cell per figure", () => {
+    const g = guessGrid(autoSliceRects(strip(), w, h), w, h);
+    expect(g).toEqual({ cell: [25, 40], cols: 8, rows: 1 });
+    expect(guessGrid([], w, h)).toBeNull();
+  });
+
+  it("converts between cell size and columns x rows", () => {
+    const g = { mode: "grid" as const, cell: [25, 40] as [number, number], offset: [0, 0] as [number, number], spacing: [0, 0] as [number, number], pivot: [0.5, 0.5] as [number, number] };
+    expect(gridCount(g, w, h)).toEqual([8, 1]);
+    expect(cellForCount(g, w, h, 4, 2)).toEqual([50, 20]);
+    // with offset and spacing: 2 + 3 * 63 + 2 * 4 = 199 fits in 200
+    const spaced = { ...g, offset: [2, 0] as [number, number], spacing: [4, 0] as [number, number] };
+    expect(cellForCount(spaced, w, h, 3, 1)).toEqual([63, 40]);
+    expect(gridCount({ ...spaced, cell: [63, 40] }, w, h)).toEqual([3, 1]);
+  });
+});
+
 import { packRects } from "../src";
 
 describe("atlas packing", () => {

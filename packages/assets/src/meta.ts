@@ -103,8 +103,7 @@ export function sliceSprites(
   const [ox, oy] = slicing.offset;
   const [sx, sy] = slicing.spacing;
   if (cw <= 0 || ch <= 0) return [];
-  const cols = Math.max(0, Math.floor((width - ox + sx) / (cw + sx)));
-  const rows = Math.max(0, Math.floor((height - oy + sy) / (ch + sy)));
+  const [cols, rows] = gridCount(slicing, width, height);
   const oldById = new Map(previous.map((s) => [s.id, s]));
   const pivot: Vec2 = { x: slicing.pivot[0], y: slicing.pivot[1] };
   const out: SpriteDef[] = [];
@@ -124,11 +123,56 @@ export function sliceSprites(
   return out;
 }
 
+type GridSlicing = Extract<Slicing, { mode: "grid" }>;
+
+/** How many columns and rows a grid gives on an image of `width` x `height`. */
+export function gridCount(g: GridSlicing, width: number, height: number): [number, number] {
+  const [cw, ch] = g.cell;
+  const [ox, oy] = g.offset;
+  const [sx, sy] = g.spacing;
+  if (cw <= 0 || ch <= 0) return [0, 0];
+  return [Math.max(0, Math.floor((width - ox + sx) / (cw + sx))), Math.max(0, Math.floor((height - oy + sy) / (ch + sy)))];
+}
+
+/** The cell size that splits the image (after offset and spacing) into `cols` x `rows` cells. */
+export function cellForCount(g: GridSlicing, width: number, height: number, cols: number, rows: number): [number, number] {
+  const [ox, oy] = g.offset;
+  const [sx, sy] = g.spacing;
+  const c = Math.max(1, Math.round(cols));
+  const r = Math.max(1, Math.round(rows));
+  return [Math.max(1, Math.floor((width - ox + sx) / c) - sx), Math.max(1, Math.floor((height - oy + sy) / r) - sy)];
+}
+
+/**
+ * Guesses a grid from the sprites found in an image (see autoSliceRects): as
+ * many columns as the widest row of sprites and as many rows as there are rows,
+ * each cell an equal share of the image. Null when nothing was found.
+ */
+export function guessGrid(
+  rects: { x: number; y: number; w: number; h: number }[],
+  width: number,
+  height: number,
+): { cell: [number, number]; cols: number; rows: number } | null {
+  if (rects.length === 0) return null;
+  const rows: (typeof rects)[] = [];
+  for (const r of [...rects].sort((a, b) => a.y - b.y)) {
+    const row = rows.find((rw) => r.y < rw[0].y + rw[0].h && rw[0].y < r.y + r.h);
+    if (row) row.push(r);
+    else rows.push([r]);
+  }
+  const cols = Math.max(...rows.map((r) => r.length));
+  return { cell: [Math.max(1, Math.floor(width / cols)), Math.max(1, Math.floor(height / rows.length))], cols, rows: rows.length };
+}
+
 /**
  * Finds sprites in an image by transparency: every group of touching pixels
  * (including diagonals) with alpha above `alphaThreshold` becomes one rect.
  * Overlapping rects are merged, tiny ones (`minSize`) dropped. Sorted in rows,
  * top to bottom, left to right.
+ *
+ * The default threshold (16 of 255) ignores nearly invisible pixels: AI
+ * generated and lossy compressed images often have faint specks all over the
+ * background, which would otherwise become hundreds of sprites.
  */
 export function autoSliceRects(
   rgba: Uint8ClampedArray | Uint8Array,
@@ -136,7 +180,7 @@ export function autoSliceRects(
   height: number,
   opts: { alphaThreshold?: number; minSize?: number; padding?: number } = {},
 ): { x: number; y: number; w: number; h: number }[] {
-  const threshold = opts.alphaThreshold ?? 0;
+  const threshold = opts.alphaThreshold ?? 16;
   const minSize = opts.minSize ?? 2;
   const pad = opts.padding ?? 0;
   const seen = new Uint8Array(width * height);

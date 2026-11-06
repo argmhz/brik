@@ -55,7 +55,10 @@ Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
 
 - **Importér** PNG-filer med knappen eller ved at trække dem ind i asset-panelet.
 - **Sprite-editoren** åbnes, når du dobbeltklikker et billede. Her kan du:
-  - opdele billedet i et grid, finde sprites automatisk eller tegne dem selv,
+  - opdele billedet i et grid, finde sprites automatisk eller tegne dem selv.
+    Grid starter med én celle pr. figur i billedet, og under "Antal" kan du
+    skrive kolonner og rækker i stedet for cellestørrelse. Til animationer er
+    grid bedst, fordi alle frames så er lige store,
   - sætte pivot,
   - sætte 9-slice-kanter, som bruges til UI-paneler og knapper.
 - **Animationer:** Vælg et opdelt billede og tryk "Lav animation". Dobbeltklik

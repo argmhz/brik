@@ -1,9 +1,10 @@
-import { type Slicing, type SpriteDef, type TextureMeta, autoSliceRects, newGuid, sliceSprites } from "@brik/runtime";
+import { type Slicing, type SpriteDef, type TextureMeta, autoSliceRects, cellForCount, gridCount, newGuid, sliceSprites } from "@brik/runtime";
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { textureName } from "../core/asset-db";
 import type { Editor } from "../core/editor";
 import { PIVOTS } from "./AssetInspector";
 import { NumberBox, TextBox } from "./fields";
+import { startGrid, texturePixels } from "./image-grid";
 import { reportError, toast, typingInField } from "./hooks";
 
 type GridSlicing = Extract<Slicing, { mode: "grid" }>;
@@ -74,14 +75,10 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
     if (mode === "single") setDraft({ ...d, slicing: { mode }, sprites: [] });
     else if (mode === "manual") setDraft({ ...d, slicing: { mode }, sprites: d.sprites.map((s) => ({ ...s })) });
     else {
-      const slicing: GridSlicing = {
-        mode: "grid",
-        cell: [Math.min(16, t.width), Math.min(16, t.height)],
-        offset: [0, 0],
-        spacing: [0, 0],
-        pivot: [0.5, 0.5],
-      };
+      // one cell per sprite found in the image, so a strip of 8 frames gives 8 cells
+      const { slicing, guessed } = startGrid(t);
       setDraft({ ...d, slicing, sprites: sliceSprites(slicing, t.width, t.height, base(), d.sprites) });
+      if (guessed) toast(`Grid ud fra billedet: ${guessed.cols} × ${guessed.rows} celler`);
     }
   };
 
@@ -93,17 +90,20 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
     setDraft({ ...d, slicing, sprites: sliceSprites(slicing, t.width, t.height, base(), d.sprites) });
   };
 
+  /** Sets the cell size from a number of columns and rows. */
+  const setCount = ([cols, rows]: [number, number]) => {
+    const d = draft();
+    const t = tex();
+    if (d.slicing.mode !== "grid" || !t) return;
+    setGrid({ cell: cellForCount(d.slicing, t.width, t.height, cols, rows) });
+  };
+
   /** Finds sprites by transparency and switches to manual mode. Existing sprites keep their id and name (see matchSprites). */
   const autoSlice = () => {
     const t = tex();
-    const img = t?.source as CanvasImageSource | null;
-    if (!t || !img) return;
-    const c = document.createElement("canvas");
-    c.width = t.width;
-    c.height = t.height;
-    const ctx = c.getContext("2d", { willReadFrequently: true })!;
-    ctx.drawImage(img, 0, 0);
-    const rects = autoSliceRects(ctx.getImageData(0, 0, t.width, t.height).data, t.width, t.height);
+    const px = t ? texturePixels(t) : null;
+    if (!t || !px) return;
+    const rects = autoSliceRects(px, t.width, t.height);
     const sprites = matchSprites(draft().sprites, rects, base());
     setDraft({ ...draft(), slicing: { mode: "manual" }, sprites });
     setSelected(sprites[0]?.id ?? null);
@@ -168,7 +168,9 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
   const fit = () => {
     const t = tex();
     if (!t || !wrap.clientWidth) return;
-    const zoom = Math.max(1, Math.floor(Math.min((wrap.clientWidth - 40) / t.width, (wrap.clientHeight - 40) / t.height)));
+    const fits = Math.min((wrap.clientWidth - 40) / t.width, (wrap.clientHeight - 40) / t.height);
+    // whole pixels when the image is small; large images are scaled down to fit
+    const zoom = fits >= 1 ? Math.floor(fits) : Math.max(0.05, fits);
     setView({ zoom, ox: Math.round((wrap.clientWidth - t.width * zoom) / 2), oy: Math.round((wrap.clientHeight - t.height * zoom) / 2) });
   };
 
@@ -434,7 +436,7 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
     ev.preventDefault();
     const p = local(ev);
     const v = view();
-    const zoom = clamp(ev.deltaY < 0 ? v.zoom * 1.25 : v.zoom / 1.25, 0.25, 64);
+    const zoom = clamp(ev.deltaY < 0 ? v.zoom * 1.25 : v.zoom / 1.25, 0.05, 64);
     // keep the image point under the cursor in place
     const ix = (p.x - v.ox) / v.zoom;
     const iy = (p.y - v.oy) / v.zoom;
@@ -518,6 +520,10 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
             <Show when={grid()}>
               {(g) => (
                 <>
+                  <span class="field-label" title="Kolonner og rækker. Cellestørrelsen regnes ud fra billedets størrelse">
+                    Antal
+                  </span>
+                  <Pair value={() => gridCount(g(), tex()?.width ?? 0, tex()?.height ?? 0)} min={1} onChange={setCount} />
                   <span class="field-label">Celle</span>
                   <Pair value={() => g().cell} min={1} onChange={(cell) => setGrid({ cell })} />
                   <span class="field-label">Offset</span>

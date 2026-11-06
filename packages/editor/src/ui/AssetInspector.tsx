@@ -1,4 +1,4 @@
-import { type Slicing, type TextureMeta, type TextureSettings, sliceSprites } from "@brik/runtime";
+import { type Slicing, type TextureMeta, type TextureSettings, cellForCount, gridCount, sliceSprites } from "@brik/runtime";
 import { For, Match, Show, Switch, createEffect, createSignal, on } from "solid-js";
 import { isAudio, isClip, isImage, isPrefab, isScene, textureName } from "../core/asset-db";
 import { ClipInspector, MakeAnimation, PrefabInspector, SoundInspector } from "./asset-panels";
@@ -6,6 +6,7 @@ import type { Editor } from "../core/editor";
 import { isScriptFile } from "../core/scripts";
 import { openFile, setToolWindow } from "./ui-state";
 import { NumberBox } from "./fields";
+import { startGrid } from "./image-grid";
 import { reportError, toast, useVersion } from "./hooks";
 
 export function AssetInspector(props: { editor: Editor; path: string }) {
@@ -182,13 +183,11 @@ function TextureInspector(props: { editor: Editor; path: string }) {
           value={draft().slicing.mode}
           onChange={(ev) => {
             const mode = ev.currentTarget.value;
-            const tex = entry().asset;
-            const cell = Math.min(32, tex.width, tex.height);
             setDraft({
               ...draft(),
               slicing:
                 mode === "grid"
-                  ? { mode: "grid", cell: [cell, cell], offset: [0, 0], spacing: [0, 0], pivot: [0.5, 0.5] }
+                  ? startGrid(entry().asset).slicing
                   : mode === "manual"
                     ? { mode: "manual" }
                     : { mode: "single" },
@@ -202,6 +201,12 @@ function TextureInspector(props: { editor: Editor; path: string }) {
         <Show when={grid()}>
           {(g) => (
             <>
+              <span class="field-label">Antal (kolonner, rækker)</span>
+              <Pair
+                value={() => gridCount(g(), entry().asset.width, entry().asset.height)}
+                onChange={([c, r]) => setGrid({ cell: cellForCount(g(), entry().asset.width, entry().asset.height, c, r) })}
+                min={1}
+              />
               <span class="field-label">Cellestørrelse</span>
               <Pair value={() => g().cell} onChange={(v) => setGrid({ cell: v })} min={1} />
               <span class="field-label">Offset</span>

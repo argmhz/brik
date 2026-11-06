@@ -513,6 +513,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] `CameraFollow2D.boundsMode`: med "view" (standard) holdes hele udsnittet inden for `bounds`, uanset skærmens størrelse og zoom. Er udsnittet større end rammen, centreres det. "center" er den gamle opførsel. Skærmstørrelsen kendes fra første frame. Platformer-skabelonen og Mosehop bruger nu banernes kanter som `bounds`.
 - [x] Sceneskift under AI-afprøvning: `step` og `click` venter på en scene, der er ved at blive læst, så skiftet sker i samme frame som i et spil, der kører, og ses i det samme kald (`sceneLoaded` i svaret). En scene, der ikke kan læses, låser ikke længere `Scenes.busy`.
 - [x] AI-forbindelsen prøver igen hvert 2. sekund, også fra en baggrundsfane (timeren ligger i en Web Worker, som browseren ikke bremser), og med det samme, når fanen bliver synlig.
+- [x] Sprite-editoren og store sprite sheets (fx AI-genererede): Grid starter med én celle pr. figur, der findes i billedet (8 figurer på række giver 8 × 1 celler) i stedet for altid 16×16, og der er et felt "Antal" (kolonner × rækker), som regner cellestørrelsen ud. "Find automatisk" ignorerer næsten usynlige pixels (alfa ≤ 16), så støj i baggrunden ikke giver hundredvis af sprites. "Tilpas" kan nu zoome under 100 %, så store billeder kan ses helt.
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**
