@@ -278,8 +278,5 @@ forbundet, men skal ikke længere arbejde, så klik **AI** igen.
 Nye projekter får en `CLAUDE.md`, som forklarer projektets filer og Brik-API'et.
 Så kan en AI-klient også skrive scripts uden MCP-serveren.
 
-Ligger editoren i en baggrundsfane, kan browseren bremse den, så det tager
-længere tid at forbinde.
-
 Til fejlsøgning kan serveren startes alene med `make mcp`. Den venter så på
 editoren og skriver i terminalen, når den forbinder.

@@ -19,6 +19,7 @@ export class Scenes {
   current: string | null = null;
   private ready: { path: string; data: SceneData } | null = null;
   private loading: string | null = null;
+  private pending: Promise<void> = Promise.resolve();
   /** Called after a scene was swapped in (e.g. to reset systems). */
   onSwap: ((path: string) => void) | null = null;
 
@@ -27,15 +28,31 @@ export class Scenes {
   load(name: string): void {
     const path = scenePath(name);
     this.loading = path;
-    Promise.resolve()
+    this.pending = Promise.resolve()
       .then(() => this.source(path))
       .then(
         (data) => {
           // a newer load request wins
           if (this.loading === path) this.ready = { path, data };
         },
-        (err) => console.error(`[brik] could not load scene "${path}"`, err),
+        (err) => {
+          if (this.loading === path) this.loading = null;
+          console.error(`[brik] could not load scene "${path}"`, err);
+        },
       );
+  }
+
+  /**
+   * Resolves once the requested scene has been read (or failed), so it will be
+   * swapped in at the start of the next frame. For tools that step frames by
+   * hand, like the editor's AI bridge and tests.
+   */
+  async loaded(): Promise<void> {
+    while (this.loading !== null && this.ready === null) {
+      const p = this.pending;
+      await p;
+      if (p === this.pending) break;
+    }
   }
 
   /** True while a requested scene hasn't been swapped in yet. */

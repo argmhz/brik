@@ -502,8 +502,8 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - ~~`CameraFollow2D.bounds` holder kun kameraets midtpunkt inden for rammen.~~ (fase 5.8)
 - ~~AI'en kan ikke klikke på UI-knapper i spillet.~~ (fase 5.8)
 - ~~`setActive` skjuler kun: scripts og colliders på en inaktiv entity kører videre.~~ (fase 5.8)
-- Når editoren ligger i en baggrundsfane, bremser browseren dens timere, så det kan tage op til et minut at forbinde til AI'en igen.
-- Scener skifter asynkront (filen læses først), så det ses først et `step` senere.
+- ~~Det kan tage op til et minut at forbinde til AI'en igen fra en baggrundsfane.~~ (fase 5.8)
+- ~~Scener skifter asynkront, så det ses først et `step` senere.~~ (fase 5.8)
 - Fjender uden fysik-krop skal flyttes i scripts, og triggere melder først, når overlappet er sket. Et tramp-tjek skal derfor være tilgivende.
 
 ### Fase 5.8 — Oprydning efter Mosehop
@@ -511,6 +511,8 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] Autosave: ændringer, der ikke er gemt, skrives til `.brik/recovery.json` lidt efter hver ændring (aldrig under Play). Når projektet åbnes igen, spørger editoren, om de skal gendannes. Gendannede ændringer står som ikke gemt, til man gemmer. Filen fjernes, når scenen gemmes, eller når man fortryder tilbage til det gemte.
 - [x] MCP: `click` klikker på en UI-knap (entity-id) eller et sted i verden og fortæller, hvilken knap der blev ramt. `step` tager `mouse` (`{ entity }` eller `{ x, y }`), så AI'en kan sigte. UI'et lægges ud, selv om Spil-fanen ikke har tegnet.
 - [x] `CameraFollow2D.boundsMode`: med "view" (standard) holdes hele udsnittet inden for `bounds`, uanset skærmens størrelse og zoom. Er udsnittet større end rammen, centreres det. "center" er den gamle opførsel. Skærmstørrelsen kendes fra første frame. Platformer-skabelonen og Mosehop bruger nu banernes kanter som `bounds`.
+- [x] Sceneskift under AI-afprøvning: `step` og `click` venter på en scene, der er ved at blive læst, så skiftet sker i samme frame som i et spil, der kører, og ses i det samme kald (`sceneLoaded` i svaret). En scene, der ikke kan læses, låser ikke længere `Scenes.busy`.
+- [x] AI-forbindelsen prøver igen hvert 2. sekund, også fra en baggrundsfane (timeren ligger i en Web Worker, som browseren ikke bremser), og med det samme, når fanen bliver synlig.
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**

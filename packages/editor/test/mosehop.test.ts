@@ -35,7 +35,6 @@ const text = (editor: Editor, name: string) => {
   const e = [...editor.world.query([UIText])].find((x) => editor.entityName(x) === name);
   return e === undefined ? undefined : editor.world.store(UIText).text[e];
 };
-const settle = () => new Promise((r) => setTimeout(r, 20));
 
 beforeAll(async () => {
   await initPhysics();
@@ -65,9 +64,9 @@ describe("Mosehop example", () => {
     await h.step({ frames: 50, hold: ["ArrowRight"] });
     expect(text(editor, "Message")).toBe("Bane klaret!");
     expect(text(editor, "Score")).toBe("Mønter: 1");
-    await h.step({ frames: 80 });
-    await settle(); // the next scene is read from disk
-    await h.step({ frames: 2 });
+    // the step that asks for the next scene also shows it (the file is read in between)
+    const r = (await h.step({ frames: 80 })) as { sceneLoaded?: string };
+    expect(r.sceneLoaded).toBe("scenes/level2.scene.json");
     expect(text(editor, "LevelName")).toBe("Bane 2");
     expect(text(editor, "Score")).toBe("Mønter: 1");
     await h.stop({});

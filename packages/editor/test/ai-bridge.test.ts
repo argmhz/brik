@@ -269,4 +269,47 @@ export class Clicky extends Behaviour {
     await expect(async () => h.step({ mouse: { x: 1 } })).rejects.toThrow(/entity/);
     await h.stop({});
   });
+
+  it("a scene switch shows in the same step, and later frames run in the new scene", async () => {
+    const { editor, h } = await setup();
+    await h.write_script({
+      path: "scripts/Switch.ts",
+      content: `import { Behaviour } from "brik";
+export const Ticks = { b: 0 };
+export class GoToB extends Behaviour {
+  onStart() { this.loadScene("b"); }
+}
+export class CountB extends Behaviour {
+  onUpdate() { Ticks.b++; }
+}`,
+    });
+    await h.write_script({
+      path: "scripts/Probe.ts",
+      content: `import { Behaviour, expose } from "brik";
+import { Ticks } from "./Switch";
+export class Probe extends Behaviour {
+  @expose ticks = 0;
+  onUpdate() { this.ticks = Ticks.b; }
+}`,
+    });
+    // scene b: a counter and a probe that shows the count
+    const { id: b } = (await h.create_entity({ name: "InB" })) as { id: string };
+    await h.attach_script({ id: b, script: "CountB" });
+    await h.attach_script({ id: b, script: "Probe" });
+    await h.save_scene({ path: "scenes/b" });
+    // scene a: switches to b right away
+    editor.newScene();
+    const { id: a } = (await h.create_entity({ name: "InA" })) as { id: string };
+    await h.attach_script({ id: a, script: "GoToB" });
+    await h.save_scene({ path: "scenes/a" });
+
+    await h.play({});
+    const r = (await h.step({ frames: 10 })) as { sceneLoaded?: string };
+    expect(r.sceneLoaded).toBe("scenes/b.scene.json");
+    const [inB] = (await h.find_entities({ name: "InB" })) as { id: string }[];
+    const live = ((await h.inspect_entity({ id: inB.id })) as { scripts: { live?: { ticks: number } }[] }).scripts[1].live;
+    // the switch happened in the second frame, so b ran for most of the 10
+    expect(live?.ticks).toBeGreaterThanOrEqual(7);
+    await h.stop({});
+  });
 });

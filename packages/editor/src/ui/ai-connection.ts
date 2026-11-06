@@ -42,6 +42,49 @@ const nextFrame = () =>
     setTimeout(r, 50);
   });
 
+/**
+ * setTimeout that keeps its pace in a background tab. Browsers slow a hidden
+ * page's timers down to once a minute, so reconnecting to the MCP server would
+ * take that long; a worker's timers aren't throttled like that.
+ */
+function backgroundTimer(): { after(ms: number, fn: () => void): () => void; dispose(): void } {
+  let worker: Worker | null = null;
+  try {
+    const src = "onmessage = (e) => setTimeout(() => postMessage(e.data.id), e.data.ms);";
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    worker = new Worker(url);
+    URL.revokeObjectURL(url);
+  } catch {
+    worker = null; // e.g. a strict CSP: plain timers then
+  }
+  const pending = new Map<number, () => void>();
+  let next = 1;
+  if (worker) {
+    worker.onmessage = (e: MessageEvent<number>) => {
+      const fn = pending.get(e.data);
+      pending.delete(e.data);
+      fn?.();
+    };
+  }
+  return {
+    after(ms, fn) {
+      if (!worker) {
+        const t = setTimeout(fn, ms);
+        return () => clearTimeout(t);
+      }
+      const id = next++;
+      pending.set(id, fn);
+      worker.postMessage({ id, ms });
+      return () => pending.delete(id);
+    },
+    dispose() {
+      pending.clear();
+      worker?.terminate();
+      worker = null;
+    },
+  };
+}
+
 /** Draws a view and returns it as a PNG data URL. Brings the view's tab to the front first. */
 async function screenshot(view: "scene" | "game"): Promise<string | null> {
   showPanel(view);
@@ -63,8 +106,21 @@ export function aiEnabled(): boolean {
 export function startAiConnection(editor: Editor): { setEnabled: (on: boolean) => void; dispose: () => void } {
   const handlers = createBridgeHandlers(editor, { screenshot });
   let ws: WebSocket | null = null;
-  let retry: ReturnType<typeof setTimeout> | null = null;
+  /** Cancels the scheduled reconnect, if there is one. */
+  let retry: (() => void) | null = null;
   let enabled = false;
+  const timer = backgroundTimer();
+  const scheduleRetry = () => {
+    retry = timer.after(2000, connect);
+  };
+  // coming back to the tab: try right away instead of waiting for the timer
+  const onVisible = () => {
+    if (document.visibilityState === "visible" && enabled && !ws && retry) {
+      retry();
+      connect();
+    }
+  };
+  document.addEventListener("visibilitychange", onVisible);
 
   const note = (text: string) => setAiActivity([...aiActivity().slice(-7), text]);
 
@@ -94,7 +150,7 @@ export function startAiConnection(editor: Editor): { setEnabled: (on: boolean) =
     try {
       socket = new WebSocket(`ws://127.0.0.1:${AI_PORT}`);
     } catch {
-      retry = setTimeout(connect, 2000);
+      scheduleRetry();
       return;
     }
     ws = socket;
@@ -117,7 +173,7 @@ export function startAiConnection(editor: Editor): { setEnabled: (on: boolean) =
       if (aiState() === "connected") editor.log("info", "AI afbrudt");
       if (enabled) {
         setAiState("waiting");
-        retry = setTimeout(connect, 2000);
+        scheduleRetry();
       } else setAiState("off");
     };
     socket.onerror = () => {
@@ -126,7 +182,7 @@ export function startAiConnection(editor: Editor): { setEnabled: (on: boolean) =
   };
 
   const stop = () => {
-    if (retry) clearTimeout(retry);
+    retry?.();
     retry = null;
     const s = ws;
     ws = null;
@@ -151,6 +207,8 @@ export function startAiConnection(editor: Editor): { setEnabled: (on: boolean) =
     dispose: () => {
       enabled = false;
       stop();
+      timer.dispose();
+      document.removeEventListener("visibilitychange", onVisible);
     },
   };
 }

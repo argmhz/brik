@@ -11,6 +11,7 @@ import {
   Name,
   PrefabInstance,
   SceneId,
+  Scenes,
   Scripts,
   Tags,
   TileMap,
@@ -26,6 +27,7 @@ import {
   findBySceneId,
   mat3,
   parentOf,
+  propagateTransforms,
   rootEntities,
   scriptDisplayName,
   serializeEntities,
@@ -258,6 +260,28 @@ function pointerTarget(editor: Editor, target: unknown): { x: number; y: number;
   const local = inv ? mat3.transformPoint(inv, { x: wx, y: wy }) : { x: wx, y: wy };
   const zoom = C.zoom[cam] || 1;
   return { x: W / 2 + local.x * zoom, y: H / 2 - local.y * zoom, ui: -1 };
+}
+
+/**
+ * Advances the game one frame. Scene files load asynchronously, so a scene
+ * requested with loadScene is waited for first: it then switches in this very
+ * frame instead of some frames later, depending on disk speed.
+ */
+async function stepFrame(editor: Editor): Promise<void> {
+  const scenes = editor.world.tryResource(Scenes);
+  if (scenes?.busy) await scenes.loaded();
+  editor.play.step();
+}
+
+/** After the last frame of a call: a scene that was requested in it is swapped in now, so the AI sees it. */
+async function finishSceneSwitch(editor: Editor): Promise<boolean> {
+  const scenes = editor.world.tryResource(Scenes);
+  if (!scenes?.busy) return false;
+  await scenes.loaded();
+  scenes.swap(editor.world);
+  propagateTransforms.run(editor.world);
+  editor.emit("world");
+  return true;
 }
 
 function projectPath(path: unknown): string {
@@ -779,7 +803,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { mode: editor.play.mode };
     },
 
-    step: ({ frames = 1, hold = [], press = [], mouse }) => {
+    step: async ({ frames = 1, hold = [], press = [], mouse }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const held = keyList(hold, "hold");
       const tapped = keyList(press, "press");
@@ -798,14 +822,17 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       }
       heldKeys = new Set(held);
       const n = Math.max(1, Math.min(600, Number(frames)));
+      const sceneBefore = world.tryResource(Scenes)?.current ?? null;
       for (let i = 0; i < n; i++) {
-        editor.play.step();
+        await stepFrame(editor);
         if (i === 0) for (const k of tapped) if (!held.includes(k)) input!.inject("up", k);
       }
-      return { mode: editor.play.mode, frames: n };
+      await finishSceneSwitch(editor);
+      const scene = world.tryResource(Scenes)?.current ?? null;
+      return { mode: editor.play.mode, frames: n, ...(scene !== sceneBefore ? { sceneLoaded: scene } : {}) };
     },
 
-    click: ({ entity, x, y, button = 0 }) => {
+    click: async ({ entity, x, y, button = 0 }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const input = world.tryResource(Input);
       if (!input) throw new BridgeError("This game has no input");
@@ -818,18 +845,22 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const clicks = world.events(UIClick).reader();
       input.injectPointer(p.x, p.y);
       // move there, press, release, and let the game react
-      editor.play.step();
+      const sceneBefore = world.tryResource(Scenes)?.current ?? null;
+      await stepFrame(editor);
       input.inject("down", code);
-      editor.play.step();
+      await stepFrame(editor);
       input.inject("up", code);
-      editor.play.step();
-      editor.play.step();
+      await stepFrame(editor);
+      await stepFrame(editor);
       const clicked = clicks.read().map((ev) => world.store(SceneId).id[ev.entity] ?? null);
       return {
         screen: { x: Math.round(p.x), y: Math.round(p.y) },
         buttonUnderMouse: hitButton >= 0 ? (world.store(SceneId).id[hitButton] ?? null) : null,
         clickedButtons: clicked,
         frames: 4,
+        ...((await finishSceneSwitch(editor)) || world.tryResource(Scenes)?.current !== sceneBefore
+          ? { sceneLoaded: world.tryResource(Scenes)?.current ?? null }
+          : {}),
       };
     },
 
