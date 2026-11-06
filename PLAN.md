@@ -482,7 +482,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - [x] `.mcp.json` til Claude Code, `make mcp` og afsnit 11 i guiden.
 
 **Næste skridt for AI**
-- `CLAUDE.md` i projekt-skabelonerne, så AI'er kender Brik-API'et uden MCP.
+- ~~`CLAUDE.md` i projekt-skabelonerne~~ (fase 5.8)
 - Headless-tilstand: MCP-serveren åbner selv projektet i Node, når editoren ikke kører.
 - AI-chat inde i editoren.
 
@@ -498,13 +498,25 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] Regressionstest, der åbner `examples/mosehop` headless, spiller fra flaget på bane 1 til bane 2 og tramper på en slim.
 
 **Fundet, men ikke rettet**
-- En genindlæsning af siden mister alt, der ikke er gemt. Der er ingen autosave eller gendannelse.
+- ~~En genindlæsning af siden mister alt, der ikke er gemt.~~ (fase 5.8)
 - `CameraFollow2D.bounds` holder kameraets midtpunkt inden for rammen, så hvad man ser ved kanten afhænger af vinduets størrelse. En "hold udsnittet inden for"-tilstand ville være lettere at bruge.
-- AI'en kan ikke klikke på UI-knapper i spillet (der er intet værktøj til musens position).
-- `setActive` skjuler kun: scripts og colliders på en inaktiv entity kører videre.
+- ~~AI'en kan ikke klikke på UI-knapper i spillet.~~ (fase 5.8)
+- ~~`setActive` skjuler kun: scripts og colliders på en inaktiv entity kører videre.~~ (fase 5.8)
 - Når editoren ligger i en baggrundsfane, bremser browseren dens timere, så det kan tage op til et minut at forbinde til AI'en igen.
 - Scener skifter asynkront (filen læses først), så det ses først et `step` senere.
 - Fjender uden fysik-krop skal flyttes i scripts, og triggere melder først, når overlappet er sket. Et tramp-tjek skal derfor være tilgivende.
+
+### Fase 5.8 — Oprydning efter Mosehop
+- [x] `setActive(false)` slukker nu en entity helt, også når det er en forælder, der er slukket: scripts (`onStart`, `onUpdate`, `onFixedUpdate` og events) holder pause, og det samme gør tweens og timere fra `this.after`/`this.every`. Kroppe og colliders er ude af fysikken, så de ikke falder, støder eller rammes af `raycast` og `overlapPoint`. `onStart` venter, til entity'en tændes første gang.
+- [x] Autosave: ændringer, der ikke er gemt, skrives til `.brik/recovery.json` lidt efter hver ændring (aldrig under Play). Når projektet åbnes igen, spørger editoren, om de skal gendannes. Gendannede ændringer står som ikke gemt, til man gemmer. Filen fjernes, når scenen gemmes, eller når man fortryder tilbage til det gemte.
+- [x] MCP: `click` klikker på en UI-knap (entity-id) eller et sted i verden og fortæller, hvilken knap der blev ramt. `step` tager `mouse` (`{ entity }` eller `{ x, y }`), så AI'en kan sigte. UI'et lægges ud, selv om Spil-fanen ikke har tegnet.
+- [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
+
+**Kendte begrænsninger i 5.8**
+- Autosave dækker kun den åbne scene.
+- Der er ingen `onEnable`/`onDisable`-hooks endnu, så et script kan ikke selv reagere på at blive tændt eller slukket.
+- Gendannelsesspørgsmålet bruger browserens `confirm()`-dialog.
+- Eksisterende projekter får ikke `CLAUDE.md` automatisk.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

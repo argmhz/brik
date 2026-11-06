@@ -34,6 +34,7 @@ import { PlayController } from "./play";
 import { ScriptHost } from "./script-host";
 import type { EsbuildLike } from "./scripts";
 import { type ProjectSettings, defaultScene, readProject, sceneToJson, writeProject } from "./project";
+import { Autosave, type RecoveryData, readRecovery, removeRecovery } from "./recovery";
 
 export type Tool = "move" | "rotate" | "scale";
 /** Tile painting tools. Active while a TileMap is selected and a tool is chosen. */
@@ -100,6 +101,14 @@ export class Editor {
   view = { x: 0, y: 0, zoom: 2 };
 
   private listeners = new Map<EditorEvent, Set<() => void>>();
+  /** Keeps unsaved scene changes in `.brik/recovery.json`. */
+  readonly autosave: Autosave;
+  /**
+   * Unsaved changes found when the project was opened (the editor closed or
+   * the page reloaded before saving). Autosave waits until it is restored or
+   * discarded.
+   */
+  recovery: RecoveryData | null = null;
 
   private constructor(
     readonly fs: ProjectFS,
@@ -117,11 +126,34 @@ export class Editor {
     };
     this.play = new PlayController(this);
     this.scripts = new ScriptHost(this, options.esbuild, options.importCode);
-    this.history.subscribe(() => this.emit("scene"));
+    const editor = this;
+    this.autosave = new Autosave({
+      fs,
+      get dirty() {
+        return editor.dirty;
+      },
+      get playing() {
+        return editor.play.active;
+      },
+      get scenePath() {
+        return editor.scenePath;
+      },
+      snapshot: () => serializeScene(this.world),
+    });
+    this.history.subscribe(() => {
+      this.autosave.changed();
+      this.emit("scene");
+    });
   }
 
   static async open(fs: ProjectFS, options: EditorOptions = {}): Promise<Editor> {
     const editor = new Editor(fs, await readProject(fs), options);
+    // unsaved changes from last time wait for restoreRecovery() or discardRecovery()
+    editor.recovery = await readRecovery(fs);
+    if (editor.recovery) {
+      editor.autosave.paused = true;
+      editor.autosave.markOnDisk();
+    }
     await editor.db.refresh();
     // scripts may define components used by the scene, so compile them first
     await editor.scripts.rebuild();
@@ -266,6 +298,29 @@ export class Editor {
     refreshOverrides(this);
     this.scenePath = path;
     this.resetAfterLoad();
+  }
+
+  /** Loads the unsaved changes found at startup. The scene is then dirty until saved. */
+  restoreRecovery(): void {
+    const rec = this.recovery;
+    if (!rec) return;
+    this.play.stop();
+    loadScene(this.world, refreshSceneData(this, rec.scene));
+    refreshOverrides(this);
+    this.scenePath = rec.scenePath;
+    this.recovery = null;
+    this.autosave.paused = false;
+    this.resetAfterLoad();
+    this.history.markUnsaved();
+  }
+
+  /** Throws away the unsaved changes found at startup. */
+  async discardRecovery(): Promise<void> {
+    if (!this.recovery) return;
+    this.recovery = null;
+    await removeRecovery(this.fs);
+    this.autosave.paused = false;
+    this.autosave.changed();
   }
 
   /** Saves to the current path, or `path` if given (save as). */
@@ -460,6 +515,7 @@ export class Editor {
 
   /** Discards everything (used when closing the project). */
   dispose(): void {
+    this.autosave.dispose();
     this.play.stop();
     clearWorld(this.world);
     this.listeners.clear();

@@ -45,6 +45,19 @@ function captureConsole(editor: Editor): () => void {
   return () => LEVELS.forEach((level, i) => (console[level] = originals[i]));
 }
 
+/** Asks whether to bring back unsaved changes from the last session. */
+async function offerRecovery(ed: Editor): Promise<void> {
+  const rec = ed.recovery!;
+  const scene = rec.scenePath ?? "en ny, ikke-gemt scene";
+  const when = new Date(rec.savedAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" });
+  const yes = confirm(
+    `Brik fandt ændringer, der ikke blev gemt, i ${scene} (${when}).\n\n` +
+      "OK: Gendan ændringerne (de er ikke gemt endnu).\nAnnuller: Kassér dem.",
+  );
+  if (yes) ed.restoreRecovery();
+  else await ed.discardRecovery();
+}
+
 function Root() {
   const [editor, setEditor] = createSignal<Editor | null>(null);
   const [loading, setLoading] = createSignal(false);
@@ -54,6 +67,7 @@ function Root() {
     setLoading(true);
     try {
       const ed = await Editor.open(fs, { makeUrl, esbuild: loadEsbuild });
+      if (ed.recovery) await offerRecovery(ed);
       releaseConsole = captureConsole(ed);
       resetUiState();
       setEditor(ed);

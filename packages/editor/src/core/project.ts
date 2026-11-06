@@ -1,4 +1,5 @@
 import { type PhysicsOptions, type SceneData, newSceneId } from "@brik/runtime";
+import { PROJECT_AI_GUIDE } from "./project-guide";
 import type { BuildSettings } from "./export";
 import type { ProjectFS } from "./fs";
 
@@ -71,6 +72,8 @@ export async function createProject(
   await writeProject(fs, settings);
   await fs.mkdir("assets");
   await fs.writeFile(settings.startScene, sceneToJson(defaultScene()));
+  // tells AI coding tools (Claude Code & co.) how a Brik project works
+  await fs.writeFile("CLAUDE.md", PROJECT_AI_GUIDE);
   for (const [path, data] of Object.entries(extras)) await fs.writeFile(path, data);
   return settings;
 }

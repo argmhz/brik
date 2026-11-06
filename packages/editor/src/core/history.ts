@@ -10,6 +10,9 @@ export interface EditCommand {
   mergeKey?: string;
 }
 
+/** Never on the stack, so a history saved "at" it is always dirty. */
+const UNSAVED: EditCommand = { label: "", do() {}, undo() {} };
+
 /** Undo/redo stack. */
 export class History {
   private undoStack: EditCommand[] = [];
@@ -97,6 +100,12 @@ export class History {
   markSaved(): void {
     this.savedAt = this.undoStack.at(-1) ?? null;
     this.lastPush = 0;
+    this.emit();
+  }
+
+  /** Marks the current state as not saved, e.g. after restoring unsaved changes. */
+  markUnsaved(): void {
+    this.savedAt = UNSAVED;
     this.emit();
   }
 

@@ -24,6 +24,8 @@ import {
   Transform2D,
   TriggerEnter,
   Velocity2D,
+  setActive,
+  setParent,
   frameAt,
   initPhysics,
   parsePrefab,
@@ -316,5 +318,82 @@ describe("behaviour hooks", () => {
     run(app, 60);
     expect(log).toContain(`hit:${ground}`);
     expect(log).toContain("after");
+  });
+});
+
+describe("inactive entities", () => {
+  it("scripts, timers and physics sleep while an entity or its parent is off", () => {
+    const log: string[] = [];
+    class Ticker extends Behaviour {
+      override onStart() {
+        log.push("start");
+        this.every(0.1, () => log.push("tick"));
+      }
+      override onUpdate() {
+        log.push("update");
+      }
+    }
+    const registry = new ScriptRegistry();
+    registry.load({ "ticker.ts": { Ticker } });
+    const app = new App().addPlugin(GamePlugins()).addPlugin(ScriptsPlugin(registry));
+    const w = app.world;
+    const parent = w.spawn([Transform2D]);
+    const e = w.spawn([Transform2D], [Scripts, { list: [{ script: "ticker.ts#Ticker", props: {} }] }]);
+    setParent(w, e, parent);
+    setActive(w, e, false);
+    run(app, 30);
+    // onStart waits until the entity is first switched on
+    expect(log).toEqual([]);
+
+    setActive(w, e, true);
+    run(app, 30);
+    expect(log[0]).toBe("start");
+    const ticks = log.filter((l) => l === "tick").length;
+    expect(ticks).toBeGreaterThan(2);
+
+    // switching off the parent also stops the child's script and its timers
+    setActive(w, parent, false);
+    run(app, 2);
+    log.length = 0;
+    run(app, 30);
+    expect(log).toEqual([]);
+  });
+
+  it("an inactive body stops falling and its collider is not hit", () => {
+    const app = game();
+    const w = app.world;
+    const box = w.spawn([Transform2D, { position: { x: 0, y: 100 } }], [RigidBody2D], [Collider2D, { size: { x: 20, y: 20 } }]);
+    run(app, 2);
+    setActive(w, box, false);
+    const y = w.store(Transform2D).position.y[box];
+    run(app, 30);
+    expect(w.store(Transform2D).position.y[box]).toBe(y);
+    const physics = w.resource(Physics);
+    expect(physics.overlapPoint({ x: 0, y })).toEqual([]);
+    expect(physics.raycast({ x: -100, y }, { x: 1, y: 0 }, 500)).toBeNull();
+
+    setActive(w, box, true);
+    run(app, 30);
+    expect(w.store(Transform2D).position.y[box]).toBeLessThan(y);
+  });
+
+  it("a character walks through an inactive wall", () => {
+    const app = game();
+    const w = app.world;
+    w.spawn([Transform2D, { position: { x: 0, y: -20 } }], [Collider2D, { size: { x: 1000, y: 20 } }]);
+    const wall = w.spawn([Transform2D, { position: { x: 60, y: 30 } }], [Collider2D, { size: { x: 20, y: 100 } }]);
+    const hero = w.spawn(
+      [Transform2D, { position: { x: 0, y: 10 } }],
+      [RigidBody2D, { type: "kinematic" }],
+      [CharacterController2D],
+      [Collider2D, { size: { x: 16, y: 16 } }],
+    );
+    setActive(w, wall, false);
+    const physics = w.resource(Physics);
+    for (let i = 0; i < 60; i++) {
+      physics.moveCharacter(hero, 3, 0);
+      app.update(1 / 60);
+    }
+    expect(w.store(Transform2D).position.x[hero]).toBeGreaterThan(150);
   });
 });

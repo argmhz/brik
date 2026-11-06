@@ -42,6 +42,11 @@ Eksemplerne er almindelige projektfiler, så du kan læse og rette alt.
 
 Alt kan fortrydes med Ctrl+Z. Ændringer under Play forsvinder, når du stopper.
 
+Ændringer, der ikke er gemt, lægges løbende i `.brik/recovery.json`. Lukkes
+editoren, eller genindlæses siden, før du har gemt, spørger Brik næste gang
+projektet åbnes, om ændringerne skal gendannes. Selve scenefilen røres først,
+når du gemmer.
+
 Panelerne kan flyttes: træk en fane hen på et andet område, eller højreklik
 fanen og vælg "Flyt til …". Fx kan Scene og Spil ligge ved siden af hinanden.
 Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
@@ -107,7 +112,7 @@ export class Player extends Behaviour {
 | `this.moveCharacter(dx, dy)` | Bevæger en `CharacterController2D` med kollisioner |
 | `this.playAnimation("hero_run")`, `this.playSound("coin")` | Animation og lyd |
 | `this.spawnPrefab("Coin", { position })`, `this.destroy(e)`, `this.find("Navn")` | Opretter, fjerner og finder entities |
-| `this.setActive(false, e)` | Skjuler en entity og dens børn (fx en beskedboks). Scripts og colliders kører videre |
+| `this.setActive(false, e)` | Slukker en entity og dens børn (fx en beskedboks): den skjules, dens scripts, timere og tweens holder pause, og dens colliders er ude af fysikken |
 | `this.tween(Transform2D, "position.y", 100, 0.5)`, `this.after(1, fn)`, `this.every(0.5, fn)` | Tweens og timere |
 | `this.emitParticles(20)` | Udsender partikler |
 | `this.loadScene("level2")` | Skifter scene |
@@ -239,7 +244,8 @@ den åbne editor. AI'en kan:
   palet), lave animationer af den og male tilemaps ud fra tekst (`paint_tiles`,
   `read_tiles`),
 - trykke Play, gå frem et antal frames med taster holdt nede (fx `ArrowRight`
-  og `Space`), læse konsollen og tage skærmbilleder af Scene- og
+  og `Space`), flytte musen, klikke på UI-knapper eller steder i verden
+  (`click`), læse konsollen og tage skærmbilleder af Scene- og
   Spil-visningen.
 
 Eksempelspillet `examples/mosehop` (åbn mappen i editoren) er bygget på
@@ -265,7 +271,9 @@ miljøvariablen `BRIK_MCP_PORT`, men editoren bruger altid 5181. Kun editoren se
 (localhost eller desktop-appen) må forbinde, ikke andre hjemmesider. Er AI'en
 forbundet, men skal ikke længere arbejde, så klik **AI** igen.
 
-Gem ofte (`save_scene`): genindlæses siden, er ændringer, der ikke er gemt, væk.
+Nye projekter får en `CLAUDE.md`, som forklarer projektets filer og Brik-API'et.
+Så kan en AI-klient også skrive scripts uden MCP-serveren.
+
 Ligger editoren i en baggrundsfane, kan browseren bremse den, så det tager
 længere tid at forbinde.
 

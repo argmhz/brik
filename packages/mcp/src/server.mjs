@@ -17,7 +17,7 @@ How to work:
 - Gravity and collisions: a falling object needs RigidBody2D (type "dynamic") plus Collider2D; static ground needs only Collider2D. Platformer characters use RigidBody2D "kinematic" + CharacterController2D + Collider2D and are moved with this.moveCharacter(dx, dy) in a script.
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
 - Art: draw_sprites makes pixel-art PNGs from text rows, create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
-- Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
+- Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space, or moving the mouse), click (UI buttons or points in the world), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
 - The scene is not saved automatically. Call save_scene when the user wants to keep the result.`;
 
 const bridge = new EditorBridge({ port: Number(process.env.BRIK_MCP_PORT) || 5181 });
@@ -249,6 +249,20 @@ tool(
     frames: z.number().int().min(1).max(600).optional(),
     hold: z.array(z.string()).optional().describe('Key codes held during all these frames, e.g. ["ArrowRight"]'),
     press: z.array(z.string()).optional().describe('Key codes pressed in the first frame and released after it, e.g. ["Space"]'),
+    mouse: z
+      .object({ entity: z.string().optional(), x: z.number().optional(), y: z.number().optional() })
+      .optional()
+      .describe('Moves the mouse first: { entity: "<id>" } aims at a UI element or an entity, { x, y } at a point in world units. Use with hold/press "Mouse0" to shoot or drag.'),
+  },
+);
+tool(
+  "click",
+  "Clicks in the running game: moves the mouse to a UI element (entity id, e.g. a UIButton) or a world point (x, y in world units), presses and releases the button, and runs 4 frames. Returns the button under the mouse and which UIButtons sent a click, so you can see if you hit.",
+  {
+    entity: z.string().optional().describe("A UI element or entity id to click on"),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    button: z.number().int().min(0).max(2).optional().describe("0 left (default), 1 middle, 2 right"),
   },
 );
 tool("stop", "Stops the game and restores the scene as it was before play.", {});

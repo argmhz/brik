@@ -7,6 +7,7 @@ import {
   TileMap,
   TileMapCollider,
   Time,
+  isActive,
   mergeTileRects,
   Transform2D,
   type Vec2,
@@ -135,8 +136,11 @@ export class Physics {
     const ray = new rapier.Ray({ x: origin.x / ppm, y: origin.y / ppm }, { x: dir.x / len, y: dir.y / len });
     const groups = opts.mask === undefined ? undefined : ((0xffff << 16) | (opts.mask & 0xffff)) >>> 0;
     const excl = opts.exclude === undefined ? undefined : this.colliders.get(opts.exclude)?.collider;
-    const hit = rw.castRayAndGetNormal(ray, maxDistance / ppm, true, undefined, groups, excl);
-    if (!hit) return null;
+    // nearest enabled hit: Rapier's queries don't skip disabled colliders
+    const hits: RAPIER.RayColliderIntersection[] = [];
+    rw.intersectionsWithRay(ray, maxDistance / ppm, true, (h) => (h.collider.isEnabled() && hits.push(h), true), undefined, groups, excl);
+    if (hits.length === 0) return null;
+    const hit = hits.reduce((a, b) => (b.timeOfImpact < a.timeOfImpact ? b : a));
     const entity = this.byHandle.get(hit.collider.handle);
     if (entity === undefined) return null;
     const d = hit.timeOfImpact;
@@ -155,7 +159,7 @@ export class Physics {
     const ppm = this.pixelsPerMeter;
     this.rw.intersectionsWithPoint({ x: p.x / ppm, y: p.y / ppm }, (c) => {
       const e = this.byHandle.get(c.handle);
-      if (e !== undefined) out.push(e);
+      if (e !== undefined && c.isEnabled()) out.push(e);
       return true;
     });
     return out;
@@ -171,6 +175,7 @@ export class Physics {
     if (!this.characters.has(e) || !this.colliders.has(e)) this.sync();
     const ch = this.characters.get(e);
     const col = this.colliders.get(e);
+    if (!isActive(world, e)) return { x: 0, y: 0 };
     if (!ch || !col || !this.rw) {
       T.position.x[e] += dx;
       T.position.y[e] += dy;
@@ -360,6 +365,22 @@ export class Physics {
       if (CC.stepHeight[e] > 0) c.enableAutostep(CC.stepHeight[e] / ppm, 0.1, false);
       if (CC.snapToGround[e] > 0) c.enableSnapToGround(CC.snapToGround[e] / ppm);
       this.characters.set(e, { ref: world.ref(e), controller: c, sig });
+    }
+
+    // inactive entities (setActive false, or a parent switched off) leave the simulation
+    for (const [e, b] of this.bodies) {
+      const on = isActive(world, e);
+      if (b.body.isEnabled() !== on) b.body.setEnabled(on);
+    }
+    for (const [e, c] of this.colliders) {
+      const on = isActive(world, e);
+      if (c.collider.isEnabled() !== on) c.collider.setEnabled(on);
+    }
+    for (const [e, t] of this.tilemaps) {
+      const on = isActive(world, e);
+      if (t.body.isEnabled() === on) continue;
+      t.body.setEnabled(on);
+      for (const c of t.colliders) c.setEnabled(on);
     }
     return true;
   }

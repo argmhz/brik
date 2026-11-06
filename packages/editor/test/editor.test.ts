@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   Name,
   Sprite,
@@ -13,6 +14,8 @@ import {
   Editor,
   History,
   MemoryFS,
+  PROJECT_AI_GUIDE,
+  RECOVERY_PATH,
   createProject,
   exportZip,
   importZip,
@@ -203,5 +206,65 @@ describe("Editor", () => {
     // a fresh editor on the same files gets the same guid
     const again = await Editor.open(fs, { decode: fakeDecode });
     expect(again.db.textures.get("assets/hero.png")!.meta.guid).toBe(entry.meta.guid);
+  });
+});
+
+describe("autosave and recovery", () => {
+  it("keeps unsaved changes in .brik and offers them when the project is opened again", async () => {
+    const { fs, editor } = await newEditor();
+    const scene = editor.scenePath;
+    const before = await fs.readText(scene!);
+    editor.createEntity("sprite", { name: "Unsaved" });
+    await editor.autosave.flush();
+    // the scene file itself is untouched
+    expect(await fs.readText(scene!)).toBe(before);
+    expect(await fs.exists(RECOVERY_PATH)).toBe(true);
+    editor.dispose();
+
+    // "the page was reloaded"
+    const again = await Editor.open(fs, { decode: fakeDecode });
+    expect(again.recovery?.scenePath).toBe(scene);
+    // nothing is thrown away before the user has chosen
+    await again.autosave.flush();
+    expect(await fs.exists(RECOVERY_PATH)).toBe(true);
+    again.restoreRecovery();
+    const names = () => serializeScene(again.world).entities.map((e) => e.components.Name?.value);
+    expect(names()).toContain("Unsaved");
+    expect(again.dirty).toBe(true);
+    expect(again.scenePath).toBe(scene);
+
+    // saving removes the copy
+    await again.saveScene();
+    await again.autosave.flush();
+    expect(again.dirty).toBe(false);
+    expect(await fs.exists(RECOVERY_PATH)).toBe(false);
+  });
+
+  it("discarding removes the copy, and undoing back to the saved state does too", async () => {
+    const { fs, editor } = await newEditor();
+    editor.createEntity("empty", { name: "X" });
+    await editor.autosave.flush();
+    editor.dispose();
+    const again = await Editor.open(fs, { decode: fakeDecode });
+    await again.discardRecovery();
+    expect(again.recovery).toBeNull();
+    expect(await fs.exists(RECOVERY_PATH)).toBe(false);
+
+    again.createEntity("empty", { name: "Y" });
+    await again.autosave.flush();
+    expect(await fs.exists(RECOVERY_PATH)).toBe(true);
+    again.history.undo();
+    await again.autosave.flush();
+    expect(await fs.exists(RECOVERY_PATH)).toBe(false);
+  });
+});
+
+describe("CLAUDE.md", () => {
+  it("is written into new projects, and Mosehop's copy matches it", async () => {
+    const { fs } = await newEditor();
+    expect(await fs.readText("CLAUDE.md")).toBe(PROJECT_AI_GUIDE);
+    expect(PROJECT_AI_GUIDE).toMatch(/moveCharacter/);
+    const mosehop = readFileSync(new URL("../../../examples/mosehop/CLAUDE.md", import.meta.url), "utf8");
+    expect(mosehop).toBe(PROJECT_AI_GUIDE);
   });
 });

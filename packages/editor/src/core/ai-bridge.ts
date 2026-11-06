@@ -3,7 +3,11 @@ import {
   type Entity,
   type Field,
   BehaviourRuntime,
+  Camera2D,
+  GlobalTransform2D,
   Input,
+  UIClick,
+  UILayout,
   Name,
   PrefabInstance,
   SceneId,
@@ -20,6 +24,7 @@ import {
   componentByName,
   exposedFields,
   findBySceneId,
+  mat3,
   parentOf,
   rootEntities,
   scriptDisplayName,
@@ -204,6 +209,55 @@ function keyList(value: unknown, what: string): string[] {
     }
   }
   return value as string[];
+}
+
+/** Screen size the UI is laid out for when the Game view hasn't drawn yet (matches the editor's game view). */
+const FALLBACK_SCREEN = { w: 960, h: 540 };
+
+/**
+ * Where to put the mouse, in CSS pixels with y down (what Input.pointer uses).
+ * `{ entity }` aims at the middle of a UI element, or at an entity's position
+ * in the world; `{ x, y }` is a point in world units (y up).
+ */
+function pointerTarget(editor: Editor, target: unknown): { x: number; y: number; ui: Entity } {
+  const world = editor.world;
+  const t = target as { entity?: unknown; x?: unknown; y?: unknown } | null;
+  if (!t || typeof t !== "object") {
+    throw new BridgeError('`mouse` is { "entity": "<id>" } (a UI element or an entity) or { "x": 0, "y": 0 } in world units');
+  }
+  const layout = world.tryResource(UILayout) ?? world.insertResource(new UILayout());
+  // lay the UI out now: the Game view may not have drawn (hidden tab, background window)
+  layout.update(world, layout.screenW || FALLBACK_SCREEN.w, layout.screenH || FALLBACK_SCREEN.h);
+  const W = layout.screenW;
+  const H = layout.screenH;
+  let wx: number;
+  let wy: number;
+  if (t.entity !== undefined) {
+    const e = need(editor, t.entity);
+    const el = layout.byEntity.get(e);
+    if (el) return { x: el.rect.x + el.rect.w / 2, y: H - (el.rect.y + el.rect.h / 2), ui: e };
+    if (!world.has(e, GlobalTransform2D)) throw new BridgeError("That entity is neither a visible UI element nor placed in the world");
+    const g = world.store(GlobalTransform2D).matrix;
+    wx = g.tx[e];
+    wy = g.ty[e];
+  } else if (typeof t.x === "number" && typeof t.y === "number") {
+    wx = t.x;
+    wy = t.y;
+  } else {
+    throw new BridgeError('`mouse` needs "entity", or both "x" and "y"');
+  }
+  // world -> screen through the main camera (the lowest priority, like Behaviour.pointerWorld)
+  const C = world.store(Camera2D);
+  const cam = world
+    .query([Camera2D, GlobalTransform2D])
+    .toArray()
+    .sort((a, b) => C.priority[a] - C.priority[b])[0];
+  if (cam === undefined) return { x: wx, y: wy, ui: -1 };
+  const g = world.store(GlobalTransform2D).matrix;
+  const inv = mat3.invert({ a: g.a[cam], b: g.b[cam], c: g.c[cam], d: g.d[cam], tx: g.tx[cam], ty: g.ty[cam] });
+  const local = inv ? mat3.transformPoint(inv, { x: wx, y: wy }) : { x: wx, y: wy };
+  const zoom = C.zoom[cam] || 1;
+  return { x: W / 2 + local.x * zoom, y: H / 2 - local.y * zoom, ui: -1 };
 }
 
 function projectPath(path: unknown): string {
@@ -725,13 +779,17 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { mode: editor.play.mode };
     },
 
-    step: ({ frames = 1, hold = [], press = [] }) => {
+    step: ({ frames = 1, hold = [], press = [], mouse }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const held = keyList(hold, "hold");
       const tapped = keyList(press, "press");
       const input = world.tryResource(Input);
-      if ((held.length || tapped.length) && !input) throw new BridgeError("This game has no input");
+      if ((held.length || tapped.length || mouse !== undefined) && !input) throw new BridgeError("This game has no input");
       editor.play.pause();
+      if (mouse !== undefined) {
+        const p = pointerTarget(editor, mouse);
+        input!.injectPointer(p.x, p.y);
+      }
       // keys stay down between calls while they are listed in `hold`, so holding isn't a new press
       if (input) {
         for (const k of heldKeys) if (!held.includes(k)) input.inject("up", k);
@@ -745,6 +803,34 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         if (i === 0) for (const k of tapped) if (!held.includes(k)) input!.inject("up", k);
       }
       return { mode: editor.play.mode, frames: n };
+    },
+
+    click: ({ entity, x, y, button = 0 }) => {
+      if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
+      const input = world.tryResource(Input);
+      if (!input) throw new BridgeError("This game has no input");
+      if (![0, 1, 2].includes(Number(button))) throw new BridgeError("`button` is 0 (left), 1 (middle) or 2 (right)");
+      const code = `Mouse${Number(button)}`;
+      editor.play.pause();
+      const p = pointerTarget(editor, entity !== undefined ? { entity } : { x, y });
+      const layout = world.resource(UILayout);
+      const hitButton = layout.buttonAt(world, p.x, p.y);
+      const clicks = world.events(UIClick).reader();
+      input.injectPointer(p.x, p.y);
+      // move there, press, release, and let the game react
+      editor.play.step();
+      input.inject("down", code);
+      editor.play.step();
+      input.inject("up", code);
+      editor.play.step();
+      editor.play.step();
+      const clicked = clicks.read().map((ev) => world.store(SceneId).id[ev.entity] ?? null);
+      return {
+        screen: { x: Math.round(p.x), y: Math.round(p.y) },
+        buttonUnderMouse: hitButton >= 0 ? (world.store(SceneId).id[hitButton] ?? null) : null,
+        clickedButtons: clicked,
+        frames: 4,
+      };
     },
 
     stop: () => {

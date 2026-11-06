@@ -228,4 +228,45 @@ export class Walker extends Behaviour {
     expect((await live()).jumps).toBe(1);
     await h.stop({});
   });
+
+  it("clicks UI buttons and aims the mouse at points in the world", async () => {
+    const { editor, h } = await setup();
+    const res = (await h.write_script({
+      path: "scripts/Clicky.ts",
+      content: `import { Behaviour, expose } from "brik";
+export class Clicky extends Behaviour {
+  @expose clicks = 0;
+  @expose aimX = 0;
+  @expose aimY = 0;
+  onClick() { this.clicks++; }
+  onUpdate() {
+    const p = this.pointerWorld();
+    this.aimX = Math.round(p.x);
+    this.aimY = Math.round(p.y);
+  }
+}`,
+    })) as { status: string };
+    expect(res.status).toBe("ok");
+    const { id } = (await h.create_entity({ kind: "ui-button", name: "Start" })) as { id: string };
+    await h.attach_script({ id, script: "Clicky" });
+    const live = async () =>
+      ((await h.inspect_entity({ id })) as { scripts: { live: { clicks: number; aimX: number; aimY: number } }[] }).scripts[0].live;
+
+    await h.play({});
+    // no Game view has drawn in a test, so the bridge lays out the UI itself
+    const r = (await h.click({ entity: id })) as { buttonUnderMouse: string | null; clickedButtons: string[] };
+    expect(r.buttonUnderMouse).toBe(id);
+    expect(r.clickedButtons).toEqual([id]);
+    expect((await live()).clicks).toBe(1);
+
+    // a point in the world: the script sees the same point through the camera
+    await h.step({ frames: 2, mouse: { x: 120, y: -40 } });
+    expect(await live()).toMatchObject({ aimX: 120, aimY: -40 });
+    // clicking empty space hits no button
+    const miss = (await h.click({ x: 2000, y: 2000 })) as { buttonUnderMouse: string | null; clickedButtons: string[] };
+    expect(miss).toMatchObject({ buttonUnderMouse: null, clickedButtons: [] });
+    expect((await live()).clicks).toBe(1);
+    await expect(async () => h.step({ mouse: { x: 1 } })).rejects.toThrow(/entity/);
+    await h.stop({});
+  });
 });

@@ -5,7 +5,7 @@ import type { Entity } from "../ecs/entity";
 import { defineEvent } from "../ecs/events";
 import { t, withMeta } from "../ecs/schema";
 import type { World } from "../ecs/world";
-import { destroyRecursive } from "../transform/components";
+import { destroyRecursive, isActive } from "../transform/components";
 import { EASINGS, type Easing, easings } from "./easing";
 
 // ------------------------------------------------------------------ Lifetime
@@ -207,6 +207,10 @@ export class Tweens {
     return e === -1 || this.world.deref(gen) === e;
   }
 
+  private on(e: Entity | -1): boolean {
+    return e === -1 || isActive(this.world, e);
+  }
+
   /** @internal Advances everything by `dt`. */
   update(dt: number): void {
     this.now += dt;
@@ -215,6 +219,11 @@ export class Tweens {
     for (let i = 0; i < tweens.length; i++) {
       const tw = tweens[i];
       if (tw.cancelled || !this.alive(tw.e, tw.gen)) continue;
+      // paused while its entity is switched off
+      if (!this.on(tw.e)) {
+        tweens[w++] = tw;
+        continue;
+      }
       tw.elapsed += dt;
       if (tw.elapsed < 0) {
         tweens[w++] = tw;
@@ -234,6 +243,11 @@ export class Tweens {
     for (let i = 0; i < n; i++) {
       const s = timers[i];
       if (s.cancelled || !this.alive(s.e, s.gen)) continue;
+      if (!this.on(s.e)) {
+        s.at += dt;
+        timers[w++] = s;
+        continue;
+      }
       if (this.now >= s.at) {
         s.fn();
         if (s.every > 0 && !s.cancelled) {

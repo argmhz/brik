@@ -32,7 +32,7 @@ import {
 import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
 import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, playAnimation } from "@brik/render";
-import { GlobalTransform2D, mat3, setActive } from "@brik/core";
+import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
 import { Scenes } from "./scenes";
@@ -483,6 +483,8 @@ export class BehaviourRuntime {
 
   update(dt: number): void {
     this.each((s) => {
+      // scripts on inactive entities sleep; onStart waits until the entity is first on
+      if (!isActive(s.inst.world, s.inst.entity)) return;
       if (!s.started) {
         s.started = true;
         if (s.inst.onStart) call(s, "onStart");
@@ -493,7 +495,7 @@ export class BehaviourRuntime {
 
   fixedUpdate(dt: number): void {
     this.each((s) => {
-      if (s.started && s.inst.onFixedUpdate) call(s, "onFixedUpdate", dt);
+      if (s.started && s.inst.onFixedUpdate && isActive(s.inst.world, s.inst.entity)) call(s, "onFixedUpdate", dt);
     });
   }
 
@@ -506,7 +508,8 @@ export class BehaviourRuntime {
   /** Calls a hook on every started Behaviour of an entity. */
   dispatch(e: Entity, method: HookName, arg: unknown): void {
     const slots = this.slots.get(e);
-    if (!slots) return;
+    const world = slots?.find(Boolean)?.inst.world;
+    if (!slots || !world || !isActive(world, e)) return;
     for (const s of slots) if (s?.started && s.inst[method]) call(s, method, arg);
   }
 
