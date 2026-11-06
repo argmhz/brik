@@ -1,0 +1,2414 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "id": "68dda07cf5529bf2",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1200,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "3537317104750db1",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1144,
+            "y": 88
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "70e82c2298e8f1b5",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1016,
+            "y": 120
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "ef142ba21febeb91",
+      "components": {
+        "Name": {
+          "value": "UI"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "UICanvas": {
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 960,
+            "y": 540
+          },
+          "order": 0
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Hud.ts#Hud",
+              "props": {
+                "level": "Bane 2"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "924f0d1593338bc1",
+      "components": {
+        "Name": {
+          "value": "ScorePanel"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 0,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 1
+          },
+          "position": {
+            "x": 16,
+            "y": -16
+          },
+          "size": {
+            "x": 240,
+            "y": 56
+          }
+        },
+        "UIImage": {
+          "sprite": {
+            "texture": "cde1b3e8-9599-4898-aaf4-60f1215c2199",
+            "id": "panel"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "36059b7830a9a26b",
+      "components": {
+        "Name": {
+          "value": "Score"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "924f0d1593338bc1"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIText": {
+          "text": "Mønter: 0",
+          "size": 24,
+          "color": {
+            "r": 1,
+            "g": 0.92,
+            "b": 0.5,
+            "a": 1
+          },
+          "font": "sans-serif",
+          "align": "center",
+          "bold": true,
+          "wrap": true
+        }
+      }
+    },
+    {
+      "id": "0c9dffc58902ab32",
+      "components": {
+        "Name": {
+          "value": "RestartButton"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 1,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 0
+          },
+          "pivot": {
+            "x": 1,
+            "y": 0
+          },
+          "position": {
+            "x": -16,
+            "y": 16
+          },
+          "size": {
+            "x": 190,
+            "y": 52
+          }
+        },
+        "UIImage": {
+          "sprite": {
+            "texture": "cde1b3e8-9599-4898-aaf4-60f1215c2199",
+            "id": "panel"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        },
+        "UIButton": {
+          "interactable": true,
+          "normal": {
+            "r": 0.75,
+            "g": 0.85,
+            "b": 1,
+            "a": 1
+          },
+          "hover": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "pressed": {
+            "r": 0.55,
+            "g": 0.6,
+            "b": 0.75,
+            "a": 1
+          },
+          "disabled": {
+            "r": 0.6,
+            "g": 0.6,
+            "b": 0.6,
+            "a": 0.6
+          },
+          "hovered": false,
+          "down": false
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/RestartButton.ts#RestartButton",
+              "props": {}
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4b093b367154f239",
+      "components": {
+        "Name": {
+          "value": "Label"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "0c9dffc58902ab32"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIText": {
+          "text": "Start forfra",
+          "size": 22,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "font": "sans-serif",
+          "align": "center",
+          "bold": false,
+          "wrap": true
+        }
+      }
+    },
+    {
+      "id": "05dc345c2cf534b8",
+      "components": {
+        "Name": {
+          "value": "Heart1"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 0,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 1
+          },
+          "position": {
+            "x": 16,
+            "y": -80
+          },
+          "size": {
+            "x": 40,
+            "y": 40
+          }
+        },
+        "UIImage": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "heart"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "343c8b080071ed24",
+      "components": {
+        "Name": {
+          "value": "Heart2"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 0,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 1
+          },
+          "position": {
+            "x": 60,
+            "y": -80
+          },
+          "size": {
+            "x": 40,
+            "y": 40
+          }
+        },
+        "UIImage": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "heart"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "a0f1ca4354b560a4",
+      "components": {
+        "Name": {
+          "value": "Heart3"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 0,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 1
+          },
+          "position": {
+            "x": 104,
+            "y": -80
+          },
+          "size": {
+            "x": 40,
+            "y": 40
+          }
+        },
+        "UIImage": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "heart"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "736f49c8d53e91a5",
+      "components": {
+        "Name": {
+          "value": "LevelName"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0.5,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 0.5,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 1
+          },
+          "position": {
+            "x": 0,
+            "y": -16
+          },
+          "size": {
+            "x": 400,
+            "y": 40
+          }
+        },
+        "UIText": {
+          "text": "Bane 1",
+          "size": 28,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "font": "sans-serif",
+          "align": "center",
+          "bold": true,
+          "wrap": true
+        }
+      }
+    },
+    {
+      "id": "36a59e419c0a8b73",
+      "components": {
+        "Name": {
+          "value": "MessageBox"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ef142ba21febeb91"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "anchorMax": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 40
+          },
+          "size": {
+            "x": 560,
+            "y": 180
+          }
+        },
+        "UIImage": {
+          "sprite": {
+            "texture": "cde1b3e8-9599-4898-aaf4-60f1215c2199",
+            "id": "panel"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "d693d2e5d8104886",
+      "components": {
+        "Name": {
+          "value": "Message"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "36a59e419c0a8b73"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIText": {
+          "text": "",
+          "size": 34,
+          "color": {
+            "r": 1,
+            "g": 0.92,
+            "b": 0.5,
+            "a": 1
+          },
+          "font": "sans-serif",
+          "align": "center",
+          "bold": true,
+          "wrap": true
+        }
+      }
+    },
+    {
+      "id": "b27a77aa56c94418",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 760,
+            "y": 56
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "efdf00a4154040ae",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 600,
+            "y": 104
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "a8f2f7dcd5c8cdee",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 472,
+            "y": 56
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "d4ea6f4e16971d70",
+      "components": {
+        "Name": {
+          "value": "Level"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "TileMap": {
+          "tileset": "20c45d70-73c6-4fa1-b048-a6648173b5bb",
+          "tileSize": {
+            "x": 16,
+            "y": 16
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "tiles": {
+            "-9,9": "cell_2",
+            "80,9": "cell_2",
+            "-9,8": "cell_2",
+            "80,8": "cell_2",
+            "-9,7": "cell_2",
+            "80,7": "cell_2",
+            "-9,6": "cell_2",
+            "80,6": "cell_2",
+            "-9,5": "cell_2",
+            "61,5": "cell_3",
+            "62,5": "cell_3",
+            "63,5": "cell_3",
+            "64,5": "cell_3",
+            "65,5": "cell_3",
+            "66,5": "cell_3",
+            "80,5": "cell_2",
+            "-9,4": "cell_2",
+            "37,4": "cell_2",
+            "80,4": "cell_2",
+            "-9,3": "cell_2",
+            "24,3": "cell_3",
+            "25,3": "cell_3",
+            "26,3": "cell_3",
+            "36,3": "cell_2",
+            "37,3": "cell_2",
+            "38,3": "cell_2",
+            "70,3": "cell_3",
+            "71,3": "cell_3",
+            "72,3": "cell_3",
+            "73,3": "cell_3",
+            "80,3": "cell_2",
+            "-9,2": "cell_2",
+            "14,2": "cell_3",
+            "15,2": "cell_3",
+            "16,2": "cell_3",
+            "56,2": "cell_0",
+            "57,2": "cell_0",
+            "58,2": "cell_0",
+            "59,2": "cell_0",
+            "60,2": "cell_0",
+            "80,2": "cell_2",
+            "-9,1": "cell_2",
+            "19,1": "cell_3",
+            "20,1": "cell_3",
+            "21,1": "cell_3",
+            "28,1": "cell_3",
+            "29,1": "cell_3",
+            "30,1": "cell_3",
+            "45,1": "cell_0",
+            "46,1": "cell_0",
+            "47,1": "cell_0",
+            "48,1": "cell_0",
+            "49,1": "cell_0",
+            "50,1": "cell_0",
+            "56,1": "cell_1",
+            "57,1": "cell_1",
+            "58,1": "cell_1",
+            "59,1": "cell_1",
+            "60,1": "cell_1",
+            "80,1": "cell_2",
+            "-9,0": "cell_2",
+            "9,0": "cell_3",
+            "10,0": "cell_3",
+            "11,0": "cell_3",
+            "45,0": "cell_1",
+            "46,0": "cell_1",
+            "47,0": "cell_1",
+            "48,0": "cell_1",
+            "49,0": "cell_1",
+            "50,0": "cell_1",
+            "56,0": "cell_1",
+            "57,0": "cell_1",
+            "58,0": "cell_1",
+            "59,0": "cell_1",
+            "60,0": "cell_1",
+            "80,0": "cell_2",
+            "-9,-1": "cell_2",
+            "-8,-1": "cell_0",
+            "-7,-1": "cell_0",
+            "-6,-1": "cell_0",
+            "-5,-1": "cell_0",
+            "-4,-1": "cell_0",
+            "-3,-1": "cell_0",
+            "-2,-1": "cell_0",
+            "-1,-1": "cell_0",
+            "0,-1": "cell_0",
+            "1,-1": "cell_0",
+            "2,-1": "cell_0",
+            "3,-1": "cell_0",
+            "4,-1": "cell_0",
+            "5,-1": "cell_0",
+            "6,-1": "cell_0",
+            "31,-1": "cell_0",
+            "32,-1": "cell_0",
+            "33,-1": "cell_0",
+            "34,-1": "cell_0",
+            "35,-1": "cell_0",
+            "36,-1": "cell_0",
+            "37,-1": "cell_0",
+            "38,-1": "cell_0",
+            "39,-1": "cell_0",
+            "40,-1": "cell_0",
+            "41,-1": "cell_0",
+            "42,-1": "cell_0",
+            "43,-1": "cell_0",
+            "44,-1": "cell_0",
+            "45,-1": "cell_1",
+            "46,-1": "cell_1",
+            "47,-1": "cell_1",
+            "48,-1": "cell_1",
+            "49,-1": "cell_1",
+            "50,-1": "cell_1",
+            "51,-1": "cell_0",
+            "52,-1": "cell_0",
+            "53,-1": "cell_0",
+            "54,-1": "cell_0",
+            "55,-1": "cell_0",
+            "56,-1": "cell_1",
+            "57,-1": "cell_1",
+            "58,-1": "cell_1",
+            "59,-1": "cell_1",
+            "60,-1": "cell_1",
+            "67,-1": "cell_0",
+            "68,-1": "cell_0",
+            "69,-1": "cell_0",
+            "70,-1": "cell_0",
+            "71,-1": "cell_0",
+            "72,-1": "cell_0",
+            "73,-1": "cell_0",
+            "74,-1": "cell_0",
+            "75,-1": "cell_0",
+            "76,-1": "cell_0",
+            "77,-1": "cell_0",
+            "78,-1": "cell_0",
+            "79,-1": "cell_0",
+            "80,-1": "cell_2",
+            "-9,-2": "cell_2",
+            "-8,-2": "cell_1",
+            "-7,-2": "cell_1",
+            "-6,-2": "cell_1",
+            "-5,-2": "cell_1",
+            "-4,-2": "cell_1",
+            "-3,-2": "cell_1",
+            "-2,-2": "cell_1",
+            "-1,-2": "cell_1",
+            "0,-2": "cell_1",
+            "1,-2": "cell_1",
+            "2,-2": "cell_1",
+            "3,-2": "cell_1",
+            "4,-2": "cell_1",
+            "5,-2": "cell_1",
+            "6,-2": "cell_1",
+            "31,-2": "cell_1",
+            "32,-2": "cell_1",
+            "33,-2": "cell_1",
+            "34,-2": "cell_1",
+            "35,-2": "cell_1",
+            "36,-2": "cell_1",
+            "37,-2": "cell_1",
+            "38,-2": "cell_1",
+            "39,-2": "cell_1",
+            "40,-2": "cell_1",
+            "41,-2": "cell_1",
+            "42,-2": "cell_1",
+            "43,-2": "cell_1",
+            "44,-2": "cell_1",
+            "45,-2": "cell_1",
+            "46,-2": "cell_1",
+            "47,-2": "cell_1",
+            "48,-2": "cell_1",
+            "49,-2": "cell_1",
+            "50,-2": "cell_1",
+            "51,-2": "cell_1",
+            "52,-2": "cell_1",
+            "53,-2": "cell_1",
+            "54,-2": "cell_1",
+            "55,-2": "cell_1",
+            "56,-2": "cell_1",
+            "57,-2": "cell_1",
+            "58,-2": "cell_1",
+            "59,-2": "cell_1",
+            "60,-2": "cell_1",
+            "67,-2": "cell_1",
+            "68,-2": "cell_1",
+            "69,-2": "cell_1",
+            "70,-2": "cell_1",
+            "71,-2": "cell_1",
+            "72,-2": "cell_1",
+            "73,-2": "cell_1",
+            "74,-2": "cell_1",
+            "75,-2": "cell_1",
+            "76,-2": "cell_1",
+            "77,-2": "cell_1",
+            "78,-2": "cell_1",
+            "79,-2": "cell_1",
+            "80,-2": "cell_2",
+            "-9,-3": "cell_2",
+            "-8,-3": "cell_1",
+            "-7,-3": "cell_1",
+            "-6,-3": "cell_1",
+            "-5,-3": "cell_1",
+            "-4,-3": "cell_1",
+            "-3,-3": "cell_1",
+            "-2,-3": "cell_1",
+            "-1,-3": "cell_1",
+            "0,-3": "cell_1",
+            "1,-3": "cell_1",
+            "2,-3": "cell_1",
+            "3,-3": "cell_1",
+            "4,-3": "cell_1",
+            "5,-3": "cell_1",
+            "6,-3": "cell_1",
+            "31,-3": "cell_1",
+            "32,-3": "cell_1",
+            "33,-3": "cell_1",
+            "34,-3": "cell_1",
+            "35,-3": "cell_1",
+            "36,-3": "cell_1",
+            "37,-3": "cell_1",
+            "38,-3": "cell_1",
+            "39,-3": "cell_1",
+            "40,-3": "cell_1",
+            "41,-3": "cell_1",
+            "42,-3": "cell_1",
+            "43,-3": "cell_1",
+            "44,-3": "cell_1",
+            "45,-3": "cell_1",
+            "46,-3": "cell_1",
+            "47,-3": "cell_1",
+            "48,-3": "cell_1",
+            "49,-3": "cell_1",
+            "50,-3": "cell_1",
+            "51,-3": "cell_1",
+            "52,-3": "cell_1",
+            "53,-3": "cell_1",
+            "54,-3": "cell_1",
+            "55,-3": "cell_1",
+            "56,-3": "cell_1",
+            "57,-3": "cell_1",
+            "58,-3": "cell_1",
+            "59,-3": "cell_1",
+            "60,-3": "cell_1",
+            "67,-3": "cell_1",
+            "68,-3": "cell_1",
+            "69,-3": "cell_1",
+            "70,-3": "cell_1",
+            "71,-3": "cell_1",
+            "72,-3": "cell_1",
+            "73,-3": "cell_1",
+            "74,-3": "cell_1",
+            "75,-3": "cell_1",
+            "76,-3": "cell_1",
+            "77,-3": "cell_1",
+            "78,-3": "cell_1",
+            "79,-3": "cell_1",
+            "80,-3": "cell_2"
+          },
+          "revision": 0
+        },
+        "TileMapCollider": {
+          "friction": 0.5,
+          "isTrigger": false
+        }
+      }
+    },
+    {
+      "id": "702cba06b469fd45",
+      "components": {
+        "Name": {
+          "value": "Main Camera"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 40
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Camera2D": {
+          "zoom": 3,
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1
+          },
+          "clearColor": {
+            "r": 0.33,
+            "g": 0.27,
+            "b": 0.52,
+            "a": 1
+          },
+          "clear": true,
+          "priority": 0
+        },
+        "CameraFollow2D": {
+          "target": "dc3a8b3c7c978380",
+          "offset": {
+            "x": 0,
+            "y": 20
+          },
+          "smoothing": 0.12,
+          "deadzone": {
+            "x": 16,
+            "y": 10
+          },
+          "useBounds": true,
+          "bounds": {
+            "x": -40,
+            "y": 30,
+            "w": 1280,
+            "h": 120
+          }
+        },
+        "AudioListener": {}
+      }
+    },
+    {
+      "id": "2eb255f21a0b452d",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 408,
+            "y": 88
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "42eee32de7ad96a6",
+      "components": {
+        "Name": {
+          "value": "Spikes"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 776,
+            "y": 40
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "hazard"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "spikes"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 6
+          },
+          "offset": {
+            "x": 0,
+            "y": -4
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "7601a17e-2a2e-4988-bb37-97324de7bf90",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "8d2b27b1046e94dc",
+      "components": {
+        "Name": {
+          "value": "Slime"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1100,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "enemy"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "de02ec33-e54d-4432-aa49-8fd012eb805c",
+            "id": "slime_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 9
+          },
+          "offset": {
+            "x": 0,
+            "y": -2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "caecbe88-b37d-446e-b0be-6e1f789894bf",
+          "overrides": [
+            "9435abed1e172da7:Scripts.list"
+          ]
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Slime.ts#Slime",
+              "props": {
+                "distance": 96,
+                "speed": 36
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2eb2eb506e92470e",
+      "components": {
+        "Name": {
+          "value": "Slime"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 840,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "enemy"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "de02ec33-e54d-4432-aa49-8fd012eb805c",
+            "id": "slime_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 9
+          },
+          "offset": {
+            "x": 0,
+            "y": -2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "caecbe88-b37d-446e-b0be-6e1f789894bf",
+          "overrides": [
+            "9435abed1e172da7:Scripts.list"
+          ]
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Slime.ts#Slime",
+              "props": {
+                "distance": 32,
+                "speed": 36
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "f3ad8ed210505e38",
+      "components": {
+        "Name": {
+          "value": "Slime"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 640,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "enemy"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "de02ec33-e54d-4432-aa49-8fd012eb805c",
+            "id": "slime_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 9
+          },
+          "offset": {
+            "x": 0,
+            "y": -2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "caecbe88-b37d-446e-b0be-6e1f789894bf",
+          "overrides": [
+            "9435abed1e172da7:Scripts.list"
+          ]
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Slime.ts#Slime",
+              "props": {
+                "distance": 64,
+                "speed": 36
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e16c7353e055e6eb",
+      "components": {
+        "Name": {
+          "value": "Spikes"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1184,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "hazard"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "spikes"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 6
+          },
+          "offset": {
+            "x": 0,
+            "y": -4
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "7601a17e-2a2e-4988-bb37-97324de7bf90",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "2756628f99b52df2",
+      "components": {
+        "Name": {
+          "value": "Spikes"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1168,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "hazard"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "spikes"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 6
+          },
+          "offset": {
+            "x": 0,
+            "y": -4
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "7601a17e-2a2e-4988-bb37-97324de7bf90",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "7b1dfa3de1388e3b",
+      "components": {
+        "Name": {
+          "value": "Spikes"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 792,
+            "y": 40
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "hazard"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "spikes"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 6
+          },
+          "offset": {
+            "x": 0,
+            "y": -4
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "7601a17e-2a2e-4988-bb37-97324de7bf90",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "9801148f4e0956eb",
+      "components": {
+        "Name": {
+          "value": "Goal"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1256,
+            "y": 16
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 2,
+            "y": 2
+          }
+        },
+        "Tags": {
+          "list": [
+            "goal"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "flag"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 8,
+            "y": 16
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        }
+      }
+    },
+    {
+      "id": "dc3a8b3c7c978380",
+      "components": {
+        "Name": {
+          "value": "Player"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 24
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "f84ce98f-303a-462f-b833-54a4ffd4b67c",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 1,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "4a4d437e-78db-4e20-b58c-e4c41bf35597",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "RigidBody2D": {
+          "type": "kinematic",
+          "mass": 0,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "fixedRotation": false,
+          "ccd": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 10,
+            "y": 16
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": false
+        },
+        "CharacterController2D": {
+          "slopeLimit": 0.7853982,
+          "stepHeight": 0,
+          "snapToGround": 4,
+          "skin": 0.5,
+          "grounded": false
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Player.ts#Player",
+              "props": {
+                "nextScene": ""
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "94dc1aa0b03cc4a0",
+      "components": {
+        "Name": {
+          "value": "Hint"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 70
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Text2D": {
+          "text": "Bane 2: Skumringsmosen\nPas på hullet!",
+          "size": 8,
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.9
+          },
+          "font": "sans-serif",
+          "align": "center",
+          "bold": false,
+          "maxWidth": 0,
+          "lineHeight": 1.2
+        }
+      }
+    },
+    {
+      "id": "de8d93bd329343f7",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 328,
+            "y": 56
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "409c2954ceeb5a43",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 248,
+            "y": 72
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "5ceb3ac1653b54da",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 168,
+            "y": 40
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "60173258-c504-4f33-911d-2b8a945344bd",
+          "overrides": []
+        }
+      }
+    },
+    {
+      "id": "c22abf9572c86162",
+      "components": {
+        "Name": {
+          "value": "Slime"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 520,
+            "y": 8
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "enemy"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "de02ec33-e54d-4432-aa49-8fd012eb805c",
+            "id": "slime_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 9
+          },
+          "offset": {
+            "x": 0,
+            "y": -2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "caecbe88-b37d-446e-b0be-6e1f789894bf",
+          "overrides": [
+            "9435abed1e172da7:Scripts.list"
+          ]
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Slime.ts#Slime",
+              "props": {
+                "distance": 48,
+                "speed": 36
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

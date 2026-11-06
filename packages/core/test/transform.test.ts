@@ -9,8 +9,10 @@ import {
   Transform2D,
   childrenOf,
   destroyRecursive,
+  isActive,
   mat3,
   parentOf,
+  setActive,
   setParent,
   system,
 } from "../src";
@@ -36,6 +38,31 @@ describe("mat3", () => {
 });
 
 describe("Hierarchy", () => {
+  it("switches entities and their children on and off", () => {
+    const app = new App().addPlugin(CorePlugin);
+    const w = app.world;
+    const box = w.spawn([Transform2D, {}]);
+    const label = w.spawn([Transform2D, {}]);
+    setParent(w, label, box);
+    app.update(1 / 60);
+    expect(w.has(box, Active)).toBe(false);
+    expect(isActive(w, label)).toBe(true);
+
+    setActive(w, box, false); // adds Active when it's missing
+    expect(w.has(box, Active)).toBe(true);
+    expect(isActive(w, box)).toBe(false);
+    app.update(1 / 60);
+    expect(isActive(w, label)).toBe(false);
+
+    setActive(w, box, true);
+    app.update(1 / 60);
+    expect(isActive(w, box)).toBe(true);
+    expect(isActive(w, label)).toBe(true);
+    // switching on something that never had Active leaves it alone
+    setActive(w, label, true);
+    expect(w.has(label, Active)).toBe(false);
+  });
+
   it("propagates transforms to children", () => {
     const app = new App().addPlugin(CorePlugin);
     const w = app.world;

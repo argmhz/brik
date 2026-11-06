@@ -375,7 +375,15 @@ export class Editor {
       components.UIImage = { color: { r: 0.3, g: 0.55, b: 1, a: 1 } };
       components.UIButton = {};
     }
-    Object.assign(components, opts.extra);
+    // extra values go on top of the defaults field by field, so { Transform2D: { scale } } keeps x and y
+    for (const [name, values] of Object.entries(opts.extra ?? {})) {
+      const base = components[name];
+      if (name === "Transform2D" && base && values && typeof values === "object") {
+        const v = values as Record<string, unknown>;
+        const pos = { ...(base.position as object), ...(v.position as object | undefined) };
+        components[name] = { ...base, ...v, position: pos };
+      } else components[name] = base ? { ...base, ...(values as object) } : values;
+    }
     const data: SceneEntityData[] = [{ id, components }];
     let parentId = opts.parentId ?? null;
     // UI elements must live under a UICanvas: use the nearest one, or make one

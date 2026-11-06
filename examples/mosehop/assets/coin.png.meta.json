@@ -1,0 +1,86 @@
+{
+  "guid": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+  "importer": "texture",
+  "settings": {
+    "filter": "nearest",
+    "wrap": "clamp",
+    "pixelsPerUnit": 1
+  },
+  "slicing": {
+    "mode": "grid",
+    "cell": [
+      16,
+      16
+    ],
+    "offset": [
+      0,
+      0
+    ],
+    "spacing": [
+      0,
+      0
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ]
+  },
+  "sprites": [
+    {
+      "id": "cell_0",
+      "name": "coin_0",
+      "rect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_1",
+      "name": "coin_1",
+      "rect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_2",
+      "name": "coin_2",
+      "rect": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_3",
+      "name": "coin_3",
+      "rect": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    }
+  ]
+}

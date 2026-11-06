@@ -67,7 +67,7 @@ describe("Brik MCP server", () => {
   it("lists the tools and explains how to use them", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    for (const n of ["get_hierarchy", "create_entity", "set_fields", "write_script", "play", "screenshot"]) expect(names).toContain(n);
+    for (const n of ["get_hierarchy", "create_entity", "set_fields", "write_script", "play", "screenshot", "draw_sprites", "paint_tiles"]) expect(names).toContain(n);
     expect(client.getInstructions()).toMatch(/RigidBody2D/);
   });
 

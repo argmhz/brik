@@ -1,0 +1,72 @@
+{
+  "guid": "caecbe88-b37d-446e-b0be-6e1f789894bf",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "9435abed1e172da7",
+      "components": {
+        "Name": {
+          "value": "Slime"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "enemy"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "de02ec33-e54d-4432-aa49-8fd012eb805c",
+            "id": "slime_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 9
+          },
+          "offset": {
+            "x": 0,
+            "y": -2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Slime.ts#Slime",
+              "props": {}
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

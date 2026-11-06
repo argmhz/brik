@@ -1,0 +1,52 @@
+{
+  "guid": "60173258-c504-4f33-911d-2b8a945344bd",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "59250368df528b3d",
+      "components": {
+        "Name": {
+          "value": "Coin"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "d9fe4219-35e9-4460-ada4-45cec279cf80",
+            "id": "cell_0"
+          }
+        },
+        "SpriteAnimator": {
+          "clip": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14"
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 12,
+            "y": 12
+          },
+          "isTrigger": true
+        },
+        "Tags": {
+          "list": [
+            "coin"
+          ]
+        }
+      }
+    }
+  ]
+}

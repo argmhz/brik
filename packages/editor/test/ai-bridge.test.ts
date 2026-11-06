@@ -1,10 +1,13 @@
-import { RigidBody2D, Transform2D, findBySceneId, initPhysics } from "@brik/runtime";
+import { RigidBody2D, TileMap, Transform2D, findBySceneId, initPhysics } from "@brik/runtime";
 import * as esbuild from "esbuild-wasm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Editor, MemoryFS, createBridgeHandlers, createProject } from "../src";
 
 const fakeDecode = async () => ({ width: 32, height: 16 }) as unknown as HTMLCanvasElement;
-const importCode = (code: string) => import(/* @vite-ignore */ `data:text/javascript;charset=utf-8,${encodeURIComponent(code)}`);
+// a new URL per load, like the editor's blob URLs, so every load is a fresh module
+let loads = 0;
+const importCode = (code: string) =>
+  import(/* @vite-ignore */ `data:text/javascript;charset=utf-8,${encodeURIComponent(`${code}\n//${loads++}`)}`);
 
 async function setup() {
   const fs = new MemoryFS("ai");
@@ -119,5 +122,110 @@ export class Spin extends Behaviour {
     expect(saved).toBe("scenes/ai.scene.json");
     const assets = (await h.list_assets({ kind: "scenes" })) as { scenes: string[] };
     expect(assets.scenes).toContain("scenes/ai.scene.json");
+  });
+
+  it("draws pixel art, makes animations and paints tiles", async () => {
+    const { editor, fs, h } = await setup();
+    const art = (await h.draw_sprites({
+      path: "assets/blob",
+      palette: { g: "#3fa34d", k: "#000" },
+      sprites: { blob_0: [".gg.", "gkkg"], blob_1: ["....", "gggg"] },
+    })) as { path: string; guid: string; sprites: string[]; size: number[] };
+    expect(art.path).toBe("assets/blob.png");
+    expect(art.size).toEqual([4, 2]);
+    expect(await fs.exists("assets/blob.png.meta.json")).toBe(true);
+    expect(editor.db.textures.get("assets/blob.png")?.meta.sprites.map((s) => s.id)).toEqual(["blob_0", "blob_1"]);
+    await expect(async () => h.draw_sprites({ path: "assets/x.png", palette: { g: "#0f0" }, sprites: { a: ["gq"] } })).rejects.toThrow(/"q".*not in the palette/);
+    await expect(async () => h.draw_sprites({ path: "assets/x.png", palette: { g: "#0f0" }, sprites: { a: ["g", "gg"] } })).rejects.toThrow(/same length/);
+
+    // redrawing keeps the guid, so references stay valid
+    const again = (await h.draw_sprites({ path: "assets/blob.png", palette: { g: "#fff" }, sprites: { blob_0: ["gg", "gg"] } })) as { guid: string };
+    expect(again.guid).toBe(art.guid);
+
+    await h.draw_sprites({ path: "assets/blob.png", palette: { g: "#3fa34d" }, sprites: { blob_0: ["g"], blob_1: ["g"] } });
+    const clip = (await h.create_animation({ path: "assets/blob_walk", texture: "assets/blob.png", frames: ["blob_0", "blob_1"], fps: 4 })) as {
+      name: string;
+      guid: string;
+    };
+    expect(clip.name).toBe("blob_walk");
+    expect(editor.assets.clip("blob_walk")?.frames.map((f) => f.duration)).toEqual([0.25, 0.25]);
+    await expect(async () => h.create_animation({ path: "assets/a", texture: "assets/blob.png", frames: ["nope"] })).rejects.toThrow(/blob_0, blob_1/);
+
+    // a tile map painted from text rows, read back as text
+    const tiles = (await h.draw_sprites({
+      path: "assets/tiles.png",
+      palette: { g: "#0f0", d: "#840" },
+      sprites: { grass: ["g"], dirt: ["d"] },
+    })) as { guid: string };
+    const { id } = (await h.create_entity({ kind: "tilemap", name: "Level", components: { TileMap: { tileset: tiles.guid } } })) as { id: string };
+    const painted = (await h.paint_tiles({
+      id,
+      map: { x: 0, y: 1, rows: ["gg.g", "dddd"], legend: { g: "grass", d: "dirt", ".": null } },
+      rects: [{ x0: 10, y0: 0, x1: 11, y1: 0, tile: "dirt" }],
+    })) as { changed: number };
+    expect(painted.changed).toBe(9);
+    const read = (await h.read_tiles({ id })) as { rows: string[]; legend: Record<string, string>; topLeft: { x: number; y: number } };
+    expect(read.legend).toEqual({ g: "grass", d: "dirt" });
+    expect(read.topLeft).toEqual({ x: 0, y: 1 });
+    expect(read.rows).toEqual(["gg.g........", "dddd......dd"]);
+    expect(Object.keys(editor.world.store(TileMap).tiles[findBySceneId(editor.world, id)])).toHaveLength(9);
+    await h.undo({});
+    expect(Object.keys(editor.world.store(TileMap).tiles[findBySceneId(editor.world, id)])).toHaveLength(0);
+    await expect(async () => h.paint_tiles({ id, rects: [{ x0: 0, y0: 0, x1: 0, y1: 0, tile: "lava" }] })).rejects.toThrow(/grass, dirt/);
+  });
+
+  it("keeps the position when components override Transform2D", async () => {
+    const { editor, h } = await setup();
+    const { id } = (await h.create_entity({ name: "Flag", x: 100, y: 20, components: { Transform2D: { scale: { x: 2, y: 2 } } } })) as {
+      id: string;
+    };
+    const t = editor.world.read(findBySceneId(editor.world, id), Transform2D);
+    expect(t.position).toEqual({ x: 100, y: 20 });
+    expect(t.scale).toEqual({ x: 2, y: 2 });
+  });
+
+  it("holds and presses keys while stepping, and starts every play with fresh modules", async () => {
+    const { editor, h } = await setup();
+    await h.write_script({
+      path: "scripts/Counter.ts",
+      content: `export const Count = { jumps: 0 };`,
+    });
+    const res = (await h.write_script({
+      path: "scripts/Walker.ts",
+      content: `import { Behaviour, expose } from "brik";
+import { Count } from "./Counter";
+export class Walker extends Behaviour {
+  @expose jumps = 0;
+  onUpdate(dt: number) {
+    this.transform.position.x += this.input.axis("horizontal") * 60 * dt;
+    if (this.input.action("jump").pressed) Count.jumps++;
+    this.jumps = Count.jumps;
+  }
+}`,
+    })) as { status: string };
+    expect(res.status).toBe("ok");
+    const { id } = (await h.create_entity({ name: "W" })) as { id: string };
+    await h.attach_script({ id, script: "Walker" });
+    const x = () => editor.world.store(Transform2D).position.x[findBySceneId(editor.world, id)];
+    const live = async () => ((await h.inspect_entity({ id })) as { scripts: { live: { jumps: number } }[] }).scripts[0].live;
+
+    await h.play({});
+    await h.step({ frames: 30, hold: ["ArrowRight"], press: ["Space"] });
+    expect(x()).toBeCloseTo(30, 0);
+    // held across calls: no new press, and the key stays down
+    await h.step({ frames: 30, hold: ["ArrowRight", "Space"] });
+    await h.step({ frames: 30, hold: ["ArrowRight", "Space"] });
+    expect(x()).toBeCloseTo(90, 0);
+    expect((await live()).jumps).toBe(2);
+    await h.step({ frames: 10 });
+    expect(x()).toBeCloseTo(90, 0);
+    await expect(async () => h.step({ hold: ["Right"] })).rejects.toThrow(/ArrowRight/);
+    await h.stop({});
+
+    // module state (Count) starts over on the next play, like in an exported game
+    await h.play({});
+    await h.step({ frames: 2, press: ["Space"] });
+    expect((await live()).jumps).toBe(1);
+    await h.stop({});
   });
 });

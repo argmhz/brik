@@ -16,7 +16,8 @@ How to work:
 - Coordinates are world units (pixels by default) with y pointing UP. The default camera is at (0,0).
 - Gravity and collisions: a falling object needs RigidBody2D (type "dynamic") plus Collider2D; static ground needs only Collider2D. Platformer characters use RigidBody2D "kinematic" + CharacterController2D + Collider2D and are moved with this.moveCharacter(dx, dy) in a script.
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
-- Test your work: play, step (a number of frames), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
+- Art: draw_sprites makes pixel-art PNGs from text rows, create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
+- Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
 - The scene is not saved automatically. Call save_scene when the user wants to keep the result.`;
 
 const bridge = new EditorBridge({ port: Number(process.env.BRIK_MCP_PORT) || 5181 });
@@ -143,6 +144,59 @@ tool("select", "Selects entities in the editor, so the user sees what you mean."
 
 tool("undo", "Undoes the last change in the editor.", {}, { destructive: true });
 
+// ---------------------------------------------------------------- art and tiles
+
+tool(
+  "draw_sprites",
+  'Draws pixel art into a PNG in the project (overwrites it if it exists, keeping its guid). Each sprite is a list of rows; each character is a pixel looked up in `palette`, and "." or space is transparent. All sprites must have the same size and are laid out side by side. Returns the texture guid and sprite names, ready for Sprite { sprite: { texture: guid, id: name } } or create_animation.',
+  {
+    path: z.string().describe("e.g. assets/slime.png"),
+    palette: z.record(z.string(), z.string().nullable()).describe('Character to colour, e.g. { "g": "#3fa34d", "k": "#1b1b1b", "w": "#ffffffcc" }'),
+    sprites: z.record(z.string(), z.array(z.string())).describe('Sprite name to pixel rows (top row first), e.g. { "slime_0": ["..gggg..", ".gkggkg.", "gggggggg"] }'),
+    pivot: z.array(z.number()).length(2).optional().describe("Pivot of every sprite, 0..1 from the bottom-left (default [0.5, 0.5])"),
+    scale: z.number().int().min(1).max(8).optional().describe("Each character becomes scale x scale pixels (default 1)"),
+  },
+);
+
+tool(
+  "create_animation",
+  "Creates or replaces an animation clip (<name>.anim.json) from sprites of one texture. Scripts play it with this.playAnimation(name); a SpriteAnimator plays it with { clip: guid }.",
+  {
+    path: z.string().describe("e.g. assets/slime_walk.anim.json (the file name is the clip name)"),
+    texture: z.string().describe("Texture path, guid or name"),
+    frames: z.array(z.string()).describe("Sprite names (or ids) in order"),
+    fps: z.number().positive().optional().describe("Frames per second (default 8)"),
+    mode: z.enum(["loop", "once", "pingpong"]).optional(),
+    events: z.array(z.object({ frame: z.number().int(), name: z.string() })).optional().describe("Calls onAnimationEvent(name) in scripts when the frame shows"),
+  },
+);
+
+tool(
+  "read_tiles",
+  "Shows a TileMap as text rows (top row first) with a legend, so you can see the level layout.",
+  { id },
+  { readOnly: true },
+);
+
+tool(
+  "paint_tiles",
+  'Paints a TileMap (one undo step). `rects` fill rectangles of cells with a tile name (null erases). `map` paints text rows: its x, y is the cell of the first character of the top row, rows go downwards (y decreases), and each character is looked up in `legend` (characters not in the legend are left as they are). Cell (x, y) covers world x*tileSize .. (x+1)*tileSize. TileMapCollider updates automatically.',
+  {
+    id,
+    rects: z
+      .array(z.object({ x0: z.number().int(), y0: z.number().int(), x1: z.number().int(), y1: z.number().int(), tile: z.string().nullable() }))
+      .optional(),
+    map: z
+      .object({
+        x: z.number().int(),
+        y: z.number().int(),
+        rows: z.array(z.string()),
+        legend: z.record(z.string(), z.string().nullable()).describe('e.g. { "G": "grass", "d": "dirt", "_": null }'),
+      })
+      .optional(),
+  },
+);
+
 // ---------------------------------------------------------------- scripts
 
 tool(
@@ -188,9 +242,15 @@ tool("open_scene", "Opens another scene. Refuses when there are unsaved changes 
 
 tool("play", "Starts the game in the editor (the scene is restored on stop).", {});
 tool("pause", "Pauses the running game.", {});
-tool("step", "Pauses and advances the game a number of frames (1/60 s each, max 600).", {
-  frames: z.number().int().min(1).max(600).optional(),
-});
+tool(
+  "step",
+  'Pauses and advances the game a number of frames (1/60 s each, max 600), optionally with keys held down, so you can test controls. Default bindings: axis "horizontal" = ArrowLeft/KeyA and ArrowRight/KeyD, "vertical" = ArrowDown/KeyS and ArrowUp/KeyW, action "jump" = Space, "fire" = Mouse0.',
+  {
+    frames: z.number().int().min(1).max(600).optional(),
+    hold: z.array(z.string()).optional().describe('Key codes held during all these frames, e.g. ["ArrowRight"]'),
+    press: z.array(z.string()).optional().describe('Key codes pressed in the first frame and released after it, e.g. ["Space"]'),
+  },
+);
 tool("stop", "Stops the game and restores the scene as it was before play.", {});
 
 // ---------------------------------------------------------------- start

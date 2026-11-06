@@ -25,7 +25,22 @@ interface Request {
   params?: Record<string, unknown>;
 }
 
-const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+/**
+ * Waits for the next frame, or a moment when no frame comes: a page that isn't
+ * on screen gets no animation frames, and a hidden tab's timers may run only
+ * once a minute, so there it just yields to the event loop.
+ */
+const nextFrame = () =>
+  new Promise<void>((r) => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = () => r();
+      ch.port2.postMessage(0);
+      return;
+    }
+    requestAnimationFrame(() => r());
+    setTimeout(r, 50);
+  });
 
 /** Draws a view and returns it as a PNG data URL. Brings the view's tab to the front first. */
 async function screenshot(view: "scene" | "game"): Promise<string | null> {

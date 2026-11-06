@@ -1,0 +1,36 @@
+{
+  "guid": "cdcc630d-6d1b-40fc-8baf-823ad60ceb14",
+  "importer": "animation",
+  "mode": "pingpong",
+  "frames": [
+    {
+      "sprite": [
+        "d9fe4219-35e9-4460-ada4-45cec279cf80",
+        "cell_0"
+      ],
+      "duration": 0.12
+    },
+    {
+      "sprite": [
+        "d9fe4219-35e9-4460-ada4-45cec279cf80",
+        "cell_1"
+      ],
+      "duration": 0.12
+    },
+    {
+      "sprite": [
+        "d9fe4219-35e9-4460-ada4-45cec279cf80",
+        "cell_2"
+      ],
+      "duration": 0.12
+    },
+    {
+      "sprite": [
+        "d9fe4219-35e9-4460-ada4-45cec279cf80",
+        "cell_3"
+      ],
+      "duration": 0.12
+    }
+  ],
+  "events": []
+}

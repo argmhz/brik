@@ -1,0 +1,114 @@
+{
+  "guid": "f84ce98f-303a-462f-b833-54a4ffd4b67c",
+  "importer": "texture",
+  "settings": {
+    "filter": "nearest",
+    "wrap": "clamp",
+    "pixelsPerUnit": 1
+  },
+  "slicing": {
+    "mode": "grid",
+    "cell": [
+      16,
+      16
+    ],
+    "offset": [
+      0,
+      0
+    ],
+    "spacing": [
+      0,
+      0
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ]
+  },
+  "sprites": [
+    {
+      "id": "cell_0",
+      "name": "hero_idle",
+      "rect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_1",
+      "name": "hero_run_0",
+      "rect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_2",
+      "name": "hero_run_1",
+      "rect": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_3",
+      "name": "hero_run_2",
+      "rect": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_4",
+      "name": "hero_run_3",
+      "rect": [
+        64,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "cell_5",
+      "name": "hero_jump",
+      "rect": [
+        80,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    }
+  ]
+}

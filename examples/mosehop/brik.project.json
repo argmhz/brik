@@ -1,0 +1,5 @@
+{
+  "name": "Mosehop",
+  "version": 1,
+  "startScene": "scenes/main.scene.json"
+}

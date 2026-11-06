@@ -32,7 +32,7 @@ import {
 import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
 import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, playAnimation } from "@brik/render";
-import { GlobalTransform2D, mat3 } from "@brik/core";
+import { GlobalTransform2D, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
 import { Scenes } from "./scenes";
@@ -329,6 +329,11 @@ export abstract class Behaviour {
   /** The running instance of a Behaviour class on an entity (default: this one), e.g. to call its methods. */
   behaviourOf<T extends Behaviour>(cls: abstract new () => T, e: Entity = this.entity): T | undefined {
     return this.world.resource(BehaviourRuntime).find(e, cls);
+  }
+
+  /** Turns an entity (default: this one) and its children on or off. Inactive entities are not drawn; their scripts and colliders keep running. */
+  setActive(on: boolean, e: Entity = this.entity): void {
+    setActive(this.world, e, on);
   }
 
   /** The first entity with this name, or -1. */

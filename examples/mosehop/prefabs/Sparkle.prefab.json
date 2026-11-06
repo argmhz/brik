@@ -1,0 +1,58 @@
+{
+  "guid": "6e78f00b-9728-4762-ad7b-8a97f341d534",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "773fe03ad3fe9b0e",
+      "components": {
+        "Name": {
+          "value": "Sparkle"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "SortingOrder": {
+          "layer": 2,
+          "order": 0,
+          "ySort": false
+        },
+        "ParticleEmitter2D": {
+          "rate": 0,
+          "burst": 18,
+          "lifetime": {
+            "x": 0.25,
+            "y": 0.55
+          },
+          "speed": {
+            "x": 30,
+            "y": 90
+          },
+          "direction": 1.5707963267948966,
+          "spread": 6.283185307179586,
+          "gravity": {
+            "x": 0,
+            "y": -120
+          },
+          "startSize": 4,
+          "endSize": 0.5,
+          "startColor": {
+            "r": 1,
+            "g": 0.95,
+            "b": 0.4,
+            "a": 1
+          },
+          "endColor": {
+            "r": 1,
+            "g": 0.5,
+            "b": 0.1,
+            "a": 0
+          },
+          "autoDestroy": true
+        }
+      }
+    }
+  ]
+}

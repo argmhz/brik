@@ -15,10 +15,13 @@ import "./styles.css";
 
 const makeUrl = (bytes: Uint8Array, mime: string) => URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
 
-let esbuildReady: Promise<EsbuildLike> | null = null;
-/** esbuild-wasm can only be initialized once per page. */
+/**
+ * esbuild-wasm can only be initialized once per page. The promise lives on
+ * globalThis so a hot-reloaded copy of this module doesn't initialize it again.
+ */
+const holder = globalThis as { __brikEsbuild?: Promise<EsbuildLike> };
 const loadEsbuild = () =>
-  (esbuildReady ??= (async () => {
+  (holder.__brikEsbuild ??= (async () => {
     const esbuild = await import("esbuild-wasm");
     await esbuild.initialize({ wasmURL });
     return esbuild as unknown as EsbuildLike;

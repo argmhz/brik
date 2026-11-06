@@ -107,6 +107,7 @@ export class Player extends Behaviour {
 | `this.moveCharacter(dx, dy)` | Bevæger en `CharacterController2D` med kollisioner |
 | `this.playAnimation("hero_run")`, `this.playSound("coin")` | Animation og lyd |
 | `this.spawnPrefab("Coin", { position })`, `this.destroy(e)`, `this.find("Navn")` | Opretter, fjerner og finder entities |
+| `this.setActive(false, e)` | Skjuler en entity og dens børn (fx en beskedboks). Scripts og colliders kører videre |
 | `this.tween(Transform2D, "position.y", 100, 0.5)`, `this.after(1, fn)`, `this.every(0.5, fn)` | Tweens og timere |
 | `this.emitParticles(20)` | Udsender partikler |
 | `this.loadScene("level2")` | Skifter scene |
@@ -119,6 +120,18 @@ Et felt kan pege på en anden entity, som du vælger i inspectoren:
 ```
 
 Felter af typen `"prefab"`, `"audio"` og `"clip"` får en asset-vælger.
+
+Tilstand, der skal leve på tværs af scener (liv, point), kan ligge i et
+almindeligt modul, som scripts importerer:
+
+```ts
+// scripts/Game.ts
+export const Game = { lives: 3, coins: 0 };
+```
+
+Modulerne indlæses forfra, hver gang du trykker Play, ligesom når det
+eksporterede spil startes. Giv ikke dine egne metoder samme navn som Behaviours
+egne (fx `setActive` eller `find`), for så skygger de for dem.
 
 Scripts kan også definere egne komponenter (`defineComponent`) og systemer
 (`system("navn", fn, "update")`). Et system kan nøjes med at behandle det, der
@@ -222,8 +235,16 @@ den åbne editor. AI'en kan:
 - se scenen, komponenternes felter og projektets assets,
 - oprette og ændre entities, komponenter, prefabs og scener,
 - skrive scripts (den får kompileringsfejl tilbage med det samme) og sætte dem på,
-- trykke Play, gå frem et antal frames, læse konsollen og tage skærmbilleder af
-  Scene- og Spil-visningen.
+- tegne pixel art (`draw_sprites`: hvert tegn er en pixel, slået op i en
+  palet), lave animationer af den og male tilemaps ud fra tekst (`paint_tiles`,
+  `read_tiles`),
+- trykke Play, gå frem et antal frames med taster holdt nede (fx `ArrowRight`
+  og `Space`), læse konsollen og tage skærmbilleder af Scene- og
+  Spil-visningen.
+
+Eksempelspillet `examples/mosehop` (åbn mappen i editoren) er bygget på
+denne måde: grafik, bane, prefabs, scripts og test er lavet gennem
+MCP-værktøjerne.
 
 Hver ændring vises med det samme og kan fortrydes med Ctrl+Z. Det, AI'en gør,
 står også i Console. Scenen gemmes kun, når AI'en kalder `save_scene`.
@@ -243,6 +264,10 @@ Server og editor finder hinanden på `ws://127.0.0.1:5181`. Porten kan ændres m
 miljøvariablen `BRIK_MCP_PORT`, men editoren bruger altid 5181. Kun editoren selv
 (localhost eller desktop-appen) må forbinde, ikke andre hjemmesider. Er AI'en
 forbundet, men skal ikke længere arbejde, så klik **AI** igen.
+
+Gem ofte (`save_scene`): genindlæses siden, er ændringer, der ikke er gemt, væk.
+Ligger editoren i en baggrundsfane, kan browseren bremse den, så det tager
+længere tid at forbinde.
 
 Til fejlsøgning kan serveren startes alene med `make mcp`. Den venter så på
 editoren og skriver i terminalen, når den forbinder.

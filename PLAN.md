@@ -476,7 +476,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - `changed` ser ikke ændringer inde i `ref`-felter (fx arrays), som ændres på stedet.
 
 ### Fase 5.6 — AI via MCP
-- [x] `@brik/mcp`: MCP-server (stdio) med 31 værktøjer til at se, ændre, scripte, afprøve og tage skærmbilleder i den åbne editor.
+- [x] `@brik/mcp`: MCP-server (stdio) med værktøjer til at se, ændre, scripte, afprøve og tage skærmbilleder i den åbne editor.
 - [x] Bridge over WebSocket på `127.0.0.1:5181`. Editoren forbinder, når brugeren klikker **AI**. Andre origins end editorens bliver afvist.
 - [x] Alle ændringer går gennem editorens kommandoer, så de vises live og kan fortrydes. Fejl forklarer, hvad AI'en skal gøre i stedet (fx feltnavne og tilladte værdier).
 - [x] `.mcp.json` til Claude Code, `make mcp` og afsnit 11 i guiden.
@@ -485,6 +485,26 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - `CLAUDE.md` i projekt-skabelonerne, så AI'er kender Brik-API'et uden MCP.
 - Headless-tilstand: MCP-serveren åbner selv projektet i Node, når editoren ikke kører.
 - AI-chat inde i editoren.
+
+### Fase 5.7 — Første rigtige spil
+Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen gennem MCP-værktøjerne, som en AI ville gøre det: to baner, slim, der kan trampes på, pigge, liv, mønter på tværs af baner, HUD, baneskift og vindeskærm. Undervejs blev følgende fundet og rettet:
+- [x] AI'en kunne ikke lave grafik eller male baner. Nye værktøjer: `draw_sprites` (pixel art fra tekst og palet til PNG), `create_animation`, `read_tiles` og `paint_tiles` (baner som tekstrækker).
+- [x] AI'en kunne ikke afprøve styringen. `step` tager nu `hold` og `press` med tastekoder, og holdte taster bliver holdt på tværs af kald.
+- [x] `create_entity` mistede positionen, når `components` også satte `Transform2D` (fx skala). Værdier lægges nu oven i standarden felt for felt.
+- [x] Modultilstand i scripts (fx liv og point) overlevede fra én Play til den næste. Modulerne indlæses nu forfra ved hver Play, ligesom i det eksporterede spil.
+- [x] At skjule en entity fra et script krævede, at `Active` var tilføjet først. Nyt: `setActive(world, e, on)`, `isActive(world, e)` og `this.setActive(on, e)`.
+- [x] Screenshot hang i 60 sekunder, når editoren ikke var synlig, fordi `requestAnimationFrame` ikke kører der. Den venter nu højst et øjeblik.
+- [x] esbuild blev initialiseret igen efter hot reload ("Cannot call initialize more than once").
+- [x] Regressionstest, der åbner `examples/mosehop` headless, spiller fra flaget på bane 1 til bane 2 og tramper på en slim.
+
+**Fundet, men ikke rettet**
+- En genindlæsning af siden mister alt, der ikke er gemt. Der er ingen autosave eller gendannelse.
+- `CameraFollow2D.bounds` holder kameraets midtpunkt inden for rammen, så hvad man ser ved kanten afhænger af vinduets størrelse. En "hold udsnittet inden for"-tilstand ville være lettere at bruge.
+- AI'en kan ikke klikke på UI-knapper i spillet (der er intet værktøj til musens position).
+- `setActive` skjuler kun: scripts og colliders på en inaktiv entity kører videre.
+- Når editoren ligger i en baggrundsfane, bremser browseren dens timere, så det kan tage op til et minut at forbinde til AI'en igen.
+- Scener skifter asynkront (filen læses først), så det ses først et `step` senere.
+- Fjender uden fysik-krop skal flyttes i scripts, og triggere melder først, når overlappet er sket. Et tramp-tjek skal derfor være tilgivende.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

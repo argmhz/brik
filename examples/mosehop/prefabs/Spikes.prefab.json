@@ -1,0 +1,64 @@
+{
+  "guid": "7601a17e-2a2e-4988-bb37-97324de7bf90",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "2195acf445f94b14",
+      "components": {
+        "Name": {
+          "value": "Spikes"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Tags": {
+          "list": [
+            "hazard"
+          ]
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+            "id": "spikes"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 14,
+            "y": 6
+          },
+          "offset": {
+            "x": 0,
+            "y": -4
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        }
+      }
+    }
+  ]
+}

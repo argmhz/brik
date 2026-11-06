@@ -29,6 +29,8 @@ Uden make kan du bruge pnpm direkte: `corepack pnpm install`, `corepack pnpm edi
 
 Vil du se det hele i brug, så vælg **Platformer-eksempel** eller **Top-down shooter-eksempel** ved siden af "Opret", når du laver et nyt browser-projekt. Du får en bane med tilemap, en figur med animationer og lyd, mønter (prefab), partikler og UI.
 
+Et helt spil ligger i [examples/mosehop](examples/mosehop): to baner med slim, pigge, liv, mønter og en vindeskærm. Åbn mappen med **Åbn mappe…** i editoren. Det er bygget gennem AI-værktøjerne (MCP), og en test spiller det igennem.
+
 ## Editor-værktøjer
 
 - **Sprite-editor:** Dobbeltklik et billede. Her kan du opdele i grid, finde sprites automatisk, tegne dem selv, sætte pivot og sætte 9-slice-kanter.

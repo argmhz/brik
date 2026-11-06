@@ -34,6 +34,21 @@ export const Transform2D = defineComponent(
 /** Turns an entity and its children on or off. Entities without it are active. */
 export const Active = defineComponent("Active", { self: t.bool(true) });
 
+/** Turns an entity (and its children) on or off, adding Active when it doesn't have it. */
+export function setActive(world: World, e: Entity, on: boolean): void {
+  if (world.has(e, Active)) world.write(e, Active, { self: on });
+  else if (!on) world.add(e, Active, { self: false });
+}
+
+/**
+ * Whether the entity is on: its own Active flag, and none of its parents
+ * switched off. Changes made this frame show after the transform pass.
+ */
+export function isActive(world: World, e: Entity): boolean {
+  if (world.has(e, Active) && !world.store(Active).self[e]) return false;
+  return !world.has(e, GlobalTransform2D) || world.store(GlobalTransform2D).active[e] === 1;
+}
+
 /** Kept in sync automatically. Use `setParent` to change the hierarchy. */
 export const Children = defineComponent(
   "Children",

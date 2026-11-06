@@ -1,0 +1,70 @@
+{
+  "guid": "5ffd9acb-f26e-4fa1-9a47-d6e08e6c7e4a",
+  "importer": "texture",
+  "settings": {
+    "filter": "nearest",
+    "wrap": "clamp",
+    "pixelsPerUnit": 1
+  },
+  "slicing": {
+    "mode": "manual"
+  },
+  "sprites": [
+    {
+      "id": "spikes",
+      "name": "spikes",
+      "rect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "flag",
+      "name": "flag",
+      "rect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "heart",
+      "name": "heart",
+      "rect": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "heart_empty",
+      "name": "heart_empty",
+      "rect": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    }
+  ]
+}

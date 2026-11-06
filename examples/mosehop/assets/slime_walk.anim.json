@@ -1,0 +1,22 @@
+{
+  "guid": "4dfb981d-c1b7-4d62-8bb9-438ecc06fa96",
+  "importer": "animation",
+  "mode": "loop",
+  "frames": [
+    {
+      "sprite": [
+        "de02ec33-e54d-4432-aa49-8fd012eb805c",
+        "slime_0"
+      ],
+      "duration": 0.25
+    },
+    {
+      "sprite": [
+        "de02ec33-e54d-4432-aa49-8fd012eb805c",
+        "slime_1"
+      ],
+      "duration": 0.25
+    }
+  ],
+  "events": []
+}

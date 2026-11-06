@@ -1,0 +1,42 @@
+{
+  "guid": "de02ec33-e54d-4432-aa49-8fd012eb805c",
+  "importer": "texture",
+  "settings": {
+    "filter": "nearest",
+    "wrap": "clamp",
+    "pixelsPerUnit": 1
+  },
+  "slicing": {
+    "mode": "manual"
+  },
+  "sprites": [
+    {
+      "id": "slime_0",
+      "name": "slime_0",
+      "rect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "slime_1",
+      "name": "slime_1",
+      "rect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    }
+  ]
+}

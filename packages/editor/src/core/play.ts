@@ -56,6 +56,7 @@ export class PlayController {
       editor.log("error", "Ret fejlene i dine scripts, før du trykker Play.");
       return false;
     }
+    await editor.scripts.freshForPlay();
     try {
       await initPhysics();
     } catch (err) {

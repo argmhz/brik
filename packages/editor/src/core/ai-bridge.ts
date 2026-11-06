@@ -3,11 +3,18 @@ import {
   type Entity,
   type Field,
   BehaviourRuntime,
+  Input,
   Name,
   PrefabInstance,
   SceneId,
   Scripts,
   Tags,
+  TileMap,
+  type TileData,
+  newGuid,
+  textureMetaToJson,
+  tileBounds,
+  tileKey,
   allComponents,
   childrenOf,
   componentByName,
@@ -18,7 +25,7 @@ import {
   scriptDisplayName,
   serializeEntities,
 } from "@brik/runtime";
-import { SCENE_EXTENSION, isScene } from "./asset-db";
+import { SCENE_EXTENSION, isScene, metaPath } from "./asset-db";
 import {
   addComponent,
   addScript,
@@ -37,7 +44,9 @@ import type { Editor, EntityKind } from "./editor";
 import type { EditCommand } from "./history";
 import { joinPath, walk } from "./fs";
 import { applyToPrefab, createPrefab, placePrefab, prefabOf } from "./prefabs";
+import { encodePng, parseHexColor } from "./png";
 import { isScriptFile } from "./scripts";
+import { setTilesCommand } from "./tiles";
 
 /*
  * The editor side of the AI bridge: one handler per tool the MCP server offers.
@@ -183,6 +192,20 @@ function scriptId(editor: Editor, name: unknown): string {
   );
 }
 
+const KEY_CODE = /^(Key[A-Z]|Digit[0-9]|Arrow(Left|Right|Up|Down)|Numpad\w+|F\d{1,2}|Space|Enter|Escape|Tab|Backspace|(Shift|Control|Alt|Meta)(Left|Right)|Mouse[0-4])$/;
+
+/** Validates key codes for step's hold/press. */
+function keyList(value: unknown, what: string): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw new BridgeError(`\`${what}\` is a list of key codes, e.g. ["ArrowRight", "Space"]`);
+  for (const k of value) {
+    if (typeof k !== "string" || !KEY_CODE.test(k)) {
+      throw new BridgeError(`"${k}" is not a key code. Use KeyboardEvent.code names like "ArrowRight", "KeyA", "Space", or "Mouse0".`);
+    }
+  }
+  return value as string[];
+}
+
 function projectPath(path: unknown): string {
   if (typeof path !== "string" || !path.trim()) throw new BridgeError("`path` must be a project-relative file path");
   const clean = joinPath(path);
@@ -193,6 +216,8 @@ function projectPath(path: unknown): string {
 export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<string, BridgeHandler> {
   const world = editor.world;
   const exec = (cmd: EditCommand) => editor.execute(cmd);
+  /** Keys the AI holds down in the running game (see step). */
+  let heldKeys = new Set<string>();
 
   return {
     // ------------------------------------------------------------ looking
@@ -415,6 +440,180 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { undone: label };
     },
 
+    // ------------------------------------------------------------ art and tiles
+
+    draw_sprites: async ({ path, palette, sprites, pivot = [0.5, 0.5], scale = 1 }) => {
+      let p = projectPath(path);
+      if (!p.endsWith(".png")) p += ".png";
+      if (!palette || typeof palette !== "object") throw new BridgeError("`palette` maps single characters to colours, e.g. { \"g\": \"#3fa34d\" }");
+      const colors = new Map<string, [number, number, number, number]>();
+      for (const [ch, c] of Object.entries(palette as Record<string, unknown>)) {
+        if ([...ch].length !== 1) throw new BridgeError(`Palette keys are single characters, not "${ch}"`);
+        const rgba = c === null ? [0, 0, 0, 0] as [number, number, number, number] : parseHexColor(String(c));
+        if (!rgba) throw new BridgeError(`Palette colour for "${ch}" must be "#rrggbb", "#rrggbbaa" or null, not ${JSON.stringify(c)}`);
+        colors.set(ch, rgba);
+      }
+      const entries = Object.entries((sprites ?? {}) as Record<string, unknown>);
+      if (entries.length === 0) throw new BridgeError("`sprites` maps sprite names to pixel rows, e.g. { slime_0: [\"..gg..\", ...] }");
+      const k = Math.max(1, Math.min(8, Math.floor(Number(scale))));
+      let w = 0;
+      let h = 0;
+      for (const [name, rows] of entries) {
+        if (!Array.isArray(rows) || rows.some((r) => typeof r !== "string")) throw new BridgeError(`Sprite ${name}: give a list of strings, one per pixel row`);
+        if (h && rows.length !== h) throw new BridgeError(`All sprites must have the same size; ${name} has ${rows.length} rows, the first has ${h}`);
+        h = rows.length;
+        for (const r of rows as string[]) {
+          const len = [...r].length;
+          if (w && len !== w) throw new BridgeError(`All rows must have the same length; a row in ${name} has ${len} pixels, expected ${w}`);
+          w = len;
+        }
+      }
+      const cw = w * k;
+      const ch = h * k;
+      const width = cw * entries.length;
+      const rgba = new Uint8Array(width * ch * 4);
+      entries.forEach(([name, rows], i) => {
+        (rows as string[]).forEach((row, y) => {
+          [...row].forEach((c, x) => {
+            if (c === "." || c === " ") return;
+            const col = colors.get(c);
+            if (!col) throw new BridgeError(`Sprite ${name} uses "${c}", which is not in the palette ("." and space are transparent)`);
+            for (let dy = 0; dy < k; dy++)
+              for (let dx = 0; dx < k; dx++) rgba.set(col, ((y * k + dy) * width + i * cw + x * k + dx) * 4);
+          });
+        });
+      });
+      const old = editor.db.textures.get(p);
+      const meta = {
+        guid: old?.meta.guid ?? newGuid(),
+        importer: "texture" as const,
+        settings: old?.meta.settings ?? { filter: "nearest" as const, wrap: "clamp" as const, pixelsPerUnit: 1 },
+        slicing: { mode: "manual" as const },
+        sprites: entries.map(([name], i) => ({
+          id: name,
+          name,
+          rect: { x: i * cw, y: 0, w: cw, h: ch },
+          pivot: { x: Number(pivot[0]), y: Number(pivot[1]) },
+        })),
+      };
+      await editor.fs.writeFile(metaPath(p), textureMetaToJson(meta));
+      await editor.fs.writeFile(p, encodePng(width, ch, rgba));
+      const entry = await editor.db.load(p);
+      if (!entry) throw new BridgeError(`${p} was written but could not be loaded`);
+      editor.emit("assets");
+      return {
+        path: p,
+        guid: meta.guid,
+        sprites: entries.map(([name]) => name),
+        size: [cw, ch],
+        use: { Sprite: { sprite: { texture: meta.guid, id: entries[0][0] } } },
+      };
+    },
+
+    create_animation: async ({ path, texture, frames, fps = 8, mode = "loop", events = [] }) => {
+      let p = projectPath(path);
+      if (!p.endsWith(".anim.json")) p += ".anim.json";
+      const tex = [...editor.db.textures.values()].find((t) => t.path === texture || t.meta.guid === texture || t.asset.name === texture);
+      if (!tex) throw new BridgeError(`No texture "${texture}". Use list_assets with kind "textures".`);
+      if (!Array.isArray(frames) || frames.length === 0) throw new BridgeError("`frames` is a list of sprite names (or ids) from the texture");
+      if (!["loop", "once", "pingpong"].includes(mode)) throw new BridgeError('mode must be "loop", "once" or "pingpong"');
+      const duration = 1 / Math.max(0.1, Number(fps));
+      const ids = frames.map((f: unknown) => {
+        const s = tex.meta.sprites.find((x) => x.name === f || x.id === f);
+        if (!s) throw new BridgeError(`${tex.path} has no sprite "${f}". It has: ${tex.meta.sprites.map((x) => x.name).join(", ")}`);
+        return s.id;
+      });
+      const guid = editor.db.clips.get(p)?.guid ?? newGuid();
+      const clip = {
+        guid,
+        name: "",
+        mode,
+        frames: ids.map((id: string) => ({ sprite: { texture: tex.meta.guid, id }, duration })),
+        events: (events as { frame: number; name: string }[]).filter((e) => Number.isInteger(e.frame) && typeof e.name === "string"),
+      };
+      await editor.db.saveClip(p, clip);
+      editor.emit("assets");
+      return { path: p, guid, name: editor.db.clips.get(p)?.name, frames: ids.length, use: { SpriteAnimator: { clip: guid } } };
+    },
+
+    read_tiles: ({ id }) => {
+      const e = need(editor, id);
+      if (!world.has(e, TileMap)) throw new BridgeError(`${editor.entityName(e)} has no TileMap`);
+      const tiles = world.store(TileMap).tiles[e] as TileData;
+      const tex = editor.db.byGuid(world.store(TileMap).tileset[e] as string);
+      const names = new Map((tex?.meta.sprites ?? []).map((s) => [s.id, s.name]));
+      const legend: Record<string, string> = {};
+      const charOf = new Map<string, string>();
+      // each tile gets the first free letter of its name (g for grass), so the legend is easy to read
+      const pool = "#=%@&*+o0X~^abcdefghijklmnpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      for (const sid of new Set(Object.values(tiles))) {
+        const name = names.get(sid) ?? sid;
+        const ch = [...name.toLowerCase(), ...name.toUpperCase(), ...pool].find((c) => /\S/.test(c) && c !== "." && !(c in legend))!;
+        charOf.set(sid, ch);
+        legend[ch] = name;
+      }
+      const b = tileBounds(tiles);
+      if (!b) return { tileset: tex?.path ?? null, tiles: names.size ? [...names.values()] : [], empty: true };
+      const rows: string[] = [];
+      for (let y = b.maxY; y >= b.minY; y--) {
+        let row = "";
+        for (let x = b.minX; x <= b.maxX; x++) row += charOf.get(tiles[tileKey(x, y)]) ?? ".";
+        rows.push(row);
+      }
+      return {
+        tileset: tex?.path ?? null,
+        tileNames: [...names.values()],
+        tileSize: world.read(e, TileMap).tileSize,
+        topLeft: { x: b.minX, y: b.maxY },
+        note: "Rows go from the top (highest y) down. Cell (x, y) covers world x*tileSize..(x+1)*tileSize. '.' is empty.",
+        legend,
+        rows,
+      };
+    },
+
+    paint_tiles: ({ id, rects, map }) => {
+      noEdits(editor);
+      const e = need(editor, id);
+      if (!world.has(e, TileMap)) throw new BridgeError(`${editor.entityName(e)} has no TileMap`);
+      const before = world.store(TileMap).tiles[e] as TileData;
+      const tex = editor.db.byGuid(world.store(TileMap).tileset[e] as string);
+      const sprites = tex?.meta.sprites ?? [];
+      const resolve = (tile: unknown): string | null => {
+        if (tile === null || tile === "" || tile === undefined) return null;
+        const s = sprites.find((x) => x.name === tile || x.id === tile);
+        if (!s) throw new BridgeError(`The tileset has no tile "${tile}". Tiles: ${sprites.map((x) => x.name).join(", ")}`);
+        return s.id;
+      };
+      const after: TileData = { ...before };
+      let changed = 0;
+      const set = (x: number, y: number, sid: string | null) => {
+        const key = tileKey(x, y);
+        if ((after[key] ?? null) === sid) return;
+        if (sid === null) delete after[key];
+        else after[key] = sid;
+        changed++;
+      };
+      for (const r of (rects ?? []) as { x0: number; y0: number; x1: number; y1: number; tile: string | null }[]) {
+        const sid = resolve(r.tile);
+        const [x0, x1] = [Math.min(r.x0, r.x1), Math.max(r.x0, r.x1)];
+        const [y0, y1] = [Math.min(r.y0, r.y1), Math.max(r.y0, r.y1)];
+        if ((x1 - x0 + 1) * (y1 - y0 + 1) > 100000) throw new BridgeError("A rect may cover at most 100000 cells");
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, sid);
+      }
+      if (map) {
+        const { x = 0, y = 0, rows, legend } = map as { x?: number; y?: number; rows: string[]; legend: Record<string, string | null> };
+        if (!Array.isArray(rows) || !legend) throw new BridgeError("`map` needs rows (top row first) and a legend like { \"G\": \"grass\", \"_\": null }");
+        const ids = new Map(Object.entries(legend).map(([ch, t]) => [ch, resolve(t)]));
+        rows.forEach((row, dy) => {
+          [...row].forEach((c, dx) => {
+            if (ids.has(c)) set(x + dx, y - dy, ids.get(c)!);
+          });
+        });
+      }
+      if (changed > 0) exec(setTilesCommand(world, id, before, after, "AI: mal tiles"));
+      return { changed, tiles: Object.keys(after).length };
+    },
+
     // ------------------------------------------------------------ scripts
 
     write_script: async ({ path, content }) => {
@@ -515,6 +714,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
     // ------------------------------------------------------------ play
 
     play: async () => {
+      heldKeys.clear();
       const ok = await editor.play.start();
       if (!ok) throw new BridgeError("The game could not start. See get_console for script errors.");
       return { mode: editor.play.mode };
@@ -525,14 +725,30 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { mode: editor.play.mode };
     },
 
-    step: ({ frames = 1 }) => {
+    step: ({ frames = 1, hold = [], press = [] }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
+      const held = keyList(hold, "hold");
+      const tapped = keyList(press, "press");
+      const input = world.tryResource(Input);
+      if ((held.length || tapped.length) && !input) throw new BridgeError("This game has no input");
       editor.play.pause();
-      for (let i = 0; i < Math.min(600, Number(frames)); i++) editor.play.step();
-      return { mode: editor.play.mode };
+      // keys stay down between calls while they are listed in `hold`, so holding isn't a new press
+      if (input) {
+        for (const k of heldKeys) if (!held.includes(k)) input.inject("up", k);
+        for (const k of held) if (!heldKeys.has(k)) input.inject("down", k);
+        for (const k of tapped) if (!held.includes(k)) input.inject("down", k);
+      }
+      heldKeys = new Set(held);
+      const n = Math.max(1, Math.min(600, Number(frames)));
+      for (let i = 0; i < n; i++) {
+        editor.play.step();
+        if (i === 0) for (const k of tapped) if (!held.includes(k)) input!.inject("up", k);
+      }
+      return { mode: editor.play.mode, frames: n };
     },
 
     stop: () => {
+      heldKeys.clear();
       editor.play.stop();
       return { mode: editor.play.mode };
     },
@@ -541,6 +757,9 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
 
 /** Handlers that change the project; the editor logs these in its console. */
 export const MUTATING = new Set([
+  "draw_sprites",
+  "create_animation",
+  "paint_tiles",
   "create_entity",
   "set_fields",
   "add_component",

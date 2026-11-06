@@ -25,6 +25,9 @@ export class ScriptHost {
   private signature = "";
   private pending: Promise<boolean> | null = null;
   private again = false;
+  /** The last code that loaded, and whether it has been used by a play session yet. */
+  private lastCode: string | null = null;
+  private used = false;
 
   constructor(
     private readonly editor: Editor,
@@ -75,6 +78,20 @@ export class ScriptHost {
     return this.status !== "error";
   }
 
+  /**
+   * Gives a play session fresh script modules, so module-level state (e.g. a
+   * score in an exported object) starts over every time, like in the exported game.
+   */
+  async freshForPlay(): Promise<void> {
+    if (!this.lastCode) return;
+    if (!this.used) {
+      this.used = true;
+      return;
+    }
+    const mod = await this.load(this.lastCode);
+    this.registry.load((mod.modules ?? {}) as Record<string, Record<string, unknown>>);
+  }
+
   private async build(): Promise<boolean> {
     const editor = this.editor;
     this.status = "building";
@@ -95,6 +112,8 @@ export class ScriptHost {
       }
       const mod = await this.load(result.code);
       this.registry.load((mod.modules ?? {}) as Record<string, Record<string, unknown>>);
+      this.lastCode = result.code;
+      this.used = false;
       this.errors = [];
       this.status = "ok";
       if (rehydrateMissing(editor.world) > 0) editor.emit("world");

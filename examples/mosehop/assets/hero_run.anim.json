@@ -1,0 +1,45 @@
+{
+  "guid": "baa752bb-6f06-4885-b18c-040a05442c91",
+  "importer": "animation",
+  "mode": "loop",
+  "frames": [
+    {
+      "sprite": [
+        "f84ce98f-303a-462f-b833-54a4ffd4b67c",
+        "cell_1"
+      ],
+      "duration": 0.09
+    },
+    {
+      "sprite": [
+        "f84ce98f-303a-462f-b833-54a4ffd4b67c",
+        "cell_2"
+      ],
+      "duration": 0.09
+    },
+    {
+      "sprite": [
+        "f84ce98f-303a-462f-b833-54a4ffd4b67c",
+        "cell_3"
+      ],
+      "duration": 0.09
+    },
+    {
+      "sprite": [
+        "f84ce98f-303a-462f-b833-54a4ffd4b67c",
+        "cell_4"
+      ],
+      "duration": 0.09
+    }
+  ],
+  "events": [
+    {
+      "frame": 1,
+      "name": "footstep"
+    },
+    {
+      "frame": 3,
+      "name": "footstep"
+    }
+  ]
+}
