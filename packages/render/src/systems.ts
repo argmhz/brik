@@ -1,6 +1,7 @@
 import { Assets, frameAt } from "@brik/assets";
 import { type App, type Entity, GlobalTransform2D, Parent, Time, Transform2D, type World, defineEvent } from "@brik/core";
-import { CameraFollow2D, Sprite, SpriteAnimator } from "./components";
+import { Camera2D, CameraFollow2D, Sprite, SpriteAnimator } from "./components";
+import { UILayout } from "./ui";
 import { ParticlesPlugin } from "./particles";
 
 export interface AnimationEventData {
@@ -91,8 +92,9 @@ export function followCameras(world: World): void {
     x += (wantX - x) * k;
     y += (wantY - y) * k;
     if (F.useBounds[e]) {
-      x = Math.min(Math.max(x, F.bounds.x[e]), F.bounds.x[e] + F.bounds.w[e]);
-      y = Math.min(Math.max(y, F.bounds.y[e]), F.bounds.y[e] + F.bounds.h[e]);
+      const half = F.boundsMode[e] === "view" ? viewHalfSize(world, e) : { x: 0, y: 0 };
+      x = clampInto(x, F.bounds.x[e], F.bounds.w[e], half.x);
+      y = clampInto(y, F.bounds.y[e], F.bounds.h[e], half.y);
     }
     T.position.x[e] = x;
     T.position.y[e] = y;
@@ -101,6 +103,27 @@ export function followCameras(world: World): void {
       G.ty[e] = y;
     }
   }
+}
+
+/**
+ * Half the world area a camera shows, from the screen size of the last
+ * rendered frame. Zero before anything has been drawn, or without a Camera2D.
+ */
+export function viewHalfSize(world: World, camera: Entity): { x: number; y: number } {
+  const layout = world.tryResource(UILayout);
+  if (!layout?.screenW || !world.has(camera, Camera2D)) return { x: 0, y: 0 };
+  const C = world.store(Camera2D);
+  const zoom = C.zoom[camera] || 1;
+  return {
+    x: (layout.screenW * C.viewport.w[camera]) / zoom / 2,
+    y: (layout.screenH * C.viewport.h[camera]) / zoom / 2,
+  };
+}
+
+/** Keeps a center `v` with half-size `half` inside [min, min + size]; centered when it doesn't fit. */
+function clampInto(v: number, min: number, size: number, half: number): number {
+  if (size <= half * 2) return min + size / 2;
+  return Math.min(Math.max(v, min + half), min + size - half);
 }
 
 /** SpriteAnimator, CameraFollow2D and particles. Works without a renderer (e.g. in the editor's play mode). */

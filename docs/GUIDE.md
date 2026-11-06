@@ -171,6 +171,10 @@ Tyngdekraft og skala sættes i `brik.project.json` under `physics`.
 2. Vælg et grid-opdelt billede som tileset.
 3. Vælg en tile i inspectoren, og mal i scene view.
 
+Lad kameraet følge spilleren med `CameraFollow2D`. Slå `useBounds` til og sæt
+`bounds` til banens kanter, så holder kameraet hele udsnittet inden for banen,
+uanset hvor stort vinduet er.
+
 Genveje: **B** pensel, **X** viskelæder, **G** fyld, **U** rektangel og **I**
 pipette. Shift+klik sletter, og Esc stopper malingen. Brug flere tilemaps som
 lag.

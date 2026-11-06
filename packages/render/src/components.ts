@@ -105,9 +105,16 @@ export const CameraFollow2D = defineComponent(
     smoothing: withMeta(t.f32(0.15), { min: 0, max: 1, step: 0.01 }),
     /** The target can move this far (half-size) from the center before the camera moves. */
     deadzone: t.vec2(0, 0),
-    /** Keep the camera's center inside `bounds`. */
+    /** Keep the camera inside `bounds` (see `boundsMode`). */
     useBounds: t.bool(false),
+    /** World rectangle, e.g. the level's edges. */
     bounds: t.rect(-1000, -1000, 2000, 2000),
+    /**
+     * "view": everything the camera shows stays inside `bounds` (a view larger
+     * than the bounds is centered on them). "center": only the camera's
+     * center does, so how far past the edge you see depends on the screen size.
+     */
+    boundsMode: t.enum(["view", "center"] as const, "view"),
   },
   { requires: [Transform2D] },
 );

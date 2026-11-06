@@ -133,7 +133,7 @@ export async function platformerFiles(): Promise<Record<string, Uint8Array | str
     Name: { value: "Main Camera" },
     Transform2D: { position: { x: 0, y: 40 } },
     Camera2D: { zoom: 3, clearColor: { r: 0.42, g: 0.68, b: 0.93, a: 1 } },
-    CameraFollow2D: { target: ids.player, offset: { x: 0, y: 20 }, smoothing: 0.12, deadzone: { x: 16, y: 10 }, useBounds: true, bounds: { x: -40, y: 30, w: 440, h: 120 } },
+    CameraFollow2D: { target: ids.player, offset: { x: 0, y: 20 }, smoothing: 0.12, deadzone: { x: 16, y: 10 }, useBounds: true, bounds: { x: -144, y: -60, w: 720, h: 300 } },
     AudioListener: {},
   });
   add(newSceneId(), {

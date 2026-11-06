@@ -6,6 +6,7 @@ import {
   Audio,
   AudioSource,
   Behaviour,
+  Camera2D,
   CameraFollow2D,
   CharacterController2D,
   Collider2D,
@@ -23,6 +24,7 @@ import {
   SpriteAnimator,
   Transform2D,
   TriggerEnter,
+  UILayout,
   Velocity2D,
   setActive,
   setParent,
@@ -241,6 +243,36 @@ describe("camera follow", () => {
     app.update(1 / 60);
     expect(T.position.x[cam]).toBeGreaterThan(200);
     expect(T.position.x[cam]).toBeLessThan(300);
+  });
+
+  it("keeps the whole view inside the bounds, whatever the screen size", () => {
+    const app = game();
+    const w = app.world;
+    const target = w.spawn([Transform2D, { position: { x: 1000, y: -1000 } }]);
+    const level = { x: 0, y: 0, w: 1000, h: 200 };
+    const cam = w.spawn(
+      [Transform2D],
+      [Camera2D, { zoom: 2 }],
+      [CameraFollow2D, { target: w.ref(target), smoothing: 0, useBounds: true, bounds: level }],
+    );
+    // what the renderer reports after drawing a frame
+    const layout = w.tryResource(UILayout) ?? w.insertResource(new UILayout());
+    const T = w.store(Transform2D);
+    const at = (sw: number, sh: number) => {
+      layout.screenW = sw;
+      layout.screenH = sh;
+      app.update(1 / 60);
+      return { x: T.position.x[cam], y: T.position.y[cam] };
+    };
+    // 800x300 px at zoom 2 shows 400x150 world units: the right edge of the view sits on the level's
+    expect(at(800, 300)).toEqual({ x: 800, y: 75 });
+    // a wider screen shows more, so the camera stops earlier
+    expect(at(1200, 300)).toEqual({ x: 700, y: 75 });
+    // taller than the level: centered on it
+    expect(at(800, 600).y).toBe(100);
+    // "center" is the old behaviour: only the camera's middle stays inside
+    w.store(CameraFollow2D).boundsMode[cam] = "center";
+    expect(at(800, 300)).toEqual({ x: 1000, y: 0 });
   });
 });
 

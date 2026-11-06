@@ -110,7 +110,7 @@ const Velocity2D = defineComponent("Velocity2D", { x: f32, y: f32 });
 | Komponent | Felter | Beskrivelse |
 |---|---|---|
 | `Camera2D` | `zoom: f32`, `viewport: rect`, `clearColor: color`, `priority: i32` | Kamera. Med flere kameraer bestemmer `priority` rækkefølgen. |
-| `CameraFollow2D` | `target: entity`, `smoothing: f32`, `deadzone: vec2`, `bounds: rect` | Lader kameraet følge en entity |
+| `CameraFollow2D` | `target: entity`, `smoothing: f32`, `deadzone: vec2`, `bounds: rect`, `boundsMode: view \| center` | Lader kameraet følge en entity |
 | `Sprite` | `sprite: SpriteRef`, `color: color`, `flipX/flipY: bool`, `pivotOverride?: vec2` | Tegner en sprite fra et sprite sheet eller atlas (se 4.7) |
 | `SortingOrder` | `layer: i32`, `order: i32`, `ySort: bool` | Bestemmer tegnerækkefølgen. `ySort` er til top-down-spil. |
 | `SpriteAnimator` | `clip: asset<SpriteAnim>`, `clips: array<asset<SpriteAnim>>`, `speed: f32`, `playing: bool` | Frame-animation. `play("navn")` skifter mellem klip. Sender frame-events. |
@@ -442,7 +442,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - `CharacterController2D` ignorerer dynamiske kroppe i sine forespørgsler og skubber dem i stedet væk. Den kan derfor endnu ikke stå på løse kasser.
 - `Text2D` bruger canvas-tekst i stedet for MSDF. Den er skarp ved normal zoom, men bliver blød, hvis man zoomer meget ind.
 - `Shape2D` har ikke polygon og linje endnu, og `Joint2D` mangler.
-- `CameraFollow2D` holder kameraets centrum inden for `bounds`, men tager ikke højde for, hvor stor visningen er.
+- ~~`CameraFollow2D` tager ikke højde for, hvor stor visningen er.~~ (fase 5.8)
 - **Resultat (4a+4b):** Et rigtigt 2D-spil, fx en platformer med UI og lyd
 
 ### Fase 5 — Udgivelse
@@ -499,7 +499,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 
 **Fundet, men ikke rettet**
 - ~~En genindlæsning af siden mister alt, der ikke er gemt.~~ (fase 5.8)
-- `CameraFollow2D.bounds` holder kameraets midtpunkt inden for rammen, så hvad man ser ved kanten afhænger af vinduets størrelse. En "hold udsnittet inden for"-tilstand ville være lettere at bruge.
+- ~~`CameraFollow2D.bounds` holder kun kameraets midtpunkt inden for rammen.~~ (fase 5.8)
 - ~~AI'en kan ikke klikke på UI-knapper i spillet.~~ (fase 5.8)
 - ~~`setActive` skjuler kun: scripts og colliders på en inaktiv entity kører videre.~~ (fase 5.8)
 - Når editoren ligger i en baggrundsfane, bremser browseren dens timere, så det kan tage op til et minut at forbinde til AI'en igen.
@@ -510,6 +510,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] `setActive(false)` slukker nu en entity helt, også når det er en forælder, der er slukket: scripts (`onStart`, `onUpdate`, `onFixedUpdate` og events) holder pause, og det samme gør tweens og timere fra `this.after`/`this.every`. Kroppe og colliders er ude af fysikken, så de ikke falder, støder eller rammes af `raycast` og `overlapPoint`. `onStart` venter, til entity'en tændes første gang.
 - [x] Autosave: ændringer, der ikke er gemt, skrives til `.brik/recovery.json` lidt efter hver ændring (aldrig under Play). Når projektet åbnes igen, spørger editoren, om de skal gendannes. Gendannede ændringer står som ikke gemt, til man gemmer. Filen fjernes, når scenen gemmes, eller når man fortryder tilbage til det gemte.
 - [x] MCP: `click` klikker på en UI-knap (entity-id) eller et sted i verden og fortæller, hvilken knap der blev ramt. `step` tager `mouse` (`{ entity }` eller `{ x, y }`), så AI'en kan sigte. UI'et lægges ud, selv om Spil-fanen ikke har tegnet.
+- [x] `CameraFollow2D.boundsMode`: med "view" (standard) holdes hele udsnittet inden for `bounds`, uanset skærmens størrelse og zoom. Er udsnittet større end rammen, centreres det. "center" er den gamle opførsel. Skærmstørrelsen kendes fra første frame. Platformer-skabelonen og Mosehop bruger nu banernes kanter som `bounds`.
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**
@@ -517,6 +518,8 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - Der er ingen `onEnable`/`onDisable`-hooks endnu, så et script kan ikke selv reagere på at blive tændt eller slukket.
 - Gendannelsesspørgsmålet bruger browserens `confirm()`-dialog.
 - Eksisterende projekter får ikke `CLAUDE.md` automatisk.
+- Scener, der er gemt før `boundsMode` kom, får "view" og skal have deres `bounds` sat til banens kanter (eller `boundsMode: "center"`).
+- Kameraets rotation tages ikke med, når udsnittet holdes inden for rammen.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
