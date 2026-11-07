@@ -8,6 +8,7 @@ import { writeProjectTypes } from "../core/project";
 import type { EsbuildLike } from "../core/scripts";
 import { EditorRoot } from "./EditorRoot";
 import { PopupHost } from "./Popup";
+import { RecoveryDialog, offerRecovery } from "./RecoveryDialog";
 import { StartScreen } from "./StartScreen";
 import { reportError, toastState } from "./hooks";
 import { resetUiState } from "./ui-state";
@@ -43,19 +44,6 @@ function captureConsole(editor: Editor): () => void {
     };
   });
   return () => LEVELS.forEach((level, i) => (console[level] = originals[i]));
-}
-
-/** Asks whether to bring back unsaved changes from the last session. */
-async function offerRecovery(ed: Editor): Promise<void> {
-  const rec = ed.recovery!;
-  const scene = rec.scenePath ?? "en ny, ikke-gemt scene";
-  const when = new Date(rec.savedAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" });
-  const yes = confirm(
-    `Brik fandt ændringer, der ikke blev gemt, i ${scene} (${when}).\n\n` +
-      "OK: Gendan ændringerne (de er ikke gemt endnu).\nAnnuller: Kassér dem.",
-  );
-  if (yes) ed.restoreRecovery();
-  else await ed.discardRecovery();
 }
 
 function Root() {
@@ -105,6 +93,7 @@ function Root() {
         {(ed) => <EditorRoot editor={ed()} onClose={close} />}
       </Show>
       <PopupHost />
+      <RecoveryDialog />
       <Show when={toastState()}>{(t) => <div class="toast" classList={{ error: t().error }}>{t().text}</div>}</Show>
     </>
   );
