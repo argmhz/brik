@@ -440,7 +440,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 
 **Kendte begrænsninger fra 4a**
 - ~~`CharacterController2D` kan ikke stå på løse kasser.~~ (fase 5.9)
-- `Text2D` bruger canvas-tekst i stedet for MSDF. Den er skarp ved normal zoom, men bliver blød, hvis man zoomer meget ind.
+- ~~`Text2D` bliver blød, hvis man zoomer meget ind.~~ (fase 5.9, uden MSDF)
 - `Shape2D` har ikke polygon og linje endnu, og `Joint2D` mangler.
 - ~~`CameraFollow2D` tager ikke højde for, hvor stor visningen er.~~ (fase 5.8)
 - **Resultat (4a+4b):** Et rigtigt 2D-spil, fx en platformer med UI og lyd
@@ -535,6 +535,14 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] Auto-tiling: et tileset kan have terræner (i sin `.meta.json`). Et terræn er en ordnet liste af regler med et sprite og et 3×3-mønster (samme terræn / ikke samme / ligegyldigt), og den første regel, der passer, vinder. Man maler med terrænet (pensel, fyld, rektangel), og de malede celler og deres naboer får de rigtige kanter og hjørner. Det gælder også, når man sletter. "Fra 3×3-blok…" laver de 9 regler for en almindelig blok med hjørner, kanter og midte. Pipetten på et terræn-tile vælger terrænet. AI'en maler med `"terrain:<navn>"` i `paint_tiles`, og `read_tiles` viser terrænerne. Runtime er uændret, for tilemaps gemmer stadig almindelige sprite-id'er.
 - [x] UI: `UISlider`, `UIToggle`, `UITextInput` og `UIStack` (kolonne eller række, i stedet for det planlagte `UILayout`, som allerede er navnet på det udregnede layout). Slider og toggle tegnes af rendereren; tekstfeltet viser sin tekst gennem sin `UIText` og tager imod tastatur gennem et skjult HTML-felt, så æøå, indsæt og skærmtastaturer virker. Scripts får `onValueChanged` og `onSubmit`, og AI'en kan skrive med `step({ type })`. Undervejs: et klik eller tryk uden musebevægelse først (fx på en touchskærm) ramte position (0, 0), fordi kun `pointermove` satte positionen. Nu gør `pointerdown` det også.
 - [x] UI-elementer kan vælges og trækkes i scene view: et klik inden for et omrids vælger elementet (UI ligger øverst som i spillet, men store baggrunde, der dækker over halvdelen af skærmen, kommer efter verdenen, så den stadig kan vælges). At trække ændrer `UIRect.position` i UI-enheder (med snap og fortryd), og flyt-gizmoen vises ikke for UI. Elementer i en `UIStack` placeres af stakken og flyttes ikke.
+
+**Gruppe 2**
+- [x] Skarp tekst ved zoom: `Text2D` rasteriseres ved den opløsning, den vises med (kameraets eller scene views zoom × entityens skala × skærmens pixeltæthed), rundet op til faste trin (1, 1,5, 2, 3 … 32 pixels pr. enhed), så zoom kun giver ny rasterisering, når et trin krydses. Højst 4096 pixels pr. side. Valgt frem for MSDF: alle systemfonte virker stadig, og der skal ikke genereres font-atlasser.
+- [ ] 9-slice på `Sprite` i verden
+- [ ] `Shape2D` polygon og linje, `Joint2D`
+- [ ] Atlas-pakkeren trimmer hver sprite
+- [ ] PWA/offline for udgivne spil
+- [ ] Prefab-overrides pr. script-felt
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

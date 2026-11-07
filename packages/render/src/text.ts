@@ -8,6 +8,11 @@ export interface TextStyle {
   bold: boolean;
   maxWidth: number;
   lineHeight: number;
+  /**
+   * Pixels rasterized per world unit. Set from how big the text is on screen,
+   * so it stays sharp when zoomed in. Default 2.
+   */
+  resolution?: number;
 }
 
 export interface TextImage {
@@ -21,9 +26,18 @@ export interface TextImage {
   lastUsed: number;
 }
 
-/** Text is rasterized at this many pixels per world unit, so it stays sharp when zoomed a bit. */
-const RESOLUTION = 2;
+/** Pixels per world unit when nothing better is known. */
+const DEFAULT_RESOLUTION = 2;
 const MAX_ENTRIES = 512;
+/** Largest rasterized text, in pixels per side (big text at high zoom gets a lower resolution). */
+const MAX_SIDE = 4096;
+/** Resolutions text is rasterized at: zooming re-rasterizes only when crossing a step. */
+const STEPS = [1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32];
+
+/** The rasterization step for text shown at `pixelsPerUnit` screen pixels per world unit. */
+export function textResolution(pixelsPerUnit: number): number {
+  return STEPS.find((s) => s >= pixelsPerUnit - 1e-6) ?? STEPS[STEPS.length - 1];
+}
 
 let measureCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined;
 
@@ -82,7 +96,7 @@ export class TextCache {
   }
 
   get(style: TextStyle): TextImage | null {
-    const key = `${style.text}\u0000${style.size}\u0000${style.font}\u0000${style.align}\u0000${style.bold}\u0000${style.maxWidth}\u0000${style.lineHeight}`;
+    const key = `${style.text}\u0000${style.size}\u0000${style.font}\u0000${style.align}\u0000${style.bold}\u0000${style.maxWidth}\u0000${style.lineHeight}\u0000${style.resolution ?? DEFAULT_RESOLUTION}`;
     let entry = this.entries.get(key);
     if (!entry) {
       const made = this.rasterize(style);
@@ -114,6 +128,8 @@ export class TextCache {
     const width = Math.max(1, ...lines.map((l) => ctx.measureText(l).width), style.maxWidth > 0 ? 0 : 1);
     const height = Math.max(1, lines.length * lineH);
     const pad = 2;
+    // never more pixels than MAX_SIDE on a side
+    const RESOLUTION = Math.min(style.resolution ?? DEFAULT_RESOLUTION, MAX_SIDE / (width + pad * 2), MAX_SIDE / (height + pad * 2));
     const cw = Math.ceil((width + pad * 2) * RESOLUTION);
     const ch = Math.ceil((height + pad * 2) * RESOLUTION);
     const canvas = makeCanvas(cw, ch);

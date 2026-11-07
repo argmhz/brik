@@ -10,7 +10,7 @@ export * from "./systems";
 export * from "./particles";
 export * from "./ui";
 export * from "./ui-widgets";
-export { TextCache, layoutLines, type TextImage, type TextStyle } from "./text";
+export { TextCache, layoutLines, textResolution, type TextImage, type TextStyle } from "./text";
 export { SpriteBatcher, packColor } from "./sprite-batcher";
 
 export interface RenderPluginOptions extends RendererOptions {

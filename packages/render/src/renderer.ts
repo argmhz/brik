@@ -5,7 +5,7 @@ import { ParticleEmitter2D, Particles } from "./particles";
 import { UIImage, UILayout, UIText } from "./ui";
 import { UISlider, UIToggle } from "./ui-widgets";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
-import { TextCache, type TextImage, type TextStyle } from "./text";
+import { TextCache, type TextImage, type TextStyle, textResolution } from "./text";
 
 const KIND_SPRITE = 0;
 const KIND_SHAPE = 1;
@@ -22,8 +22,12 @@ export const textCache = new TextCache((tex) => {
 
 const style: TextStyle = { text: "", size: 16, font: "", align: "center", bold: false, maxWidth: 0, lineHeight: 1.2 };
 
-/** The rasterized text for an entity's Text2D, or null if empty / unavailable. */
-export function textImage(world: World, e: Entity): TextImage | null {
+/**
+ * The rasterized text for an entity's Text2D, or null if empty / unavailable.
+ * `pixelsPerUnit`: how many screen pixels one world unit of the text covers,
+ * so it is rasterized sharp enough (rounded to steps; see textResolution).
+ */
+export function textImage(world: World, e: Entity, pixelsPerUnit = 2): TextImage | null {
   const T = world.store(Text2D);
   if (!T.text[e]) return null;
   style.text = T.text[e];
@@ -33,7 +37,10 @@ export function textImage(world: World, e: Entity): TextImage | null {
   style.bold = T.bold[e] !== 0;
   style.maxWidth = T.maxWidth[e];
   style.lineHeight = T.lineHeight[e];
-  return textCache.get(style);
+  style.resolution = textResolution(pixelsPerUnit);
+  const img = textCache.get(style);
+  style.resolution = undefined;
+  return img;
 }
 
 interface GpuTexture {
@@ -146,7 +153,10 @@ export class Renderer {
       return;
     }
 
-    const count = this.collect(world);
+    // text is rasterized for the most zoomed-in camera
+    const dpr = Math.min(globalThis.devicePixelRatio || 1, this.maxPixelRatio);
+    const zoom = Math.max(...cameras.map((c) => (G.active[c] ? C.zoom[c] : 0)), 0.01);
+    const count = this.collect(world, zoom * dpr);
     this.batcher.drawCalls = 0;
     this.batcher.instances = 0;
 
@@ -313,7 +323,7 @@ export class Renderer {
     const c = view.clearColor ?? { r: 0.12, g: 0.12, b: 0.14, a: 1 };
     gl.clearColor(c.r, c.g, c.b, c.a);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    const count = this.collect(world);
+    const count = this.collect(world, view.zoom * Math.min(globalThis.devicePixelRatio || 1, this.maxPixelRatio));
     this.batcher.drawCalls = 0;
     const camM = mat3.fromTRS(view.x, view.y, 0, 1, 1);
     this.drawSprites(world, count, this.setView(camM, view.zoom, this.width, this.height));
@@ -372,7 +382,8 @@ export class Renderer {
   }
 
   /** Gathers visible sprites, shapes and text and sorts them. Returns how many there are. */
-  private collect(world: World): number {
+  /** `pixelsPerUnit`: screen pixels per world unit in the views drawn this frame (zoom x pixel ratio). */
+  private collect(world: World, pixelsPerUnit: number): number {
     const assets = world.resource(Assets);
     const S = world.store(Sprite);
     const H = world.store(Shape2D);
@@ -411,9 +422,12 @@ export class Renderer {
       this.itemTex.push(null);
     }
 
+    const gm = G.matrix;
     for (const e of world.query([Text2D, GlobalTransform2D])) {
       if (!G.active[e]) continue;
-      const img = textImage(world, e);
+      // screen pixels per world unit of this text: view zoom x its own scale
+      const scale = Math.max(Math.hypot(gm.a[e], gm.b[e]), Math.hypot(gm.c[e], gm.d[e]));
+      const img = textImage(world, e, pixelsPerUnit * scale);
       if (!img) continue;
       const gpu = this.gpuTexture(img.texture);
       if (!gpu) continue;

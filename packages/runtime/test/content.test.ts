@@ -28,6 +28,7 @@ import {
   Velocity2D,
   setActive,
   setParent,
+  textResolution,
   frameAt,
   initPhysics,
   parsePrefab,
@@ -527,3 +528,16 @@ describe("inactive entities", () => {
     expect(w.store(Transform2D).position.x[hero]).toBeGreaterThan(150);
   });
 });
+
+describe("text resolution", () => {
+  it("rounds up to steps, so zooming re-rasterizes text only now and then", () => {
+    expect(textResolution(2)).toBe(2);
+    expect(textResolution(2.1)).toBe(3);
+    expect(textResolution(5)).toBe(6);
+    expect(textResolution(0.3)).toBe(1);
+    // the camera at zoom 3 on a 2x screen: 6 pixels per world unit
+    expect(textResolution(3 * 2)).toBe(6);
+    expect(textResolution(500)).toBe(32);
+  });
+});
+
