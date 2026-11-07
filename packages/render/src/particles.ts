@@ -2,10 +2,10 @@ import type { SpriteRef } from "@brik/assets";
 import {
   type App,
   type Entity,
-  GlobalTransform2D,
   Time,
   Transform2D,
   type World,
+  computeWorldMatrix,
   defineComponent,
   destroyRecursive,
   t,
@@ -181,15 +181,12 @@ export class Particles {
       // in the emitter's own space: the draw step places them with its transform
       px = 0;
       py = 0;
-    } else if (world.has(e, GlobalTransform2D)) {
-      const g = world.store(GlobalTransform2D).matrix;
-      px = g.tx[e];
-      py = g.ty[e];
-      rot = Math.atan2(g.b[e], g.a[e]);
     } else {
-      const T = world.store(Transform2D);
-      px = T.position.x[e];
-      py = T.position.y[e];
+      // from the transform chain: the global transform doesn't exist yet in an entity's first frame
+      const g = computeWorldMatrix(world, e);
+      px = g.tx;
+      py = g.ty;
+      rot = Math.atan2(g.b, g.a);
     }
     const angle = P.direction[e] + rot + (rnd() - 0.5) * P.spread[e];
     const speed = lerp(P.speed.x[e], P.speed.y[e]);

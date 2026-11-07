@@ -110,16 +110,11 @@ describe("particles", () => {
   it("local-space particles are kept in the emitter's own space, world-space ones where they were emitted", () => {
     const app = game();
     const w = app.world;
-    // start emitting after the first frame, when the emitters' world positions exist
-    const still = { emitting: false, rate: 600, speed: { x: 0, y: 0 }, gravity: { x: 0, y: 0 }, spread: 0, lifetime: { x: 5, y: 5 } };
+    const still = { rate: 0, burst: 4, speed: { x: 0, y: 0 }, gravity: { x: 0, y: 0 }, spread: 0, lifetime: { x: 5, y: 5 } };
     const world = w.spawn([Transform2D, { position: { x: 100, y: 50 } }], [ParticleEmitter2D, { ...still, space: "world" }]);
     const local = w.spawn([Transform2D, { position: { x: 100, y: 50 } }], [ParticleEmitter2D, { ...still, space: "local" }]);
     app.update(1 / 60);
-    w.store(ParticleEmitter2D).emitting[world] = 1;
-    w.store(ParticleEmitter2D).emitting[local] = 1;
-    app.update(1 / 60);
     const particles = w.resource(Particles);
-    expect(particles.alive(world)).toBeGreaterThan(0);
     expect(particles.pools.get(world)!.x[0]).toBeCloseTo(100);
     expect(particles.pools.get(local)!.x[0]).toBeCloseTo(0);
     expect(particles.pools.get(local)!.y[0]).toBeCloseTo(0);
@@ -127,6 +122,21 @@ describe("particles", () => {
     w.store(Transform2D).position.x[local] = 400;
     app.update(1 / 60);
     expect(particles.pools.get(local)!.x[0]).toBeCloseTo(0);
+  });
+
+  it("a burst in the very first frame starts at the emitter's world position, also under a moved parent", () => {
+    const app = game();
+    const w = app.world;
+    const parent = w.spawn([Transform2D, { position: { x: 200, y: 0 }, scale: { x: 2, y: 2 } }]);
+    const e = w.spawn([Transform2D, { position: { x: 10, y: 5 } }], [ParticleEmitter2D, { rate: 0, burst: 3, speed: { x: 0, y: 0 }, gravity: { x: 0, y: 0 }, spread: 0 }]);
+    setParent(w, e, parent);
+    // no update has run: there is no GlobalTransform2D result yet
+    app.update(1 / 60);
+    const pool = w.resource(Particles).pools.get(e)!;
+    expect(pool.count).toBe(3);
+    // 200 + 10 * 2 and 0 + 5 * 2
+    expect(pool.x[0]).toBeCloseTo(220);
+    expect(pool.y[0]).toBeCloseTo(10);
   });
 
   it("one-shot emitters destroy themselves", () => {

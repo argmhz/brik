@@ -552,6 +552,9 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] Flere MCP-klienter om port 5181: en ny server beder den gamle om at slippe porten (den nyeste vinder), og editoren kobler selv over. Den gamle bliver passiv og forklarer sin AI, hvad der skete. Ligger noget andet på porten, ventes der som før.
 - [ ] Hørbar lyd kan ikke kontrolleres gennem MCP (kun antal afspilninger og om WebAudio findes).
 
+**Rettet efter gennemgang af 2D**
+- [x] Verdens-partikler i en entitys allerførste frame startede ved (0, 0), fordi den globale transform først udregnes bagefter. Partikler og spawnere bruger nu `computeWorldMatrix`, som regner fra transform-kæden.
+
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
 - [ ] PBR, lys, shadows og post-processing

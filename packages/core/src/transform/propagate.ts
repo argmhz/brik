@@ -2,7 +2,21 @@ import { system } from "../app/app";
 import type { Entity } from "../ecs/entity";
 import type { World } from "../ecs/world";
 import { type Mat3, mat3 } from "../math";
-import { Active, Children, GlobalTransform2D, Parent, Transform2D } from "./components";
+import { Active, Children, GlobalTransform2D, Parent, Transform2D, parentOf } from "./components";
+
+/**
+ * An entity's world matrix from its Transform2D and its parents' (not from
+ * GlobalTransform2D). Use it for entities that may not have been through a
+ * transform pass yet: spawned this frame, or in the very first frame.
+ */
+export function computeWorldMatrix(world: World, e: Entity): Mat3 {
+  const T = world.store(Transform2D);
+  let m = world.has(e, Transform2D) ? mat3.fromTRS(T.position.x[e], T.position.y[e], T.rotation[e], T.scale.x[e], T.scale.y[e]) : mat3.identity();
+  for (let p = parentOf(world, e); p >= 0 && world.has(p, Transform2D); p = parentOf(world, p)) {
+    m = mat3.multiply(mat3.fromTRS(T.position.x[p], T.position.y[p], T.rotation[p], T.scale.x[p], T.scale.y[p]), m);
+  }
+  return m;
+}
 
 /** Computes GlobalTransform2D for every entity from the hierarchy. Runs in postUpdate. */
 export const propagateTransforms = system("propagateTransforms", (world: World) => {
