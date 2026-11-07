@@ -17,6 +17,8 @@ export function scenePath(name: string): string {
 export class Scenes {
   /** Path of the scene that is loaded now. */
   current: string | null = null;
+  /** How many scene switches have happened (also reloads of the same scene). */
+  swaps = 0;
   private ready: { path: string; data: SceneData } | null = null;
   private loading: string | null = null;
   private pending: Promise<void> = Promise.resolve();
@@ -69,6 +71,7 @@ export class Scenes {
     this.onSwap?.(next.path);
     loadScene(world, next.data);
     this.current = next.path;
+    this.swaps++;
   }
 }
 

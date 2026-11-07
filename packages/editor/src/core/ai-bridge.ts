@@ -2,9 +2,13 @@ import {
   type ComponentDef,
   type Entity,
   type Field,
+  Audio,
   BehaviourRuntime,
   Camera2D,
   GlobalTransform2D,
+  ParticleEmitter2D,
+  Particles,
+  isActive,
   Input,
   UIClick,
   UITextEntry,
@@ -170,6 +174,17 @@ function componentsOf(editor: Editor, e: Entity): Record<string, Record<string, 
   return serializeEntities(editor.world, [e]).find((d) => d.id === id)?.components ?? {};
 }
 
+/** An entity and all its descendants, depth first, with their ids and names. */
+function subtreeOf(editor: Editor, e: Entity): { id: string; name: string }[] {
+  const out: { id: string; name: string }[] = [];
+  const walk = (x: Entity) => {
+    out.push({ id: sceneIdOf(editor.world, x), name: editor.entityName(x) });
+    for (const c of childrenOf(editor.world, x)) walk(c);
+  };
+  walk(e);
+  return out;
+}
+
 function summary(editor: Editor, e: Entity) {
   const world = editor.world;
   return {
@@ -310,13 +325,19 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
 
     project_info: () => ({
       name: editor.settings.name,
-      scene: editor.scenePath,
+      // while the game runs, the scene it is in (it may have switched); the editor's scene is what play will restore
+      scene: (editor.play.active && world.tryResource(Scenes)?.current) || editor.scenePath,
+      ...(editor.play.active ? { editorScene: editor.scenePath } : {}),
       startScene: editor.settings.startScene,
       unsavedChanges: editor.dirty,
       mode: editor.play.mode,
       scripts: { status: editor.scripts.status, errors: editor.scripts.errors.length },
       entities: world.entityCount,
       undo: editor.history.undoLabel ?? null,
+      // sound state while the game runs: whether WebAudio exists here (not in headless) and how many sounds play
+      ...(editor.play.active && world.tryResource(Audio)
+        ? { audio: { webAudio: world.resource(Audio).context !== null, playing: world.resource(Audio).playingCount } }
+        : {}),
     }),
 
     get_hierarchy: ({ depth = 6 }) => rootEntities(world).map((e) => tree(editor, e, Number(depth))),
@@ -354,12 +375,24 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       delete components.Scripts;
       delete components.Name;
       delete components.Parent;
+      // values that only exist while the game runs
+      const live: Record<string, unknown> = {};
+      if (editor.play.active) {
+        live.active = isActive(world, e);
+        if (world.has(e, GlobalTransform2D)) {
+          const g = world.store(GlobalTransform2D).matrix;
+          live.worldPosition = { x: Math.round(g.tx[e] * 100) / 100, y: Math.round(g.ty[e] * 100) / 100 };
+        }
+        const particles = world.tryResource(Particles);
+        if (particles && world.has(e, ParticleEmitter2D)) live.particlesAlive = particles.alive(e);
+      }
       return {
         id,
         name: editor.entityName(e),
         parent: p >= 0 ? sceneIdOf(world, p) : null,
         children: childrenOf(world, e).map((c) => sceneIdOf(world, c)),
         components,
+        ...(Object.keys(live).length ? { live } : {}),
         scripts,
         ...(guid
           ? { prefab: { guid, path: editor.db.pathOf(guid) ?? null, overrides: world.store(PrefabInstance).overrides[e] ?? [] } }
@@ -445,7 +478,17 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         extra[def.name] = { ...plain, ...refs };
       }
       const id = editor.createEntity(kind, { name, x, y, parentId: parent ?? null, extra });
-      return { id, name: editor.entityName(findBySceneId(world, id)) };
+      const e = findBySceneId(world, id);
+      const made = summary(editor, e);
+      // what the editor added on its own: the kind's components, child entities (a button's label) and a UI canvas
+      const children = childrenOf(world, e).map((c) => summary(editor, c));
+      const actualParent = parentOf(world, e);
+      const out: Record<string, unknown> = { id, name: made.name, components: made.components };
+      if (children.length) out.children = children;
+      if (actualParent >= 0 && sceneIdOf(world, actualParent) !== (parent ?? null)) {
+        out.parent = { ...summary(editor, actualParent), note: parent ? "UI elements must sit under a UICanvas: this one was used" : "a UICanvas was created for this UI element" };
+      }
+      return out;
     },
 
     set_fields: ({ id, component: comp, values }) => {
@@ -780,8 +823,13 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
     create_prefab: async ({ id }) => {
       noEdits(editor);
       need(editor, id);
+      const root = need(editor, id);
+      const before = subtreeOf(editor, root);
       const path = await createPrefab(editor, id);
-      return { path };
+      // the children get new ids when the entity becomes a prefab instance: map old to new by position in the tree
+      const after = subtreeOf(editor, findBySceneId(world, id));
+      const idMap = before.map((b, i) => ({ name: b.name, before: b.id, after: after[i]?.id ?? null })).filter((m) => m.before !== m.after);
+      return { path, id, ...(idMap.length ? { childIdsChanged: idMap, note: "Use the `after` ids from now on" } : {}) };
     },
 
     apply_prefab: async ({ id }) => {
@@ -847,14 +895,15 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       }
       heldKeys = new Set(held);
       const n = Math.max(1, Math.min(600, Number(frames)));
-      const sceneBefore = world.tryResource(Scenes)?.current ?? null;
+      const swapsBefore = world.tryResource(Scenes)?.swaps ?? 0;
       for (let i = 0; i < n; i++) {
         await stepFrame(editor);
         if (i === 0) for (const k of tapped) if (!held.includes(k)) input!.inject("up", k);
       }
       await finishSceneSwitch(editor);
-      const scene = world.tryResource(Scenes)?.current ?? null;
-      return { mode: editor.play.mode, frames: n, ...(scene !== sceneBefore ? { sceneLoaded: scene } : {}) };
+      const scenes = world.tryResource(Scenes);
+      // also a reload of the same scene counts
+      return { mode: editor.play.mode, frames: n, ...(scenes && scenes.swaps !== swapsBefore ? { sceneLoaded: scenes.current, switches: scenes.swaps - swapsBefore } : {}) };
     },
 
     click: async ({ entity, x, y, button = 0 }) => {
@@ -870,22 +919,29 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const clicks = world.events(UIClick).reader();
       input.injectPointer(p.x, p.y);
       // move there, press, release, and let the game react
-      const sceneBefore = world.tryResource(Scenes)?.current ?? null;
-      await stepFrame(editor);
+      const swapsBefore = world.tryResource(Scenes)?.swaps ?? 0;
+      // read the clicks after every frame: a click can switch the scene, and ids of the old scene's entities
+      // are gone (or reused) by the time all the frames have run
+      const clicked: (string | null)[] = [];
+      const frame = async () => {
+        await stepFrame(editor);
+        for (const ev of clicks.read()) clicked.push(world.store(SceneId).id[ev.entity] ?? null);
+      };
+      await frame();
       input.inject("down", code);
-      await stepFrame(editor);
+      await frame();
       input.inject("up", code);
-      await stepFrame(editor);
-      await stepFrame(editor);
-      const clicked = clicks.read().map((ev) => world.store(SceneId).id[ev.entity] ?? null);
+      await frame();
+      await frame();
+      const switched = await finishSceneSwitch(editor);
+      const scenes = world.tryResource(Scenes);
+      const swapped = scenes ? scenes.swaps - swapsBefore : 0;
       return {
         screen: { x: Math.round(p.x), y: Math.round(p.y) },
         buttonUnderMouse: hitButton >= 0 ? (world.store(SceneId).id[hitButton] ?? null) : null,
         clickedButtons: clicked,
         frames: 4,
-        ...((await finishSceneSwitch(editor)) || world.tryResource(Scenes)?.current !== sceneBefore
-          ? { sceneLoaded: world.tryResource(Scenes)?.current ?? null }
-          : {}),
+        ...(switched || swapped > 0 ? { sceneLoaded: scenes?.current ?? null, switches: swapped } : {}),
       };
     },
 

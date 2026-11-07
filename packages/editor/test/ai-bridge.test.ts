@@ -461,5 +461,54 @@ export class Show extends Behaviour {
     expect(events.at(-1)).toBe("submit=hej");
     await h.stop({});
   });
+
+  it("reports what create_entity and create_prefab changed on their own", async () => {
+    const { h } = await setup();
+    // a UI button without a canvas: the editor makes a canvas and a label child
+    const button = (await h.create_entity({ kind: "ui-button", name: "Start" })) as {
+      id: string;
+      components: string[];
+      children?: { id: string; name: string; components: string[] }[];
+      parent?: { id: string; name: string; note: string };
+    };
+    expect(button.components).toEqual(expect.arrayContaining(["UIRect", "UIButton", "UIImage"]));
+    expect(button.children).toHaveLength(1);
+    expect(button.children![0].components).toContain("UIText");
+    expect(button.parent?.name).toBe("UI Canvas");
+    expect(button.parent?.note).toMatch(/created/);
+
+    // a prefab from an entity with a child: any changed ids come back as a map, and the new ids work
+    const root = (await h.create_entity({ name: "Gruppe" })) as { id: string };
+    const kid = (await h.create_entity({ name: "Barn", parent: root.id })) as { id: string };
+    const made = (await h.create_prefab({ id: root.id })) as { path: string; id: string; childIdsChanged?: { name: string; before: string; after: string }[] };
+    expect(made.id).toBe(root.id);
+    const mapped = made.childIdsChanged?.find((m) => m.name === "Barn");
+    const kidId = mapped?.after ?? kid.id;
+    expect(((await h.inspect_entity({ id: kidId })) as { name: string }).name).toBe("Barn");
+  });
+
+  it("click reports the clicked button even when it reloads the same scene, and project_info names the game's scene", async () => {
+    const { editor, h } = await setup();
+    await h.write_script({
+      path: "scripts/Again.ts",
+      content: `import { Behaviour } from "brik";
+export class Again extends Behaviour {
+  onClick() { this.loadScene("main"); }
+}`,
+    });
+    const { id } = (await h.create_entity({ kind: "ui-button", name: "Igen" })) as { id: string };
+    await h.attach_script({ id, script: "Again" });
+    await h.save_scene({});
+    await h.play({});
+    const info = (await h.project_info({})) as { scene: string; editorScene: string };
+    expect(info.scene).toBe("scenes/main.scene.json");
+    const r = (await h.click({ entity: id })) as { clickedButtons: string[]; sceneLoaded?: string; switches?: number };
+    // the scene is the same, but it was reloaded, and the id is the button's (read before the reload)
+    expect(r.clickedButtons).toEqual([id]);
+    expect(r.sceneLoaded).toBe("scenes/main.scene.json");
+    expect(r.switches).toBe(1);
+    await h.stop({});
+    expect(editor.play.active).toBe(false);
+  });
 });
 
