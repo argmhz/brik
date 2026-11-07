@@ -10,6 +10,8 @@ import {
   UIRect,
   type World,
   cellAt,
+  terrainBrush,
+  terrainOf,
   tileKey,
   type Entity,
   GlobalTransform2D,
@@ -28,7 +30,7 @@ import {
 import { type FieldChange, setValues, topLevel, worldMatrix } from "../core/commands";
 import type { Editor } from "../core/editor";
 import { placePrefab } from "../core/prefabs";
-import { fillRect, floodFill, lineCells, setTilesCommand } from "../core/tiles";
+import { autotileChanges, fillRect, floodFill, lineCells, setTilesCommand, terrainsOf } from "../core/tiles";
 import { assetKindOf, clipThumb } from "./asset-fields";
 import { spriteLabel } from "./fields";
 import { DND, typingInField } from "./hooks";
@@ -278,14 +280,19 @@ export class SceneController {
     const before = M.tiles[e];
     const tool = editor.tileTool!;
     if (tool === "pick") {
-      editor.setTileTool("paint", before[tileKey(cell.x, cell.y)] ?? editor.tileSprite);
+      // a terrain tile picks the terrain as the brush
+      const picked = before[tileKey(cell.x, cell.y)];
+      const terrain = terrainOf(picked, terrainsOf(editor, e));
+      editor.setTileTool("paint", terrain ? terrainBrush(terrain) : (picked ?? editor.tileSprite));
       return;
     }
+    const terrains = terrainsOf(editor, e);
     const after: TileData = { ...before };
     const sprite = tool === "erase" || shift ? null : editor.tileSprite;
     if (sprite === null && tool !== "erase" && !shift) return; // nothing chosen to paint with
     if (tool === "fill") {
       if (floodFill(after, cell.x, cell.y, sprite) > 0) {
+        autotileChanges(terrains, before, after);
         M.tiles[e] = after;
         editor.push(setTilesCommand(world, editor.idOf(e), before, after, "Fyld tiles"));
       }
@@ -293,7 +300,10 @@ export class SceneController {
     }
     M.tiles[e] = after;
     this.drag = { kind: "paint", e, id: editor.idOf(e), before, after, last: cell, start: cell, erase: sprite === null };
-    if (tool === "paint" || tool === "erase") fillRect(after, cell.x, cell.y, cell.x, cell.y, sprite);
+    if (tool === "paint" || tool === "erase") {
+      fillRect(after, cell.x, cell.y, cell.x, cell.y, sprite);
+      autotileChanges(terrains, before, after);
+    }
     editor.emit("world");
   }
 
@@ -308,11 +318,14 @@ export class SceneController {
       // preview: start from the original tiles each time
       const next: TileData = { ...drag.before };
       fillRect(next, drag.start.x, drag.start.y, cell.x, cell.y, drag.erase ? null : editor.tileSprite);
+      autotileChanges(terrainsOf(editor, drag.e), drag.before, next);
       for (const k of Object.keys(drag.after)) delete drag.after[k];
       Object.assign(drag.after, next);
     } else {
       const sprite = drag.erase ? null : editor.tileSprite;
+      const was: TileData = { ...drag.after };
       for (const [x, y] of lineCells(drag.last.x, drag.last.y, cell.x, cell.y)) fillRect(drag.after, x, y, x, y, sprite);
+      autotileChanges(terrainsOf(editor, drag.e), was, drag.after);
     }
     drag.last = cell;
     // a new revision makes physics (and anything else watching) rebuild while dragging in play-less edit mode

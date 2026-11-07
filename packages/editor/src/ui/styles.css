@@ -1072,6 +1072,87 @@ textarea:focus {
 .palette-item.selected {
   border-color: var(--accent);
 }
+.palette-item.picking {
+  border-color: rgba(255, 204, 0, 0.5);
+}
+
+/* auto-tiling terrains under the tile palette */
+.terrain-section {
+  padding: 4px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.terrain-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.terrain-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.terrain-row:hover {
+  background: var(--panel-2);
+}
+.terrain-row.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.terrain-row .spacer {
+  flex: 1;
+}
+.terrain-row .muted {
+  color: var(--muted);
+}
+.terrain-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 4px;
+  background: var(--panel-2);
+  border-radius: var(--radius);
+}
+.terrain-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 26px);
+  grid-auto-rows: 26px;
+  gap: 2px;
+}
+.rule-grid button {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+.rule-cell.same {
+  color: var(--y);
+}
+.rule-cell.other {
+  color: var(--danger);
+}
+.rule-cell.any {
+  color: var(--muted);
+}
+.rule-center.picking {
+  outline: 2px solid #ffcc00;
+}
+.rule-buttons {
+  display: flex;
+  gap: 2px;
+}
 
 /* ------------------------------------------------------------- build window */
 

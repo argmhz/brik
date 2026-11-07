@@ -1,4 +1,15 @@
-import { type TileData, type World, tileBounds, tileKey } from "@brik/runtime";
+import {
+  type Entity,
+  type Terrain,
+  type TileData,
+  type World,
+  TileMap,
+  autotile,
+  changedTiles,
+  tileBounds,
+  tileKey,
+} from "@brik/runtime";
+import type { Editor } from "./editor";
 import { setValues } from "./commands";
 import type { EditCommand } from "./history";
 
@@ -71,4 +82,15 @@ export function floodFill(tiles: TileData, x: number, y: number, sprite: string 
 /** Undoable change of a TileMap's tiles. `before` and `after` must not be mutated afterwards. */
 export function setTilesCommand(world: World, id: string, before: TileData, after: TileData, label = "Mal tiles"): EditCommand {
   return setValues(world, label, [{ id, component: "TileMap", before: { tiles: before }, after: { tiles: after } }]);
+}
+
+/** The auto-tiling terrains of a TileMap's tileset (empty when it has none). */
+export function terrainsOf(editor: Editor, e: Entity): Terrain[] {
+  const guid = editor.world.store(TileMap).tileset[e];
+  return (guid ? editor.db.byGuid(guid)?.meta.terrains : undefined) ?? [];
+}
+
+/** Picks terrain sprites for the cells that differ from `before`, and their neighbours. Mutates `after`. */
+export function autotileChanges(terrains: Terrain[], before: TileData, after: TileData): void {
+  if (terrains.length > 0) autotile(after, terrains, changedTiles(before, after));
 }

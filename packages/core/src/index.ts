@@ -8,6 +8,7 @@ export * from "./scene/scene";
 export * from "./gameplay/easing";
 export * from "./gameplay/gameplay";
 export * from "./tilemap/tilemap";
+export * from "./tilemap/autotile";
 
 import type { App } from "./app/app";
 import { propagateTransforms } from "./transform/propagate";

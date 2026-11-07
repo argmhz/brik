@@ -1,4 +1,4 @@
-import { RigidBody2D, TileMap, Transform2D, findBySceneId, initPhysics } from "@brik/runtime";
+import { RigidBody2D, TileMap, Transform2D, blockTerrainRules, findBySceneId, initPhysics } from "@brik/runtime";
 import * as esbuild from "esbuild-wasm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Editor, MemoryFS, createBridgeHandlers, createProject } from "../src";
@@ -172,6 +172,34 @@ export class Spin extends Behaviour {
     await h.undo({});
     expect(Object.keys(editor.world.store(TileMap).tiles[findBySceneId(editor.world, id)])).toHaveLength(0);
     await expect(async () => h.paint_tiles({ id, rects: [{ x0: 0, y0: 0, x1: 0, y1: 0, tile: "lava" }] })).rejects.toThrow(/grass, dirt/);
+  });
+
+  it("paints with an auto-tiling terrain, edges and corners picked from the neighbours", async () => {
+    const { editor, h } = await setup();
+    // a 3x3 block: corners a c g i, edges b d f h, middle e
+    const names = ["tl", "t", "tr", "l", "m", "r", "bl", "b", "br"];
+    await h.draw_sprites({
+      path: "assets/ground.png",
+      palette: { x: "#3a3" },
+      sprites: Object.fromEntries(names.map((n) => [n, ["x"]])),
+    });
+    const entry = editor.db.textures.get("assets/ground.png")!;
+    const ids = names.map((n) => entry.meta.sprites.find((s) => s.name === n)!.id);
+    await editor.db.saveMeta(entry.path, { ...entry.meta, terrains: [{ id: "t1", name: "Jord", rules: blockTerrainRules(ids) }] });
+
+    const { id } = (await h.create_entity({ kind: "tilemap", name: "Level", components: { TileMap: { tileset: entry.meta.guid } } })) as { id: string };
+    expect(((await h.read_tiles({ id })) as { terrains: string[] }).terrains).toEqual(["terrain:Jord"]);
+    await h.paint_tiles({ id, rects: [{ x0: 0, y0: 0, x1: 3, y1: 2, tile: "terrain:Jord" }] });
+    const name = (x: number, y: number) => entry.meta.sprites.find((s) => s.id === editor.world.store(TileMap).tiles[findBySceneId(editor.world, id)][`${x},${y}`])?.name;
+    const row = (y: number) => [0, 1, 2, 3].map((x) => name(x, y));
+    expect(row(2)).toEqual(["tl", "t", "t", "tr"]);
+    expect(row(1)).toEqual(["l", "m", "m", "r"]);
+    expect(row(0)).toEqual(["bl", "b", "b", "br"]);
+    // erasing a cell fixes the edges around the hole
+    await h.paint_tiles({ id, rects: [{ x0: 1, y0: 2, x1: 1, y1: 2, tile: null }] });
+    expect(row(2)).toEqual(["tl", undefined, "tl", "tr"]);
+    expect(name(1, 1)).toBe("t");
+    await expect(async () => h.paint_tiles({ id, rects: [{ x0: 0, y0: 0, x1: 0, y1: 0, tile: "terrain:Lava" }] })).rejects.toThrow(/terrain:Jord/);
   });
 
   it("keeps the position when components override Transform2D", async () => {

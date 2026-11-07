@@ -1,4 +1,4 @@
-import type { Vec2 } from "@brik/core";
+import type { Terrain, Vec2 } from "@brik/core";
 import type { SpriteDef, TextureSettings } from "./index";
 
 export type Slicing =
@@ -20,6 +20,8 @@ export interface TextureMeta {
   settings: TextureSettings;
   slicing: Slicing;
   sprites: SpriteDef[];
+  /** Auto-tiling terrains made from this texture's sprites (for TileMaps). */
+  terrains?: Terrain[];
 }
 
 /** The on-disk shape: rects and pivots as arrays to keep files short. */
@@ -36,6 +38,7 @@ interface TextureMetaJson {
     /** left, bottom, right, top */
     border?: [number, number, number, number];
   }[];
+  terrains?: Terrain[];
 }
 
 export const DEFAULT_TEXTURE_SETTINGS: TextureSettings = { filter: "nearest", wrap: "clamp", pixelsPerUnit: 1 };
@@ -63,6 +66,7 @@ export function textureMetaToJson(meta: TextureMeta): string {
       pivot: [s.pivot.x, s.pivot.y],
       ...(s.border ? { border: [s.border.l, s.border.b, s.border.r, s.border.t] as [number, number, number, number] } : {}),
     })),
+    ...(meta.terrains?.length ? { terrains: meta.terrains } : {}),
   };
   return `${JSON.stringify(json, null, 2)}\n`;
 }
@@ -82,6 +86,7 @@ export function parseTextureMeta(text: string): TextureMeta {
       pivot: { x: s.pivot?.[0] ?? 0.5, y: s.pivot?.[1] ?? 0.5 },
       ...(s.border ? { border: { l: s.border[0], b: s.border[1], r: s.border[2], t: s.border[3] } } : {}),
     })),
+    ...(j.terrains?.length ? { terrains: j.terrains } : {}),
   };
 }
 

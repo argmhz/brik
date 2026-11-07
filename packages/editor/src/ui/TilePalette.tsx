@@ -4,6 +4,7 @@ import type { Editor, TileTool } from "../core/editor";
 import { setTilesCommand } from "../core/tiles";
 import { SpriteThumb } from "./fields";
 import { useVersion } from "./hooks";
+import { TerrainSection, palettePick, usePalettePick } from "./TerrainSection";
 
 const TOOLS: { tool: TileTool; label: string; key: string }[] = [
   { tool: "paint", label: "Pensel", key: "B" },
@@ -53,15 +54,22 @@ export function TilePalette(props: { editor: Editor; e: Entity; id: string }) {
                 {(s) => (
                   <div
                     class="palette-item"
-                    classList={{ selected: sprite() === s.id }}
+                    classList={{ selected: sprite() === s.id, picking: !!palettePick() }}
                     title={s.name}
-                    onClick={() => editor.setTileTool(tool() === "erase" || tool() === "pick" || !tool() ? "paint" : tool(), s.id)}
+                    onClick={async () => {
+                      // a terrain rule may be waiting for its sprite
+                      if (await usePalettePick(editor, en(), s.id)) return;
+                      editor.setTileTool(tool() === "erase" || tool() === "pick" || !tool() ? "paint" : tool(), s.id);
+                    }}
                   >
                     <SpriteThumb editor={editor} sprite={() => ({ texture: en().meta.guid, id: s.id })} size={28} />
                   </div>
                 )}
               </For>
             </div>
+            <Show when={en().meta.sprites.length > 0}>
+              <TerrainSection editor={editor} entry={en()} brush={sprite()} />
+            </Show>
           </>
         )}
       </Show>

@@ -19,6 +19,7 @@ import {
   newGuid,
   textureMetaToJson,
   tileBounds,
+  terrainBrush,
   tileKey,
   allComponents,
   childrenOf,
@@ -53,7 +54,7 @@ import { joinPath, walk } from "./fs";
 import { applyToPrefab, createPrefab, placePrefab, prefabOf } from "./prefabs";
 import { encodePng, parseHexColor } from "./png";
 import { isScriptFile } from "./scripts";
-import { setTilesCommand } from "./tiles";
+import { autotileChanges, setTilesCommand } from "./tiles";
 
 /*
  * The editor side of the AI bridge: one handler per tool the MCP server offers.
@@ -631,7 +632,10 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         legend[ch] = name;
       }
       const b = tileBounds(tiles);
-      if (!b) return { tileset: tex?.path ?? null, tiles: names.size ? [...names.values()] : [], empty: true };
+      // auto-tiling terrains: paint with "terrain:<name>" and the edges pick themselves
+      const terrains = (tex?.meta.terrains ?? []).map((t) => `terrain:${t.name}`);
+      const withTerrains = terrains.length ? { terrains } : {};
+      if (!b) return { tileset: tex?.path ?? null, tiles: names.size ? [...names.values()] : [], ...withTerrains, empty: true };
       const rows: string[] = [];
       for (let y = b.maxY; y >= b.minY; y--) {
         let row = "";
@@ -641,6 +645,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return {
         tileset: tex?.path ?? null,
         tileNames: [...names.values()],
+        ...withTerrains,
         tileSize: world.read(e, TileMap).tileSize,
         topLeft: { x: b.minX, y: b.maxY },
         note: "Rows go from the top (highest y) down. Cell (x, y) covers world x*tileSize..(x+1)*tileSize. '.' is empty.",
@@ -656,11 +661,17 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const before = world.store(TileMap).tiles[e] as TileData;
       const tex = editor.db.byGuid(world.store(TileMap).tileset[e] as string);
       const sprites = tex?.meta.sprites ?? [];
+      const terrains = tex?.meta.terrains ?? [];
       const resolve = (tile: unknown): string | null => {
         if (tile === null || tile === "" || tile === undefined) return null;
         const s = sprites.find((x) => x.name === tile || x.id === tile);
-        if (!s) throw new BridgeError(`The tileset has no tile "${tile}". Tiles: ${sprites.map((x) => x.name).join(", ")}`);
-        return s.id;
+        if (s) return s.id;
+        // a terrain: the edges are picked from the neighbours afterwards
+        const name = typeof tile === "string" ? tile.replace(/^terrain:/, "") : "";
+        const t = terrains.find((x) => x.name === name || x.id === name);
+        if (t) return terrainBrush(t);
+        const known = [...sprites.map((x) => x.name), ...terrains.map((x) => `terrain:${x.name}`)];
+        throw new BridgeError(`The tileset has no tile or terrain "${tile}". Known: ${known.join(", ")}`);
       };
       const after: TileData = { ...before };
       let changed = 0;
@@ -688,6 +699,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
           });
         });
       }
+      autotileChanges(terrains, before, after);
       if (changed > 0) exec(setTilesCommand(world, id, before, after, "AI: mal tiles"));
       return { changed, tiles: Object.keys(after).length };
     },

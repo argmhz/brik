@@ -204,7 +204,7 @@ tool(
 
 tool(
   "paint_tiles",
-  'Paints a TileMap (one undo step). `rects` fill rectangles of cells with a tile name (null erases). `map` paints text rows: its x, y is the cell of the first character of the top row, rows go downwards (y decreases), and each character is looked up in `legend` (characters not in the legend are left as they are). Cell (x, y) covers world x*tileSize .. (x+1)*tileSize. TileMapCollider updates automatically.',
+  'Paints a TileMap (one undo step). `rects` fill rectangles of cells with a tile name (null erases). `map` paints text rows: its x, y is the cell of the first character of the top row, rows go downwards (y decreases), and each character is looked up in `legend` (characters not in the legend are left as they are). Cell (x, y) covers world x*tileSize .. (x+1)*tileSize. TileMapCollider updates automatically. If the tileset has auto-tiling terrains (read_tiles lists them), a tile can be "terrain:<name>": edges and corners are then picked from the neighbours, also for erased cells next to a terrain.',
   {
     id,
     rects: z
