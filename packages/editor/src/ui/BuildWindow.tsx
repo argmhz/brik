@@ -245,6 +245,13 @@ export function BuildWindow(props: { editor: Editor; onClose: () => void }) {
             <TextBox value={() => s().title ?? ""} placeholder={editor.settings.name} onCommit={(title) => update({ title })} />
             <span class="field-label">Startscene</span>
             <span class="readonly">{editor.settings.startScene}</span>
+            <span
+              class="field-label"
+              title="Spillet gemmes i browseren, så det kan spilles uden forbindelse og installeres som en app. Læg en icon.png (kvadratisk, mindst 192 px) i projektets rod for at bruge dit eget ikon."
+            >
+              Offline og installér
+            </span>
+            <input type="checkbox" checked={s().pwa !== false} onChange={(e) => update({ pwa: e.currentTarget.checked })} />
           </div>
           <div class="section-title">Atlas</div>
           <div class="component-body">

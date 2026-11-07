@@ -12,11 +12,15 @@ import { IMAGE_EXTENSIONS, type TextureEntry, isScene } from "./asset-db";
 import type { Editor } from "./editor";
 import { refreshSceneData, resolvePrefabs } from "./prefabs";
 import { extname, walk } from "./fs";
+import { imageSize } from "../headless/image-size";
+import { REGISTER_SERVICE_WORKER, contentHash, defaultIcon, serviceWorkerSource, webManifest } from "./pwa";
 import { type EsbuildLike, compileScripts, readScripts } from "./scripts";
 
 export interface BuildSettings {
   /** Shown as the page title. Default: the project name. */
   title?: string;
+  /** Offline play and install (service worker, manifest, icons). On unless set to false. */
+  pwa?: boolean;
   /** Pack textures into atlas pages. Off: every image is copied as is. */
   atlas: boolean;
   pack: PackOptions;
@@ -198,14 +202,21 @@ export function stripEditorOnly(entities: SceneEntityData[]): SceneEntityData[] 
   return entities.filter((d) => !dropped.has(d.id));
 }
 
-export function indexHtml(title: string): string {
+export function indexHtml(title: string, pwa = false): string {
   const esc = title.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
   return `<!doctype html>
 <html lang="da">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <title>${esc}</title>
+    <title>${esc}</title>${
+      pwa
+        ? `
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#111216" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />`
+        : ""
+    }
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
       #game { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
@@ -218,7 +229,14 @@ export function indexHtml(title: string): string {
   <body>
     <canvas id="game" tabindex="0"></canvas>
     <div id="loading"><div>${esc}</div><div id="track"><div id="bar"></div></div></div>
-    <script type="module" src="brik.js"></script>
+    <script type="module" src="brik.js"></script>${
+      pwa
+        ? `
+    <script>
+    ${REGISTER_SERVICE_WORKER}
+    </script>`
+        : ""
+    }
   </body>
 </html>
 `;
@@ -330,12 +348,42 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
   };
   files["game.json"] = enc.encode(JSON.stringify(manifest));
   for (const [name, code] of Object.entries(deps.playerFiles)) files[name] = enc.encode(code);
-  files["index.html"] = enc.encode(indexHtml(title));
+  const pwa = settings.pwa !== false;
+  files["index.html"] = enc.encode(indexHtml(title, pwa));
+  if (pwa) await addOfflineFiles(editor, files, title, manifest.usesPhysics === true);
 
   const report = Object.entries(files)
     .map(([path, bytes]) => ({ path, bytes: bytes.length }))
     .sort((a, b) => b.bytes - a.bytes);
   return { files, manifest, atlas, report, warnings };
+}
+
+/**
+ * Adds what makes the game playable offline and installable: icons, the web
+ * manifest and the service worker (last, with a version made from all the files).
+ * The project's own `icon.png` (square, at least 192 px) is used when it exists.
+ */
+async function addOfflineFiles(editor: Editor, files: Record<string, Uint8Array>, title: string, usesPhysics: boolean): Promise<void> {
+  const own = (await editor.fs.exists("icon.png")) ? await editor.fs.readFile("icon.png") : null;
+  const size = own ? imageSize(own) : null;
+  let icons: { src: string; size: number }[];
+  if (own && size && size.width === size.height && size.width >= 192) {
+    files["icons/icon.png"] = own;
+    icons = [{ src: "icons/icon.png", size: size.width }];
+  } else {
+    files["icons/icon-192.png"] = defaultIcon(192);
+    files["icons/icon-512.png"] = defaultIcon(512);
+    icons = [
+      { src: "icons/icon-192.png", size: 192 },
+      { src: "icons/icon-512.png", size: 512 },
+    ];
+  }
+  // index.html's apple-touch-icon points at icons/icon-192.png
+  if (!files["icons/icon-192.png"]) files["icons/icon-192.png"] = files["icons/icon.png"];
+  files["manifest.webmanifest"] = enc.encode(webManifest(title, icons));
+  // the physics engine is the biggest file: only precached when the game uses it (otherwise saved when first fetched)
+  const precache = ["./", ...Object.keys(files).filter((p) => usesPhysics || p !== "brik-physics.js")].sort();
+  files["sw.js"] = enc.encode(serviceWorkerSource({ precache, version: contentHash(files) }));
 }
 
 const PHYSICS_NAMES = new Set(PHYSICS_COMPONENTS.map((c) => c.name));

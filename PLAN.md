@@ -458,7 +458,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 **Kendte begrænsninger i fase 5**
 - ~~Playeren er ca. 1,75 MB, fordi Rapier indlejrer sin WASM.~~ (fase 5.9)
 - Atlas-pakkeren pakker hele billeder. Sprites inde i et sprite sheet trimmes ikke enkeltvis, og der er kun extrude om hele billedet. Rotation i atlas er ikke understøttet.
-- Ingen PWA/offline-indpakning endnu.
+- ~~Ingen PWA/offline-indpakning.~~ (fase 5.9)
 - Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke, kun JSON. Spejlede tiles importeres uden spejling.
 - TexturePacker: Roterede frames understøttes ikke (der gives en advarsel).
 - Desktop-appen er kun bygget og testet på Linux. De native åbn- og gem-dialoger er ikke testet automatisk, og der er ingen signering, auto-opdatering eller builds til Windows og macOS.
@@ -542,7 +542,7 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] `Shape2D` polygon og linje: `points` i lokale koordinater, tegnet med Canvas2D til en tekstur ved den viste opløsning (fyld, kant, runde samlinger). Inspectoren har et punktfelt.
 - [x] `Joint2D`: `hinge`, `fixed`, `spring`, `rope` og `slider` mellem to kroppe, eller til et punkt i verden, når `connected` er tom. `fixed` svejser kroppene, hvor de står. Scene view viser leddet som en stiplet linje mellem ankrene.
 - [x] Atlas-pakkeren pakker et sprite sheets sprites én for én (tæt og med padding og extrude om hver sprite, så tiles ikke bløder ind i hinanden) og lægger resultatet ind i atlasset som én blok. Billeder, der bruges som helt billede (sprite-id `""`), pakkes som før. Ikke afprøvet i et eksporteret spil i browseren endnu.
-- [ ] PWA/offline for udgivne spil
+- [x] PWA/offline for udgivne spil: eksporten får `sw.js` (cache først; versionen er en hash af alle filerne, så en ny udgivelse henter sig selv i baggrunden og rydder den gamle cache), `manifest.webmanifest` og ikoner (projektets `icon.png`, ellers et genereret). Alt med relative stier, så det virker i en undermappe. Cachen har scopet i navnet, så flere spil på samme side ikke rydder hinandens. Fysik-filen (1,65 MB) forhåndshentes kun, hvis spillet bruger fysik; ellers gemmes den, første gang den hentes. Kan slås fra i byg-vinduet (`pwa: false`).
 - [x] Prefab-overrides pr. script-felt: et script-felt, der afviger fra prefab'en, er et eget override (`<id>:Scripts:<script>@<n>.<felt>`, hvor n tæller kopier af samme script). Prefab'en kan ændre de andre felter, og instansen beholder sit eget; felter, der kommer til, følger med. Inspectoren viser det som andre overrides, og dobbeltklik henter prefab'ens værdi. Tilføjes, fjernes eller flyttes scripts, er hele listen stadig ét override (`Scripts.list`).
 
 **Fra MCP-brug (et spil bygget gennem værktøjerne)**

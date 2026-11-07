@@ -256,6 +256,14 @@ Tryk **Byg spil** i menulinjen.
 - Spillet skal åbnes over http. Det virker ikke, hvis man dobbeltklikker
   `index.html`. Til en hurtig lokal test kan du køre `npx serve` i mappen.
 
+- **Offline og installér** (slået til som standard) lægger en service worker,
+  et web-manifest og ikoner i spillet. Efter første besøg starter spillet uden
+  forbindelse, og browseren kan tilbyde at installere det som en app. Læg en
+  `icon.png` (kvadratisk, mindst 192 px) i projektets rod for at bruge dit eget
+  ikon; ellers laves et enkelt. Udgiver du en ny version, hentes den i
+  baggrunden og overtager ved næste besøg. Det virker over http og https, men
+  ikke fra `file://`.
+
 Entities med komponenten `EditorOnly` kommer ikke med i det færdige spil.
 
 ## 10. Desktop-appen
