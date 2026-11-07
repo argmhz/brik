@@ -484,7 +484,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 **Næste skridt for AI**
 - ~~`CLAUDE.md` i projekt-skabelonerne~~ (fase 5.8)
 - ~~Headless-tilstand~~ (fase 5.8)
-- AI-chat inde i editoren.
+- AI-chat inde i editoren er fravalgt: den ville kræve en API-nøgle og koste pr. token. AI-klienter som Claude Code arbejder i stedet i Brik via MCP-serveren.
 
 ### Fase 5.7 — Første rigtige spil
 Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen gennem MCP-værktøjerne, som en AI ville gøre det: to baner, slim, der kan trampes på, pigge, liv, mønter på tværs af baner, HUD, baneskift og vindeskærm. Undervejs blev følgende fundet og rettet:
