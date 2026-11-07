@@ -436,7 +436,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - ~~UI-elementer kan ikke vælges eller trækkes i scene view.~~ (fase 5.9; størrelsen ændres stadig i inspectoren)
 - Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener. ~~Der er ingen auto-tiling.~~ (fase 5.9)
 - Partikler simulerer kun i world space og har ingen kollision.
-- `Sprite` har ikke 9-slice i verdenen. Det har kun `UIImage`.
+- ~~`Sprite` har ikke 9-slice i verdenen.~~ (fase 5.9)
 
 **Kendte begrænsninger fra 4a**
 - ~~`CharacterController2D` kan ikke stå på løse kasser.~~ (fase 5.9)
@@ -538,7 +538,7 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 
 **Gruppe 2**
 - [x] Skarp tekst ved zoom: `Text2D` rasteriseres ved den opløsning, den vises med (kameraets eller scene views zoom × entityens skala × skærmens pixeltæthed), rundet op til faste trin (1, 1,5, 2, 3 … 32 pixels pr. enhed), så zoom kun giver ny rasterisering, når et trin krydses. Højst 4096 pixels pr. side. Valgt frem for MSDF: alle systemfonte virker stadig, og der skal ikke genereres font-atlasser.
-- [ ] 9-slice på `Sprite` i verden
+- [x] 9-slice på `Sprite` i verden: `drawMode: "sliced"` strækker spritet til `size` (verdensenheder), og et sprite med 9-slice-kanter beholder hjørnernes størrelse, mens kanter og midte strækkes. Virker med rotation og flip, og valg i scene view følger den strakte størrelse.
 - [ ] `Shape2D` polygon og linje, `Joint2D`
 - [ ] Atlas-pakkeren trimmer hver sprite
 - [ ] PWA/offline for udgivne spil

@@ -28,6 +28,13 @@ export const Sprite = defineComponent(
     color: t.color(1, 1, 1, 1),
     flipX: t.bool(false),
     flipY: t.bool(false),
+    /**
+     * simple: the sprite at its own size. sliced: stretched to `size`, with a
+     * 9-slice sprite's corners kept at their size (platforms, signs, panels).
+     */
+    drawMode: t.enum(["simple", "sliced"] as const, "simple"),
+    /** World size in "sliced" mode. */
+    size: t.vec2(32, 32),
   },
   { requires: [Transform2D] },
 );

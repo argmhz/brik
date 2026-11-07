@@ -93,6 +93,9 @@ export class Renderer {
   private keyTex = new Int32Array(0);
   private order: number[] = [];
   private resolved: ResolvedSprite[] = [];
+  /** The sprite's own size for sliced sprites (their `resolved` size is the stretched one); 0 otherwise. */
+  private naturalW: number[] = [];
+  private naturalH: number[] = [];
   private viewProj = new Float32Array(9);
 
   constructor(
@@ -405,6 +408,13 @@ export class Renderer {
       if (!r) continue;
       const gpu = this.gpuTexture(r.texture);
       if (!gpu) continue;
+      const i = items.length;
+      if (S.drawMode[e] === "sliced") {
+        this.naturalW[i] = r.width;
+        this.naturalH[i] = r.height;
+        r.width = S.size.x[e];
+        r.height = S.size.y[e];
+      } else this.naturalW[i] = 0;
       items.push(e);
       this.itemKind.push(KIND_SPRITE);
       this.itemTex.push(gpu);
@@ -607,6 +617,11 @@ export class Renderer {
         continue;
       }
 
+      if (sprite && this.naturalW[i] > 0 && r.border) {
+        this.slicedSprite(this.itemTex[i]!.tex, r, this.naturalW[i], this.naturalH[i], ga, gb, gc, gd, g.tx[e], g.ty[e], S.flipX[e] !== 0, S.flipY[e] !== 0, packColor(S.color.r[e], S.color.g[e], S.color.b[e], S.color.a[e]));
+        drawn++;
+        continue;
+      }
       if (kind === KIND_SHAPE) {
         const fill = packColor(H.fill.r[e], H.fill.g[e], H.fill.b[e], H.fill.a[e]);
         const stroke = packColor(H.stroke.r[e], H.stroke.g[e], H.stroke.b[e], H.stroke.a[e]);
@@ -621,6 +636,51 @@ export class Renderer {
     }
     batcher.end();
     this.stats.sprites += drawn;
+  }
+
+  /**
+   * A 9-slice sprite stretched to `r.width` x `r.height` world units in the
+   * entity's frame (ga..gd, tx, ty): corners keep their size, edges and middle
+   * stretch. `natW`/`natH` is the sprite's own size, for the border UVs.
+   */
+  private slicedSprite(
+    tex: WebGLTexture,
+    r: ResolvedSprite,
+    natW: number,
+    natH: number,
+    ga: number,
+    gb: number,
+    gc: number,
+    gd: number,
+    gx: number,
+    gy: number,
+    flipX: boolean,
+    flipY: boolean,
+    rgba: number,
+  ): void {
+    const b = r.border!;
+    const W = r.width;
+    const H = r.height;
+    // borders shrink when the size is smaller than both borders together
+    const fx = Math.min(1, W / Math.max(1e-6, b.l + b.r));
+    const fy = Math.min(1, H / Math.max(1e-6, b.b + b.t));
+    const xs = [0, b.l * fx, W - b.r * fx, W];
+    const ys = [0, b.b * fy, H - b.t * fy, H];
+    const us = [r.u0, r.u0 + ((r.u1 - r.u0) * b.l) / natW, r.u1 - ((r.u1 - r.u0) * b.r) / natW, r.u1];
+    const vs = [r.v0, r.v0 + ((r.v1 - r.v0) * b.b) / natH, r.v1 - ((r.v1 - r.v0) * b.t) / natH, r.v1];
+    const sx = flipX ? -1 : 1;
+    const sy = flipY ? -1 : 1;
+    for (let j = 0; j < 3; j++) {
+      for (let i = 0; i < 3; i++) {
+        const qw = (xs[i + 1] - xs[i]) * sx;
+        const qh = (ys[j + 1] - ys[j]) * sy;
+        if (qw === 0 || qh === 0) continue;
+        // corner of this piece, relative to the pivot (mirrored when flipped)
+        const lx = (xs[i] - r.pivotX * W) * sx;
+        const ly = (ys[j] - r.pivotY * H) * sy;
+        this.batcher.push(tex, ga * qw, gb * qw, gc * qh, gd * qh, gx + ga * lx + gc * ly, gy + gb * lx + gd * ly, us[i], vs[j], us[i + 1], vs[j + 1], rgba);
+      }
+    }
   }
 
   /** Pushes every visible tile of a TileMap. Returns how many were drawn. */
@@ -754,8 +814,11 @@ export function spriteQuad(world: World, e: Entity): Mat3 | null {
     const S = world.store(Sprite);
     const r = world.resource(Assets).resolve(S.sprite[e]!, scratch);
     if (!r) return null;
-    w = S.flipX[e] ? -r.width : r.width;
-    h = S.flipY[e] ? -r.height : r.height;
+    const sliced = S.drawMode[e] === "sliced";
+    w = sliced ? S.size.x[e] : r.width;
+    h = sliced ? S.size.y[e] : r.height;
+    if (S.flipX[e]) w = -w;
+    if (S.flipY[e]) h = -h;
     px = r.pivotX;
     py = r.pivotY;
   } else if (world.has(e, Shape2D)) {

@@ -60,7 +60,9 @@ Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
     skrive kolonner og rækker i stedet for cellestørrelse. Til animationer er
     grid bedst, fordi alle frames så er lige store,
   - sætte pivot,
-  - sætte 9-slice-kanter, som bruges til UI-paneler og knapper.
+  - sætte 9-slice-kanter, som bruges til UI-paneler og knapper og til sprites
+    med `drawMode: sliced`, der strækkes til en `size` uden at hjørnerne
+    forvrænges (fx platforme og skilte).
 - **Animationer:** Vælg et opdelt billede og tryk "Lav animation". Dobbeltklik
   `.anim.json` for at åbne tidslinjen. Der kan du trække frames rundt, ændre
   varighed ved at trække i kanten, bruge onion skin og sætte events på frames.
