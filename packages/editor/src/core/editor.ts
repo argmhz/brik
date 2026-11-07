@@ -27,7 +27,8 @@ import { refreshOverrides, refreshSceneData, syncAllInstances } from "./prefabs"
 import { joinPath } from "./fs";
 import { AssetDatabase, type Decoder, SCENE_EXTENSION } from "./asset-db";
 import { createEntities, deleteEntities, duplicateEntities } from "./commands";
-import { type LogLevel, LogStore } from "./console-log";
+import { type LogLevel, LogStore, formatArgs } from "./console-log";
+import { mapStack } from "./source-map";
 import type { ProjectFS } from "./fs";
 import { type EditCommand, History } from "./history";
 import { PlayController } from "./play";
@@ -202,6 +203,23 @@ export class Editor {
   log(level: LogLevel, text: string, loc?: { file?: string; line?: number; column?: number }): void {
     this.console.add(level, text, loc);
     this.emit("console");
+  }
+
+  /**
+   * Logs console output (console.log/error ... while the editor runs). Errors
+   * thrown by game scripts get their stack mapped back to the script files,
+   * and the entry links to the line the error came from.
+   */
+  logConsole(level: LogLevel, args: unknown[]): void {
+    let at: { file: string; line: number; column: number } | null = null;
+    const parts = args.map((a) => {
+      if (!(a instanceof Error) || !a.stack) return a;
+      const mapped = mapStack(a.stack, this.scripts.sourceMap);
+      at ??= mapped.at;
+      // V8 stacks start with "Name: message"; others are only frames
+      return mapped.text.includes(a.message) ? mapped.text : `${a.message}\n${mapped.text}`;
+    });
+    this.log(level, formatArgs(parts), at ?? undefined);
   }
 
   undo(): void {

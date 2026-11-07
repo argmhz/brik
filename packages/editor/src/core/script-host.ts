@@ -9,6 +9,7 @@ import {
   readScripts,
   scriptSignature,
 } from "./scripts";
+import { SourceMapper } from "./source-map";
 
 export type ScriptStatus = "none" | "building" | "ok" | "error";
 
@@ -21,6 +22,8 @@ export class ScriptHost {
   readonly registry: ScriptRegistry;
   status: ScriptStatus = "none";
   errors: CompileError[] = [];
+  /** Maps positions in the loaded bundle back to script files (for runtime errors). */
+  sourceMap: SourceMapper | null = null;
   fileCount = 0;
   private signature = "";
   private pending: Promise<boolean> | null = null;
@@ -113,6 +116,7 @@ export class ScriptHost {
       const mod = await this.load(result.code);
       this.registry.load((mod.modules ?? {}) as Record<string, Record<string, unknown>>);
       this.lastCode = result.code;
+      this.sourceMap = SourceMapper.fromCode(result.code);
       this.used = false;
       this.errors = [];
       this.status = "ok";

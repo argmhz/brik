@@ -47,6 +47,8 @@ export default function CodePanel(props: { editor: Editor }) {
   const [dirtyTick, setDirtyTick] = createSignal(0);
   let host!: HTMLDivElement;
   let code: monaco.editor.IStandaloneCodeEditor | undefined;
+  /** Bumped when the editor or a file has finished loading, so a waiting line jump can run. */
+  const [loaded, setLoaded] = createSignal(0);
 
   configureMonaco();
 
@@ -147,6 +149,7 @@ export default function CodePanel(props: { editor: Editor }) {
     codeActions.dirty = () => [...docs.keys()].some(isDirty);
     await syncFromDisk();
     show(activeFile());
+    setLoaded((n) => n + 1);
   });
 
   onCleanup(() => {
@@ -162,7 +165,11 @@ export default function CodePanel(props: { editor: Editor }) {
     const files = openFiles();
     if (!path || !code) return;
     if (docs.has(path)) show(path);
-    else syncFromDisk().then(() => show(path));
+    else
+      syncFromDisk().then(() => {
+        show(path);
+        setLoaded((n) => n + 1);
+      });
     void files;
   });
 
@@ -191,8 +198,9 @@ export default function CodePanel(props: { editor: Editor }) {
     });
   });
 
-  // jump to a line (e.g. clicked in the console)
+  // jump to a line (e.g. clicked in the console); waits for the editor and the file to load
   createEffect(() => {
+    loaded();
     const r = revealAt();
     if (!r || !code || activeFile() !== r.path || !docs.has(r.path)) return;
     show(r.path);

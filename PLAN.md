@@ -406,7 +406,7 @@ Et panel, der åbner, når du dobbeltklikker på en texture.
 - [x] Play/Pause/Step/Stop med snapshot og gendannelse, plus Game view
 - [x] Hot reload, også når scripts ændres uden for editoren (fx i VS Code)
 - [x] Console med logs og fejl, der linker til linjen i scriptet
-- [ ] Linjenumre i runtime-fejl (stack traces gennem source maps) er udskudt. Kompileringsfejl har linjenumre.
+- [x] Linjenumre i runtime-fejl: stack traces oversættes gennem scriptenes source map til fil og linje (fase 5.8)
 - [x] `entity`-felter med `@expose` (fase 5.5)
 - **Resultat:** Man kan lave et simpelt spil i editoren
 
@@ -516,6 +516,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] Sprite-editoren og store sprite sheets (fx AI-genererede): Grid starter med én celle pr. figur, der findes i billedet (8 figurer på række giver 8 × 1 celler) i stedet for altid 16×16, og der er et felt "Antal" (kolonner × rækker), som regner cellestørrelsen ud. "Find automatisk" ignorerer næsten usynlige pixels (alfa ≤ 16), så støj i baggrunden ikke giver hundredvis af sprites. "Tilpas" kan nu zoome under 100 %, så store billeder kan ses helt.
 - [x] `onEnable`/`onDisable` i Behaviours: kaldes, når entity'en tændes og slukkes (også via en forælder). `onEnable` kommer lige før `onStart`, og `onDisable` før `onDestroy`.
 - [x] Headless-tilstand: `open_project({ path })` åbner en projektmappe inde i MCP-serveren, når editoren ikke kører. Editorens egen kode gør arbejdet (bundtet med esbuild første gang), med et Node-filsystem og billedstørrelser læst fra filernes header. Alle værktøjer virker undtagen `screenshot`. `console.log` fra scripts havner i `get_console` og på stderr, aldrig på stdout, som MCP bruger. `close_project` beskytter ændringer, der ikke er gemt.
+- [x] Runtime-fejl i scripts peger på fil og linje: stack tracen oversættes gennem bundlens source map (fx `scripts/Player.ts:42:7`), motorens egne linjer under scriptet skæres fra, og Console-linjen kan klikkes og åbner linjen. `get_console` giver AI'en det samme (`at`). Desuden hopper kode-editoren nu også til linjen, når den åbnes første gang fra Console.
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**

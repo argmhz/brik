@@ -312,4 +312,48 @@ export class Probe extends Behaviour {
     expect(live?.ticks).toBeGreaterThanOrEqual(7);
     await h.stop({});
   });
+
+  it("runtime errors in scripts point at the script file and line", async () => {
+    const { editor, h } = await setup();
+    // the editor UI and headless mode send console output here; do the same in the test
+    const original = console.error;
+    console.error = (...args: unknown[]) => editor.logConsole("error", args);
+    try {
+      await h.write_script({ path: "scripts/Helper.ts", content: `export function explode(n: number) {\n  if (n > 2) {\n    throw new Error("bang " + n);\n  }\n}\n` });
+      const res = (await h.write_script({
+        path: "scripts/Boom.ts",
+        content: `import { Behaviour } from "brik";
+import { explode } from "./Helper";
+
+export class Boom extends Behaviour {
+  n = 0;
+  onUpdate() {
+    this.n++;
+    explode(this.n);
+  }
+}
+`,
+      })) as { status: string };
+      expect(res.status).toBe("ok");
+      const { id } = (await h.create_entity({ name: "B" })) as { id: string };
+      await h.attach_script({ id, script: "Boom" });
+      await h.play({});
+      await h.step({ frames: 4 });
+      await h.stop({});
+    } finally {
+      console.error = original;
+    }
+    const errors = (await h.get_console({ level: "error" })) as { text: string; at?: string }[];
+    const boom = errors.find((e) => e.text.includes("bang"));
+    // thrown in Helper.ts line 3, called from Boom.ts line 8
+    expect(boom?.at).toBe("scripts/Helper.ts:3");
+    expect(boom?.text).toContain("scripts/Helper.ts:3:");
+    expect(boom?.text).toContain("scripts/Boom.ts:8:");
+    // the bundle's data: URL is gone, and so are the engine frames below the scripts
+    expect(boom?.text).not.toContain("data:text/javascript");
+    expect(boom?.text).not.toContain("behaviour.ts");
+    const entry = editor.console.entries.find((e) => e.text.includes("bang"));
+    expect(entry).toMatchObject({ file: "scripts/Helper.ts", line: 3 });
+  });
 });
+

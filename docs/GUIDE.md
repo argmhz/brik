@@ -142,6 +142,10 @@ Modulerne indlæses forfra, hver gang du trykker Play, ligesom når det
 eksporterede spil startes. Giv ikke dine egne metoder samme navn som Behaviours
 egne (fx `setActive` eller `find`), for så skygger de for dem.
 
+Fejl i et script vises i Console med fil og linje, både når scriptet
+kompileres, og når det kaster en fejl, mens spillet kører. Klik på fejlen for
+at hoppe til linjen.
+
 Scripts kan også definere egne komponenter (`defineComponent`) og systemer
 (`system("navn", fn, "update")`). Et system kan nøjes med at behandle det, der
 har ændret sig:

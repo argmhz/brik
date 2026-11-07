@@ -45,9 +45,8 @@ function captureConsole(editor: Editor, write: (line: string) => void): () => vo
   LEVELS.forEach((level) => {
     console[level] = (...args: unknown[]) => {
       try {
-        const text = formatArgs(args);
-        editor.log(level, text);
-        write(`[${level}] ${text}`);
+        editor.logConsole(level, args);
+        write(`[${level}] ${editor.console.entries.at(-1)?.text ?? formatArgs(args)}`);
       } catch {
         // never let logging break the caller
       }

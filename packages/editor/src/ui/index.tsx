@@ -1,7 +1,7 @@
 import wasmURL from "esbuild-wasm/esbuild.wasm?url";
 import { Show, createSignal } from "solid-js";
 import { render } from "solid-js/web";
-import { type LogLevel, formatArgs } from "../core/console-log";
+import type { LogLevel } from "../core/console-log";
 import { Editor } from "../core/editor";
 import type { ProjectFS } from "../core/fs";
 import { writeProjectTypes } from "../core/project";
@@ -36,7 +36,7 @@ function captureConsole(editor: Editor): () => void {
     console[level] = (...args: unknown[]) => {
       originals[i].apply(console, args);
       try {
-        editor.log(level, formatArgs(args));
+        editor.logConsole(level, args);
       } catch {
         // never let logging break the caller
       }
