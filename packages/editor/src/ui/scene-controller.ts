@@ -8,6 +8,7 @@ import {
   UICanvas,
   UILayout,
   UIRect,
+  UIStack,
   type World,
   cellAt,
   terrainBrush,
@@ -65,6 +66,12 @@ type Drag =
       last: { x: number; y: number };
       start: { x: number; y: number };
       erase: boolean;
+    }
+  | {
+      kind: "ui-move";
+      startWorld: Vec2;
+      items: { id: string; e: Entity; start: Vec2 }[];
+      moved: boolean;
     }
   | {
       kind: "transform";
@@ -468,6 +475,49 @@ export class SceneController {
 
   private uiLayout = new UILayout();
 
+  /** The camera the UI outlines are drawn in (the first by priority), or -1. */
+  private uiCamera(): Entity {
+    const world = this.editor.world;
+    const C = world.store(Camera2D);
+    const cams = world.query([Camera2D, GlobalTransform2D]).toArray().sort((a, b) => C.priority[a] - C.priority[b]);
+    return cams[0] ?? -1;
+  }
+
+  /**
+   * The UI element under a scene view point, using the same layout as the
+   * outlines. `big` decides whether elements covering most of the screen
+   * (backgrounds) count, so they don't hide the world behind them.
+   */
+  private pickUI(sx: number, sy: number, big: boolean): Entity {
+    const world = this.editor.world;
+    const cam = this.uiCamera();
+    if (cam < 0 || world.query([UICanvas]).isEmpty()) return -1;
+    this.uiLayout.update(world, GAME_REFERENCE.w, GAME_REFERENCE.h);
+    const inv = mat3.invert(this.globalOf(cam));
+    if (!inv) return -1;
+    const z = world.store(Camera2D).zoom[cam];
+    const local = mat3.transformPoint(inv, this.screenToWorld(sx, sy));
+    // camera-local world units -> UI layout pixels (y up from bottom-left)
+    const ux = local.x * z + GAME_REFERENCE.w / 2;
+    const uy = local.y * z + GAME_REFERENCE.h / 2;
+    const screenArea = GAME_REFERENCE.w * GAME_REFERENCE.h;
+    const els = this.uiLayout.elements;
+    for (let i = els.length - 1; i >= 0; i--) {
+      const r = els[i].rect;
+      if (ux < r.x || ux > r.x + r.w || uy < r.y || uy > r.y + r.h) continue;
+      if (!big && r.w * r.h > screenArea * 0.5) continue;
+      return els[i].e;
+    }
+    return -1;
+  }
+
+  /** World units in the scene -> UI units of an element (through the camera zoom and the canvas scale). */
+  private uiUnitsPerWorld(e: Entity): number {
+    const cam = this.uiCamera();
+    const z = cam >= 0 ? this.editor.world.store(Camera2D).zoom[cam] : 1;
+    return z / (this.uiLayout.byEntity.get(e)?.scale || 1);
+  }
+
   /** Entities without a visible sprite get a small icon so they can be seen and clicked. */
   private drawIcons(ctx: CanvasRenderingContext2D): void {
     const world = this.editor.world;
@@ -516,7 +566,8 @@ export class SceneController {
   /** Screen position and axis directions of the gizmo, or null if nothing is selected. */
   private gizmo(): { o: Vec2; ax: Vec2; ay: Vec2 } | null {
     const e = this.editor.selectedEntities().at(-1);
-    if (e === undefined || !this.editor.world.has(e, Transform2D)) return null;
+    // UI is placed by its UIRect, not its Transform2D: it is dragged by its outline instead
+    if (e === undefined || !this.editor.world.has(e, Transform2D) || isUI(this.editor.world, e)) return null;
     const m = worldMatrix(this.editor.world, e);
     const o = this.worldToScreen(m.tx, m.ty);
     if (this.editor.tool !== "scale") return { o, ax: { x: 1, y: 0 }, ay: { x: 0, y: -1 } };
@@ -604,8 +655,15 @@ export class SceneController {
     return { a: g.a[e], b: g.b[e], c: g.c[e], d: g.d[e], tx: g.tx[e], ty: g.ty[e] };
   }
 
-  /** The top-most entity under a screen point, or -1. */
+  /** The top-most entity under a screen point, or -1. UI comes first, like in the game. */
   pick(sx: number, sy: number): Entity {
+    const ui = this.pickUI(sx, sy, false);
+    if (ui >= 0) return ui;
+    const found = this.pickWorld(sx, sy);
+    return found >= 0 ? found : this.pickUI(sx, sy, true);
+  }
+
+  private pickWorld(sx: number, sy: number): Entity {
     const world = this.editor.world;
     const G = world.store(GlobalTransform2D);
     // icons (entities without sprites) are drawn on top, so test them first
@@ -709,7 +767,22 @@ export class SceneController {
     }
     if (!editor.selection.includes(id)) editor.select([id]);
     else editor.select([...editor.selection.filter((s) => s !== id), id]); // make it the active one
-    this.beginTransform({ tool: "move", axis: "xy" }, p);
+    if (editor.world.has(e, UIRect)) this.beginUIMove(p);
+    else this.beginTransform({ tool: "move", axis: "xy" }, p);
+  }
+
+  /** Moving UI elements changes their UIRect.position (the layout ignores Transform2D). */
+  private beginUIMove(p: Vec2): void {
+    const world = this.editor.world;
+    const U = world.store(UIRect);
+    const items = topLevel(world, this.editor.selection)
+      // children of a UIStack are placed by the stack, so moving them would do nothing
+      .filter((e) => {
+        const parent = parentOf(world, e);
+        return world.has(e, UIRect) && !(parent >= 0 && world.has(parent, UIStack));
+      })
+      .map((e) => ({ id: this.editor.idOf(e), e, start: { x: U.position.x[e], y: U.position.y[e] } }));
+    if (items.length > 0) this.drag = { kind: "ui-move", startWorld: this.screenToWorld(p.x, p.y), items, moved: false };
   }
 
   private beginTransform(handle: Handle, p: Vec2): void {
@@ -764,6 +837,32 @@ export class SceneController {
       v.y += (ev.clientY - drag.lastY) / v.zoom;
       drag.lastX = ev.clientX;
       drag.lastY = ev.clientY;
+      return;
+    }
+    if (drag.kind === "ui-move") {
+      const cur = this.screenToWorld(p.x, p.y);
+      if (!drag.moved && Math.hypot(cur.x - drag.startWorld.x, cur.y - drag.startWorld.y) * this.editor.view.zoom < 3) return;
+      drag.moved = true;
+      const U = this.editor.world.store(UIRect);
+      const snap = this.editor.snap !== (ev.ctrlKey || ev.metaKey);
+      const g = this.editor.gridSize;
+      const cam = this.uiCamera();
+      // the camera may be rotated: turn the move into its frame first
+      const inv = cam >= 0 ? mat3.invert(this.globalOf(cam)) : null;
+      const d = { x: cur.x - drag.startWorld.x, y: cur.y - drag.startWorld.y };
+      const local = inv ? mat3.transformVector(inv, d) : d;
+      for (const it of drag.items) {
+        const k = this.uiUnitsPerWorld(it.e);
+        let x = it.start.x + local.x * k;
+        let y = it.start.y + local.y * k;
+        if (snap) {
+          x = Math.round(x / g) * g;
+          y = Math.round(y / g) * g;
+        }
+        U.position.x[it.e] = x;
+        U.position.y[it.e] = y;
+      }
+      this.editor.emit("world");
       return;
     }
     if (!drag.moved && Math.hypot(p.x - drag.startScreen.x, p.y - drag.startScreen.y) < 3) return;
@@ -836,6 +935,15 @@ export class SceneController {
     if (this.container.hasPointerCapture(ev.pointerId)) this.container.releasePointerCapture(ev.pointerId);
     if (drag?.kind === "paint") {
       this.endPaint(drag);
+      return;
+    }
+    if (drag?.kind === "ui-move") {
+      if (!drag.moved) return;
+      const world = this.editor.world;
+      const changes: FieldChange[] = drag.items
+        .filter((it) => world.isAlive(it.e))
+        .map((it) => ({ id: it.id, component: "UIRect", before: { position: it.start }, after: { position: world.read(it.e, UIRect).position } }));
+      this.editor.push(setValues(world, "Flyt UI", changes));
       return;
     }
     if (!drag || drag.kind !== "transform" || !drag.moved) return;

@@ -433,7 +433,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 
 **Kendte begrænsninger i 4b**
 - UI er kun i skærm-koordinater (ingen world-space canvas). ~~Ingen layout, slider, toggle eller tekstfelt.~~ (fase 5.9)
-- UI-elementer kan endnu ikke vælges eller trækkes direkte i scene view. Det sker i hierarkiet og inspectoren.
+- ~~UI-elementer kan ikke vælges eller trækkes i scene view.~~ (fase 5.9; størrelsen ændres stadig i inspectoren)
 - Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener. ~~Der er ingen auto-tiling.~~ (fase 5.9)
 - Partikler simulerer kun i world space og har ingen kollision.
 - `Sprite` har ikke 9-slice i verdenen. Det har kun `UIImage`.
@@ -534,7 +534,7 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] `CharacterController2D` kan stå på løse kasser: bevægelsen beregnes som før uden dynamiske kroppe (så figuren skubber dem væk og ikke går i stå, hvis noget lander på hovedet), og når den bevæger sig nedad, tjekkes den lodrette del igen mod dynamiske kroppe, så den lander på dem i stedet for at falde igennem. Testet med at stå på, hoppe op på og skubbe en kasse.
 - [x] Auto-tiling: et tileset kan have terræner (i sin `.meta.json`). Et terræn er en ordnet liste af regler med et sprite og et 3×3-mønster (samme terræn / ikke samme / ligegyldigt), og den første regel, der passer, vinder. Man maler med terrænet (pensel, fyld, rektangel), og de malede celler og deres naboer får de rigtige kanter og hjørner. Det gælder også, når man sletter. "Fra 3×3-blok…" laver de 9 regler for en almindelig blok med hjørner, kanter og midte. Pipetten på et terræn-tile vælger terrænet. AI'en maler med `"terrain:<navn>"` i `paint_tiles`, og `read_tiles` viser terrænerne. Runtime er uændret, for tilemaps gemmer stadig almindelige sprite-id'er.
 - [x] UI: `UISlider`, `UIToggle`, `UITextInput` og `UIStack` (kolonne eller række, i stedet for det planlagte `UILayout`, som allerede er navnet på det udregnede layout). Slider og toggle tegnes af rendereren; tekstfeltet viser sin tekst gennem sin `UIText` og tager imod tastatur gennem et skjult HTML-felt, så æøå, indsæt og skærmtastaturer virker. Scripts får `onValueChanged` og `onSubmit`, og AI'en kan skrive med `step({ type })`. Undervejs: et klik eller tryk uden musebevægelse først (fx på en touchskærm) ramte position (0, 0), fordi kun `pointermove` satte positionen. Nu gør `pointerdown` det også.
-- [ ] UI-elementer kan vælges og trækkes i scene view
+- [x] UI-elementer kan vælges og trækkes i scene view: et klik inden for et omrids vælger elementet (UI ligger øverst som i spillet, men store baggrunde, der dækker over halvdelen af skærmen, kommer efter verdenen, så den stadig kan vælges). At trække ændrer `UIRect.position` i UI-enheder (med snap og fortryd), og flyt-gizmoen vises ikke for UI. Elementer i en `UIStack` placeres af stakken og flyttes ikke.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

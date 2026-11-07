@@ -207,7 +207,10 @@ En **kolonne** (`UIStack`) stiller sine børn under hinanden (eller ved siden af
 hinanden med `direction: horizontal`) i hierarkiets rækkefølge. Børnene beholder
 deres størrelse, og `stretch` får dem til at fylde bredden.
 
-UI vises i Spil-fanen og som omrids i scene view. Scripts på samme entity får:
+UI vises i Spil-fanen og som omrids i scene view. Klik inden for et omrids for
+at vælge elementet, og træk for at flytte det (det ændrer `UIRect.position`).
+
+Scripts på samme entity får:
 
 | Element | Hook |
 |---|---|
