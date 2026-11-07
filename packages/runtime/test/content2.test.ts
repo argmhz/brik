@@ -107,6 +107,28 @@ describe("particles", () => {
     expect(particles.alive(e)).toBe(0);
   });
 
+  it("local-space particles are kept in the emitter's own space, world-space ones where they were emitted", () => {
+    const app = game();
+    const w = app.world;
+    // start emitting after the first frame, when the emitters' world positions exist
+    const still = { emitting: false, rate: 600, speed: { x: 0, y: 0 }, gravity: { x: 0, y: 0 }, spread: 0, lifetime: { x: 5, y: 5 } };
+    const world = w.spawn([Transform2D, { position: { x: 100, y: 50 } }], [ParticleEmitter2D, { ...still, space: "world" }]);
+    const local = w.spawn([Transform2D, { position: { x: 100, y: 50 } }], [ParticleEmitter2D, { ...still, space: "local" }]);
+    app.update(1 / 60);
+    w.store(ParticleEmitter2D).emitting[world] = 1;
+    w.store(ParticleEmitter2D).emitting[local] = 1;
+    app.update(1 / 60);
+    const particles = w.resource(Particles);
+    expect(particles.alive(world)).toBeGreaterThan(0);
+    expect(particles.pools.get(world)!.x[0]).toBeCloseTo(100);
+    expect(particles.pools.get(local)!.x[0]).toBeCloseTo(0);
+    expect(particles.pools.get(local)!.y[0]).toBeCloseTo(0);
+    // moving the emitter doesn't touch what a local emitter's particles store: the draw step follows it
+    w.store(Transform2D).position.x[local] = 400;
+    app.update(1 / 60);
+    expect(particles.pools.get(local)!.x[0]).toBeCloseTo(0);
+  });
+
   it("one-shot emitters destroy themselves", () => {
     const app = game();
     const w = app.world;

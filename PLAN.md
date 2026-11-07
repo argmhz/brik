@@ -435,7 +435,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - UI er kun i skærm-koordinater (ingen world-space canvas). ~~Ingen layout, slider, toggle eller tekstfelt.~~ (fase 5.9)
 - ~~UI-elementer kan ikke vælges eller trækkes i scene view.~~ (fase 5.9; størrelsen ændres stadig i inspectoren)
 - Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener. ~~Der er ingen auto-tiling.~~ (fase 5.9)
-- Partikler simulerer kun i world space og har ingen kollision.
+- Partikler har ingen kollision. ~~De simulerer kun i world space.~~ (gruppe 3: `space: "local"` lader dem følge emitteren)
 - ~~`Sprite` har ikke 9-slice i verdenen.~~ (fase 5.9)
 
 **Kendte begrænsninger fra 4a**

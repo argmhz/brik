@@ -13,13 +13,20 @@ import {
 } from "@brik/core";
 
 /**
- * Emits simple particles: sparks, dust, smoke, pickups. Particles live in world
- * space, so they stay behind when the emitter moves.
+ * Emits simple particles: sparks, dust, smoke, pickups. By default particles
+ * live in world space, so they stay behind when the emitter moves; with
+ * `space: "local"` they move along with it (a jet flame on a ship, an aura).
  */
 export const ParticleEmitter2D = defineComponent(
   "ParticleEmitter2D",
   {
     emitting: t.bool(true),
+    /**
+     * world: particles stay where they were emitted. local: they follow the
+     * emitter (position, rotation and scale); direction and gravity are then
+     * in the emitter's own axes.
+     */
+    space: t.enum(["world", "local"] as const, "world"),
     /** Particles per second. */
     rate: withMeta(t.f32(20), { min: 0, step: 1 }),
     /** Particles emitted at once when the emitter starts. */
@@ -170,7 +177,11 @@ export class Particles {
     let px: number;
     let py: number;
     let rot = 0;
-    if (world.has(e, GlobalTransform2D)) {
+    if (P.space[e] === "local") {
+      // in the emitter's own space: the draw step places them with its transform
+      px = 0;
+      py = 0;
+    } else if (world.has(e, GlobalTransform2D)) {
       const g = world.store(GlobalTransform2D).matrix;
       px = g.tx[e];
       py = g.ty[e];

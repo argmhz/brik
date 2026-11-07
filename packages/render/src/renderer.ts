@@ -790,6 +790,9 @@ export class Renderer {
     const c1 = P.endColor;
     // sprites keep their aspect ratio; size is the larger side
     const aspect = tex ? r.width / Math.max(1e-6, r.height) : 1;
+    // local-space particles are placed with the emitter's current transform
+    const local = P.space[e] === "local";
+    const g = world.store(GlobalTransform2D).matrix;
     for (let i = 0; i < pool.count; i++) {
       const k = pool.age[i] / pool.life[i];
       const size = s0 + (s1 - s0) * k;
@@ -801,8 +804,10 @@ export class Renderer {
         c0.b[e] + (c1.b[e] - c0.b[e]) * k,
         c0.a[e] + (c1.a[e] - c0.a[e]) * k,
       );
-      const tx = pool.x[i] - w / 2;
-      const ty = pool.y[i] - h / 2;
+      const x = local ? g.a[e] * pool.x[i] + g.c[e] * pool.y[i] + g.tx[e] : pool.x[i];
+      const y = local ? g.b[e] * pool.x[i] + g.d[e] * pool.y[i] + g.ty[e] : pool.y[i];
+      const tx = x - w / 2;
+      const ty = y - h / 2;
       if (tex) this.batcher.push(tex, w, 0, 0, h, tx, ty, r.u0, r.v0, r.u1, r.v1, rgba);
       else this.batcher.pushShape(w, 0, 0, h, tx, ty, 2, rgba, 0, 0, 0);
     }
