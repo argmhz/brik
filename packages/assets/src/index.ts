@@ -261,6 +261,19 @@ export class Assets {
   }
 
   /** Looks up where a sprite lives. Null while its texture is loading or if it doesn't exist. */
+  /**
+   * Why a sprite reference draws nothing, or null when it is fine. `loading` is only a matter of time;
+   * the other problems (`kind: "missing"`) will not go away by themselves.
+   */
+  problem(ref: SpriteRef): { kind: "loading" | "missing"; message: string } | null {
+    const tex = this.textures.get(ref.texture);
+    if (!tex) return { kind: "missing", message: `texture ${ref.texture} does not exist in the project` };
+    if (tex.status === "error") return { kind: "missing", message: `texture "${tex.name}" could not be loaded` };
+    if (tex.status !== "ready") return { kind: "loading", message: `texture "${tex.name}" is still loading` };
+    if (ref.id !== "" && !tex.sprites.has(ref.id)) return { kind: "missing", message: `texture "${tex.name}" has no sprite "${ref.id}"` };
+    return null;
+  }
+
   resolve(ref: SpriteRef, out?: ResolvedSprite): ResolvedSprite | null {
     const tex = this.textures.get(ref.texture);
     if (!tex || tex.status !== "ready") return null;

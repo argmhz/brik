@@ -81,6 +81,12 @@ export class PlayController {
       )
       .addPlugin(ScriptsPlugin(registry))
       .addPlugin(ScenesPlugin(async (path) => refreshSceneData(editor, JSON.parse(await editor.fs.readText(path)) as SceneData), editor.scenePath));
+    // keys typed elsewhere in the editor (hierarchy, assets, inspector buttons) are not game input
+    const input = editor.world.tryResource(Input);
+    const view = this.element;
+    if (input && view && typeof document !== "undefined") {
+      input.keyFilter = (ev) => ev.target === document.body || ev.target === document.documentElement || (ev.target instanceof Node && view.contains(ev.target));
+    }
     this.scriptSystems = registry.systems.map((s) => ({ phase: s.phase, system: s.system }));
     this.mode = "play";
     this.last = -1;

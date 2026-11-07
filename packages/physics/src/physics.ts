@@ -7,6 +7,7 @@ import {
   TileMap,
   TileMapCollider,
   Time,
+  NULL_REF,
   isActive,
   mergeTileRects,
   Transform2D,
@@ -124,6 +125,8 @@ export class Physics {
   private tilemaps = new Map<Entity, TileMapEntry>();
   private joints = new Map<Entity, JointEntry>();
   private byHandle = new Map<number, Entity>();
+  /** Contacts that have started and not yet ended, by collider handle pair. */
+  private touching = new Map<string, { h1: number; h2: number; a: Entity; b: Entity; trigger: boolean }>();
 
   constructor(
     private readonly world: World,
@@ -276,6 +279,7 @@ export class Physics {
     this.tilemaps.clear();
     this.joints.clear();
     this.byHandle.clear();
+    this.touching.clear();
   }
 
   /** Advances the simulation by `dt` seconds. */
@@ -486,9 +490,19 @@ export class Physics {
     for (const e of world.query([Joint2D, RigidBody2D])) {
       const body = this.bodies.get(e)?.body;
       if (!body) continue;
+      // a joint on a body that is switched off would make Rapier panic, so it waits until the body is back
+      if (!isActive(world, e)) {
+        this.dropJoint(e);
+        continue;
+      }
       const other = world.deref(J.connected[e]);
+      // the connected entity was deleted: the joint ends with it, it does not turn into a hook at the world origin
+      if (other < 0 && J.connected[e] !== NULL_REF) {
+        this.dropJoint(e);
+        continue;
+      }
       const otherBody = other >= 0 ? this.bodies.get(other)?.body : undefined;
-      if (other >= 0 && !otherBody) {
+      if (other >= 0 && (!otherBody || !isActive(world, other))) {
         // connected to an entity without a body: nothing to join yet
         this.dropJoint(e);
         continue;
@@ -703,16 +717,49 @@ export class Physics {
 
   private emitEvents(): void {
     const world = this.world;
+    const rw = this.rw!;
     this.events!.drainCollisionEvents((h1, h2, started) => {
+      const key = h1 < h2 ? `${h1}:${h2}` : `${h2}:${h1}`;
       const a = this.byHandle.get(h1);
       const b = this.byHandle.get(h2);
+      if (!started) {
+        // already ended by us (collider removed, switched off, filtered out)?
+        const t = this.touching.get(key);
+        if (!t) return;
+        this.touching.delete(key);
+        world.emit(t.trigger ? TriggerExit : CollisionExit, { a: t.a, b: t.b });
+        return;
+      }
       if (a === undefined || b === undefined) return;
-      const c1 = this.rw!.getCollider(h1);
-      const c2 = this.rw!.getCollider(h2);
+      const c1 = rw.getCollider(h1);
+      const c2 = rw.getCollider(h2);
       const trigger = (c1?.isSensor() ?? false) || (c2?.isSensor() ?? false);
-      const type = trigger ? (started ? TriggerEnter : TriggerExit) : started ? CollisionEnter : CollisionExit;
-      world.emit(type, { a, b });
+      this.touching.set(key, { h1, h2, a, b, trigger });
+      world.emit(trigger ? TriggerEnter : CollisionEnter, { a, b });
     });
+    // Rapier stays silent when a collider is removed or switched off, or when groups/masks change under a contact:
+    // end those contacts here, so scripts always get a matching Exit.
+    for (const [key, t] of this.touching) {
+      if (this.contactAlive(t.h1, t.h2)) continue;
+      this.touching.delete(key);
+      world.emit(t.trigger ? TriggerExit : CollisionExit, { a: t.a, b: t.b });
+    }
+  }
+
+  /** False once either collider is gone, switched off, or the two no longer interact by group and mask. */
+  private contactAlive(h1: number, h2: number): boolean {
+    const rw = this.rw!;
+    const c1 = rw.getCollider(h1);
+    const c2 = rw.getCollider(h2);
+    if (!c1 || !c2 || !this.byHandle.has(h1) || !this.byHandle.has(h2)) return false;
+    for (const c of [c1, c2]) {
+      if (!c.isEnabled()) return false;
+      const parent = c.parent();
+      if (parent && !parent.isEnabled()) return false;
+    }
+    const g1 = c1.collisionGroups();
+    const g2 = c2.collisionGroups();
+    return ((g1 >>> 16) & (g2 & 0xffff)) !== 0 && ((g2 >>> 16) & (g1 & 0xffff)) !== 0;
   }
 
   // ---------------------------------------------------------------- transforms

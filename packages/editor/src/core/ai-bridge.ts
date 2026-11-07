@@ -2,7 +2,9 @@ import {
   type ComponentDef,
   type Entity,
   type Field,
+  Assets,
   Audio,
+  Sprite,
   BehaviourRuntime,
   type Slicing,
   type SpriteDef,
@@ -78,6 +80,8 @@ export type BridgeHandler = (params: Record<string, any>) => unknown | Promise<u
 export interface BridgeUi {
   /** A PNG data URL of the scene or game view, or null when it can't be drawn. */
   screenshot?: (view: "scene" | "game") => Promise<string | null>;
+  /** The Game view's size in CSS pixels right now (it may have been resized since it last drew), or null when it is hidden. */
+  screenSize?: () => { w: number; h: number } | null;
 }
 
 const ENTITY_KINDS: EntityKind[] = [
@@ -251,7 +255,7 @@ const FALLBACK_SCREEN = { w: 960, h: 540 };
  * `at: { x, y }` picks a spot as fractions of its rect (0..1, y up; beyond that
  * is outside it) and `offset: { x, y }` moves from there in UI units.
  */
-function pointerTarget(editor: Editor, target: unknown): { x: number; y: number; ui: Entity } {
+function pointerTarget(editor: Editor, target: unknown, screen?: { w: number; h: number } | null): { x: number; y: number; ui: Entity } {
   const world = editor.world;
   const t = target as { entity?: unknown; x?: unknown; y?: unknown; at?: { x?: unknown; y?: unknown }; offset?: { x?: unknown; y?: unknown } } | null;
   if (!t || typeof t !== "object") {
@@ -259,7 +263,8 @@ function pointerTarget(editor: Editor, target: unknown): { x: number; y: number;
   }
   const layout = world.tryResource(UILayout) ?? world.insertResource(new UILayout());
   // lay the UI out now: the Game view may not have drawn (hidden tab, background window)
-  layout.update(world, layout.screenW || FALLBACK_SCREEN.w, layout.screenH || FALLBACK_SCREEN.h);
+  // (at the Game view's size as it is now: after a resize, the last drawn size is out of date)
+  layout.update(world, screen?.w || layout.screenW || FALLBACK_SCREEN.w, screen?.h || layout.screenH || FALLBACK_SCREEN.h);
   const W = layout.screenW;
   const H = layout.screenH;
   let wx: number;
@@ -348,6 +353,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       scripts: { status: editor.scripts.status, errors: editor.scripts.errors.length },
       entities: world.entityCount,
       undo: editor.history.undoLabel ?? null,
+      redo: editor.history.redoLabel ?? null,
       // sound state while the game runs: whether WebAudio exists here (not in headless) and how many sounds play
       ...(editor.play.active && world.tryResource(Audio)
         ? { audio: { webAudio: world.resource(Audio).context !== null, playing: world.resource(Audio).playingCount } }
@@ -400,9 +406,17 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         const particles = world.tryResource(Particles);
         if (particles && world.has(e, ParticleEmitter2D)) live.particlesAlive = particles.alive(e);
       }
+      // why it might not show: a sprite whose texture or sprite id is gone draws nothing
+      const warnings: string[] = [];
+      if (world.has(e, Sprite)) {
+        const ref = world.store(Sprite).sprite[e];
+        const problem = ref ? world.resource(Assets).problem(ref) : null;
+        if (problem) warnings.push(`Sprite is not drawn: ${problem.message}`);
+      }
       return {
         id,
         name: editor.entityName(e),
+        ...(warnings.length ? { warnings } : {}),
         parent: p >= 0 ? sceneIdOf(world, p) : null,
         children: childrenOf(world, e).map((c) => sceneIdOf(world, c)),
         components,
@@ -580,7 +594,15 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const label = editor.history.undoLabel;
       if (!label) throw new BridgeError("Nothing to undo");
       editor.undo();
-      return { undone: label };
+      return { undone: label, redo: editor.history.redoLabel ?? null };
+    },
+
+    redo: () => {
+      noEdits(editor);
+      const label = editor.history.redoLabel;
+      if (!label) throw new BridgeError("Nothing to redo");
+      editor.redo();
+      return { redone: label, undo: editor.history.undoLabel ?? null };
     },
 
     // ------------------------------------------------------------ art and tiles
@@ -889,7 +911,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return {
         path: p,
         status: s.status,
-        errors: s.errors.map((e) => `${e.file}:${e.line}:${e.column + 1} ${e.message}`),
+        errors: s.errors.map((e) => (e.file ? `${e.file}:${e.line}:${e.column + 1} ${e.message}` : e.message)),
         behaviours: [...s.registry.behaviours.keys()].filter((id) => id.startsWith(`${p}#`)),
       };
     },
@@ -1001,7 +1023,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       if ((held.length || tapped.length || mouse !== undefined) && !input) throw new BridgeError("This game has no input");
       editor.play.pause();
       if (mouse !== undefined) {
-        const p = pointerTarget(editor, mouse);
+        const p = pointerTarget(editor, mouse, ui.screenSize?.());
         input!.injectPointer(p.x, p.y);
       }
       const rate = Number(fps);
@@ -1050,9 +1072,11 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       if (![0, 1, 2].includes(Number(button))) throw new BridgeError("`button` is 0 (left), 1 (middle) or 2 (right)");
       const code = `Mouse${Number(button)}`;
       editor.play.pause();
-      const p = pointerTarget(editor, entity !== undefined ? { entity, at, offset } : { x, y });
+      const p = pointerTarget(editor, entity !== undefined ? { entity, at, offset } : { x, y }, ui.screenSize?.());
       const layout = world.resource(UILayout);
       const hitButton = layout.buttonAt(world, p.x, p.y);
+      // read now: a click can switch the scene, and the index may be reused afterwards
+      const underMouse = hitButton >= 0 ? (world.store(SceneId).id[hitButton] ?? null) : null;
       const clicks = world.events(UIClick).reader();
       input.injectPointer(p.x, p.y);
       // move there, press, release, and let the game react
@@ -1075,7 +1099,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const swapped = scenes ? scenes.swaps - swapsBefore : 0;
       return {
         screen: { x: Math.round(p.x), y: Math.round(p.y) },
-        buttonUnderMouse: hitButton >= 0 ? (world.store(SceneId).id[hitButton] ?? null) : null,
+        buttonUnderMouse: underMouse,
         clickedButtons: clicked,
         frames: 4,
         ...(switched || swapped > 0 ? { sceneLoaded: scenes?.current ?? null, switches: swapped } : {}),
@@ -1105,6 +1129,7 @@ export const MUTATING = new Set([
   "delete_entities",
   "reparent",
   "undo",
+  "redo",
   "write_script",
   "attach_script",
   "detach_script",

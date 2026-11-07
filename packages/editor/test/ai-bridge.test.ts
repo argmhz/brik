@@ -35,6 +35,59 @@ beforeAll(async () => {
 });
 
 describe("AI bridge handlers", () => {
+  it("redo brings back what undo took, and project_info shows both steps", async () => {
+    const { h } = await setup();
+    await h.create_entity({ kind: "rect", name: "Ét" });
+    expect(((await h.project_info({})) as { undo: string | null; redo: string | null }).redo).toBeNull();
+    await h.undo({});
+    expect(((await h.project_info({})) as { redo: string | null }).redo).not.toBeNull();
+    const back = (await h.redo({})) as { redone: string };
+    expect(back.redone).toBeTruthy();
+    expect(((await h.get_hierarchy({})) as { name: string }[]).map((n) => n.name)).toContain("Ét");
+    await expect(async () => h.redo({})).rejects.toThrow(/Nothing to redo/);
+  });
+
+  it("inspect_entity says why a sprite with a missing texture draws nothing", async () => {
+    const { h } = await setup();
+    const { id } = (await h.create_entity({ kind: "sprite", name: "Spøgelse" })) as { id: string };
+    await h.set_fields({ id, component: "Sprite", values: { sprite: { texture: "findes-ikke", id: "" } } });
+    const info = (await h.inspect_entity({ id })) as { warnings?: string[] };
+    expect(info.warnings?.[0]).toMatch(/Sprite is not drawn: texture findes-ikke does not exist/);
+  });
+
+  it("a script that throws while loading is reported with its file and line", async () => {
+    const { h } = await setup();
+    const r = (await h.write_script({
+      path: "scripts/Boom.ts",
+      content: `import { Behaviour } from "brik";
+export class Boom extends Behaviour {}
+const x = 1;
+throw new Error("kaput");
+`,
+    })) as { status: string; errors: string[] };
+    expect(r.status).toBe("error");
+    expect(r.errors[0]).toMatch(/^scripts\/Boom\.ts:4:\d+ kaput/);
+    expect(r.errors[0]).not.toMatch(/^:0/);
+  });
+
+  it("clicks use the Game view's size as it is now, not as it was last drawn", async () => {
+    const fs = new MemoryFS("ai-size");
+    await createProject(fs, "AI", {});
+    const editor = await Editor.open(fs, { decode: fakeDecode, esbuild: async () => esbuild, importCode });
+    let size = { w: 800, h: 600 };
+    const h = createBridgeHandlers(editor, { screenSize: () => size });
+    const { id } = (await h.create_entity({ kind: "ui-button", name: "B" })) as { id: string };
+    // anchor it to the bottom right, so its position depends on the screen size
+    await h.set_fields({ id, component: "UIRect", values: { anchorMin: { x: 1, y: 0 }, anchorMax: { x: 1, y: 0 }, pivot: { x: 1, y: 0 }, position: { x: 0, y: 0 } } });
+    await h.play({});
+    const a = (await h.click({ entity: id })) as { screen: { x: number; y: number } };
+    size = { w: 1200, h: 700 };
+    const b = (await h.click({ entity: id })) as { screen: { x: number; y: number } };
+    // it moves with the bottom right corner (the UI also scales a little, so not exactly 400 and 100)
+    expect(b.screen.x - a.screen.x).toBeGreaterThan(300);
+    expect(b.screen.y - a.screen.y).toBeGreaterThan(50);
+  });
+
   it("describes components and builds a falling box on a floor", async () => {
     const { editor, h } = await setup();
     const [rb] = (await h.list_components({ name: "RigidBody2D" })) as { fields: Record<string, { options?: string[] }> }[];

@@ -104,7 +104,7 @@ export function aiEnabled(): boolean {
 
 /** Connects an open editor to the MCP server while AI is switched on. Returns a function that disconnects. */
 export function startAiConnection(editor: Editor): { setEnabled: (on: boolean) => void; dispose: () => void } {
-  const handlers = createBridgeHandlers(editor, { screenshot });
+  const handlers = createBridgeHandlers(editor, { screenshot, screenSize: () => captures.gameSize?.() ?? null });
   let ws: WebSocket | null = null;
   /** Cancels the scheduled reconnect, if there is one. */
   let retry: (() => void) | null = null;

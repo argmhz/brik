@@ -11,7 +11,7 @@ Brik har en MCP-server (`packages/mcp`), så en AI-klient kan arbejde direkte i 
 
 Eksempelspillet `examples/mosehop` (åbn mappen i editoren) er bygget på denne måde: grafik, bane, prefabs, scripts og test er lavet gennem MCP-værktøjerne.
 
-Hver ændring vises med det samme og kan fortrydes med Ctrl+Z. Det, AI'en gør, står også i Console. Scenen gemmes kun, når AI'en kalder `save_scene`.
+Hver ændring vises med det samme og kan fortrydes med Ctrl+Z (AI'en har `undo` og `redo`, og `project_info` viser næste skridt for begge). Det, AI'en gør, står også i Console. Scenen gemmes kun, når AI'en kalder `save_scene`.
 
 ## Sådan forbinder du
 

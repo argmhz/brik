@@ -39,11 +39,13 @@ export function GameView(props: { editor: Editor }) {
       draw(); // and read it back in the same task, before the canvas is cleared
       return canvas.toDataURL("image/png");
     };
+    captures.gameSize = () => (container.clientWidth > 0 ? { w: container.clientWidth, h: container.clientHeight } : null);
     raf = requestAnimationFrame(frame);
   });
 
   onCleanup(() => {
     captures.game = undefined;
+    captures.gameSize = undefined;
     cancelAnimationFrame(raf);
     renderer?.dispose();
     if (editor.play.element === container) editor.play.element = null;

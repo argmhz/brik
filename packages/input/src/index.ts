@@ -110,6 +110,12 @@ export class Input {
 
   // --------------------------------------------------------- DOM wiring
 
+  /**
+   * Decides which key presses reach the game; `keyup` always does, so no key stays down.
+   * By default every key on the page counts. The editor narrows it to the Game view.
+   */
+  keyFilter: ((ev: KeyboardEvent) => boolean) | null = null;
+
   /** Listens for keyboard on `window` and pointer events on `element`. */
   attach(element: HTMLElement): void {
     this.detach();
@@ -126,6 +132,7 @@ export class Input {
     on(window, "keydown", (ev) => {
       // typing in a text field (or the editor's code panel) is not game input
       if (isTextField(ev.target)) return;
+      if (this.keyFilter && !this.keyFilter(ev)) return;
       if (this.boundCodes.has(ev.code)) ev.preventDefault();
       if (!ev.repeat) this.queue.push({ type: "down", code: ev.code });
     });

@@ -146,6 +146,11 @@ export class UITextEntry {
     }
   }
 
+  /** Submits the focused field, as Enter does. */
+  submit(): void {
+    this.pending.push({ submit: true });
+  }
+
   /** Deletes the last `n` characters of the focused field. */
   erase(n = 1): void {
     const v = this.latest() ?? "";
@@ -239,6 +244,9 @@ export function updateWidgets(world: World): void {
     }
   }
 
+  // Enter from the Input (e.g. injected by tests or an AI) submits too, not only the hidden field's keydown.
+  // A real Enter reaches both; the second submit is dropped because the first ends typing.
+  if (entry.focused >= 0 && input?.key("Enter").pressed) entry.submit();
   entry.apply(world);
 
   // the field's UIText shows its text (or the placeholder) and a blinking caret

@@ -9,7 +9,7 @@ import {
   readScripts,
   scriptSignature,
 } from "./scripts";
-import { SourceMapper } from "./source-map";
+import { SourceMapper, mapStack } from "./source-map";
 
 export type ScriptStatus = "none" | "building" | "ok" | "error";
 
@@ -99,6 +99,7 @@ export class ScriptHost {
     const editor = this.editor;
     this.status = "building";
     editor.emit("scripts");
+    let builtCode: string | undefined;
     try {
       this.signature = await scriptSignature(editor.fs);
       const files = await readScripts(editor.fs);
@@ -113,6 +114,7 @@ export class ScriptHost {
         }
         return false;
       }
+      builtCode = result.code;
       const mod = await this.load(result.code);
       this.registry.load((mod.modules ?? {}) as Record<string, Record<string, unknown>>);
       this.lastCode = result.code;
@@ -128,8 +130,11 @@ export class ScriptHost {
       return true;
     } catch (err) {
       this.status = "error";
-      this.errors = [{ file: "", line: 0, column: 0, message: String(err instanceof Error ? err.message : err) }];
-      editor.log("error", `Scripts kunne ikke indlæses: ${this.errors[0].message}`);
+      const message = String(err instanceof Error ? err.message : err);
+      // a script that throws while its module loads: find the file and line through the source map
+      const at = builtCode && err instanceof Error && err.stack ? mapStack(err.stack, SourceMapper.fromCode(builtCode)).at : null;
+      this.errors = [{ file: at?.file ?? "", line: at?.line ?? 0, column: at?.column ?? 0, message }];
+      editor.log("error", `Scripts kunne ikke indlæses: ${at ? `${at.file}:${at.line}:${at.column + 1} ` : ""}${message}`, at ? { file: at.file, line: at.line, column: at.column } : undefined);
       return false;
     } finally {
       editor.emit("scripts");

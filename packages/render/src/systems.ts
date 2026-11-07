@@ -1,4 +1,4 @@
-import { Assets, frameAt } from "@brik/assets";
+import { type AnimationClip, Assets, frameAt } from "@brik/assets";
 import { type App, type Entity, GlobalTransform2D, Parent, Time, Transform2D, type World, defineEvent } from "@brik/core";
 import { Camera2D, CameraFollow2D, Sprite, SpriteAnimator } from "./components";
 import { UILayout } from "./ui";
@@ -40,6 +40,35 @@ export function playAnimation(
   if (opts.speed !== undefined) A.speed[e] = opts.speed;
 }
 
+function emitFrameEvents(world: World, e: Entity, clip: AnimationClip, frame: number): void {
+  for (const ev of clip.events) {
+    if (ev.frame === frame) world.emit(AnimationEvent, { entity: e, name: ev.name, clip: clip.guid });
+  }
+}
+
+/**
+ * The frames shown while time went from `from` to `to`, in order, each time the frame changed, ending with the
+ * frame at `to`. Samples at the shortest frame length, so no frame is missed, even if the clip looped right back
+ * to where it was.
+ */
+function framesShown(clip: AnimationClip, from: number, to: number, last: number): number[] {
+  const step = Math.min(...clip.frames.map((f) => f.duration).filter((d) => d > 0));
+  const out: number[] = [];
+  const see = (t: number) => {
+    const f = frameAt(clip, t).frame;
+    if (f !== last) out.push(f);
+    last = f;
+  };
+  // a clip that has just started has shown nothing yet: its first frame counts too
+  if (last < 0) see(from);
+  if (Number.isFinite(step)) {
+    // bounded work for absurdly long steps
+    for (let t = Math.max(from, to - step * 2000) + step; t < to; t += step) see(t);
+  }
+  see(to);
+  return out;
+}
+
 export function animateSprites(world: World): void {
   const assets = world.resource(Assets);
   const dt = world.resource(Time).dt;
@@ -50,14 +79,19 @@ export function animateSprites(world: World): void {
     if (!guid) continue;
     const clip = assets.clip(guid);
     if (!clip || clip.frames.length === 0) continue;
+    const before = A.time[e];
     if (A.playing[e]) A.time[e] += dt * A.speed[e];
     const { frame, done } = frameAt(clip, A.time[e]);
+    if (A.playing[e] && A.speed[e] > 0 && A.time[e] > before) {
+      // a long step can skip frames, or loop right back to the same one: send the events of every frame passed
+      const fresh = A.frame[e] < 0;
+      for (const f of framesShown(clip, fresh ? 0 : before, A.time[e], A.frame[e])) emitFrameEvents(world, e, clip, f);
+    } else if (frame !== A.frame[e]) {
+      emitFrameEvents(world, e, clip, frame);
+    }
     if (frame !== A.frame[e]) {
       A.frame[e] = frame;
       S.sprite[e] = clip.frames[frame].sprite;
-      for (const ev of clip.events) {
-        if (ev.frame === frame) world.emit(AnimationEvent, { entity: e, name: ev.name, clip: clip.guid });
-      }
     }
     if (done && A.playing[e]) {
       A.playing[e] = 0;

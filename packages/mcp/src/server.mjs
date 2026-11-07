@@ -17,7 +17,7 @@ import { basename } from "node:path";
 import { EditorBridge } from "./bridge.mjs";
 import { HeadlessSession } from "./headless.mjs";
 
-const INSTRUCTIONS = `Brik is a web-first 2D game engine (ECS, TypeScript scripts). These tools work in the Brik editor the user has open, live: they see every change, and each change can be undone with Ctrl+Z (or the undo tool).
+const INSTRUCTIONS = `Brik is a web-first 2D game engine (ECS, TypeScript scripts). These tools work in the Brik editor the user has open, live: they see every change, and each change can be undone with Ctrl+Z (or the undo tool, and redone with redo).
 
 How to work:
 - Start with project_info and get_hierarchy. Entities are addressed by their id (a string), not by name; find_entities looks them up.
@@ -169,7 +169,9 @@ tool("reparent", "Moves entities under a new parent (null for the top level), op
 
 tool("select", "Selects entities in the editor, so the user sees what you mean.", { ids: z.array(z.string()) });
 
-tool("undo", "Undoes the last change in the editor.", {}, { destructive: true });
+tool("undo", "Undoes the last change in the editor. project_info shows the next undo and redo steps (`undo`, `redo`).", {}, { destructive: true });
+
+tool("redo", "Redoes the change that undo took back (not possible after a new change).", {}, { destructive: true });
 
 // ---------------------------------------------------------------- art and tiles
 

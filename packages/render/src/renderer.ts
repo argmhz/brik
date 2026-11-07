@@ -1,5 +1,5 @@
 import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
-import { type Entity, GlobalTransform2D, type Mat3, TileMap, type Vec2, type World, mat3, parseTileKey } from "@brik/core";
+import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey } from "@brik/core";
 import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
 import { ParticleEmitter2D, Particles } from "./particles";
 import { UIImage, UILayout, UIText } from "./ui";
@@ -108,6 +108,8 @@ export class Renderer {
   private nextTextureId = 1;
   private contextLost = false;
   private warnedNoCamera = false;
+  /** Sprite problems already reported, so each is said once. */
+  private warnedSprites = new Set<string>();
   private readonly maxPixelRatio: number;
 
   // per-frame scratch, reused to avoid garbage
@@ -411,6 +413,17 @@ export class Renderer {
     }
   }
 
+  /** A sprite that draws nothing because its texture or sprite id is gone: say so once, instead of staying invisible. */
+  private warnMissingSprite(world: World, assets: Assets, e: Entity, ref: { texture: string; id: string }): void {
+    const problem = assets.problem(ref);
+    if (!problem || problem.kind !== "missing") return;
+    const key = `${ref.texture}/${ref.id}`;
+    if (this.warnedSprites.has(key)) return;
+    this.warnedSprites.add(key);
+    const name = world.has(e, Name) ? world.store(Name).value[e] : "";
+    console.warn(`[brik] a Sprite draws nothing: ${problem.message}${name ? ` (entity "${name}")` : ""}`);
+  }
+
   /** Gathers visible sprites, shapes and text and sorts them. Returns how many there are. */
   /** `pixelsPerUnit`: screen pixels per world unit in the views drawn this frame (zoom x pixel ratio). */
   private collect(world: World, pixelsPerUnit: number): number {
@@ -433,7 +446,10 @@ export class Renderer {
       const ref = S.sprite[e];
       if (!ref) continue;
       const r = assets.resolve(ref, slot(items.length));
-      if (!r) continue;
+      if (!r) {
+        this.warnMissingSprite(world, assets, e, ref);
+        continue;
+      }
       const gpu = this.gpuTexture(r.texture);
       if (!gpu) continue;
       const i = items.length;
