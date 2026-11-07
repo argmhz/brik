@@ -97,8 +97,13 @@ export function BuildWindow(props: { editor: Editor; onClose: () => void }) {
   const build = async (): Promise<ExportResult | null> => {
     setBusy("Bygger …");
     try {
-      const [{ default: playerJs }, esbuild] = await Promise.all([import("../generated/brik.js?raw"), editor.scripts.compiler()]);
-      const r = await exportGame(editor, { esbuild, playerJs, drawPage, pack: packInWorker }, settings());
+      const [{ default: brik }, { default: physics }, esbuild] = await Promise.all([
+        import("../generated/brik.js?raw"),
+        import("../generated/brik-physics.js?raw"),
+        editor.scripts.compiler(),
+      ]);
+      const playerFiles = { "brik.js": brik, "brik-physics.js": physics };
+      const r = await exportGame(editor, { esbuild, playerFiles, drawPage, pack: packInWorker }, settings());
       setResult(r);
       return r;
     } catch (err) {

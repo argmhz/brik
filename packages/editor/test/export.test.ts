@@ -66,7 +66,7 @@ describe("export", () => {
       editor,
       {
         esbuild,
-        playerJs: "/* player */",
+        playerFiles: { "brik.js": "/* player */", "brik-physics.js": "/* rapier */" },
         drawPage: async (page) => {
           drawn.push(page.placements.length);
           return new Uint8Array([9]);
@@ -76,7 +76,7 @@ describe("export", () => {
     );
     const f = result.files;
     expect(Object.keys(f).sort()).toEqual(
-      ["brik.js", "game.js", "game.json", "images/assets_bg.png", "images/atlas_1.png", "index.html", "sounds/assets_jump.wav"].sort(),
+      ["brik.js", "brik-physics.js", "game.js", "game.json", "images/assets_bg.png", "images/atlas_1.png", "index.html", "sounds/assets_jump.wav"].sort(),
     );
     expect(drawn).toEqual([2]);
     const html = new TextDecoder().decode(f["index.html"]);
@@ -85,6 +85,8 @@ describe("export", () => {
 
     const m = JSON.parse(new TextDecoder().decode(f["game.json"])) as GameManifest;
     expect(m.startScene).toBe("scenes/main.scene.json");
+    // no colliders or bodies: the player won't fetch brik-physics.js
+    expect(m.usesPhysics).toBe(false);
     expect(m.textures).toHaveLength(3);
     expect(m.sounds[0]).toMatchObject({ name: "jump", file: "sounds/assets_jump.wav" });
     expect(m.prefabs.map((p) => p.name)).toEqual(["Ball"]);
@@ -115,10 +117,19 @@ describe("export", () => {
     expect(app.world.store(Transform2D).position.x[hero]).toBeCloseTo(30, 0);
   });
 
+  it("flags games that use physics, so the player loads Rapier before starting", async () => {
+    const { editor } = await project();
+    editor.createEntity("rect", { name: "Floor", extra: { Collider2D: {} } });
+    await editor.saveScene("scenes/main.scene.json");
+    const result = await exportGame(editor, { esbuild, playerFiles: { "brik.js": "", "brik-physics.js": "" }, drawPage: async () => new Uint8Array([9]) });
+    const m = JSON.parse(new TextDecoder().decode(result.files["game.json"])) as GameManifest;
+    expect(m.usesPhysics).toBe(true);
+  });
+
   it("refuses to export when scripts don't compile", async () => {
     const { fs, editor } = await project();
     await fs.writeFile("scripts/Bad.ts", "export const x = ;");
     await editor.saveScene("scenes/main.scene.json");
-    await expect(exportGame(editor, { esbuild, playerJs: "", drawPage: async () => new Uint8Array() })).rejects.toThrow(/Scripts har fejl/);
+    await expect(exportGame(editor, { esbuild, playerFiles: {}, drawPage: async () => new Uint8Array() })).rejects.toThrow(/Scripts har fejl/);
   });
 });

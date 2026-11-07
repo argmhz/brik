@@ -43,12 +43,18 @@ export async function startGame(opts: StartOptions): Promise<App> {
   // scripts import "brik"; the bundle reads it from this global
   (globalThis as Record<string, unknown>).__brik = runtime;
 
-  const steps = manifest.pages.length + manifest.sounds.length + 3;
+  // Rapier (brik-physics.js) is fetched only for games with physics; one that
+  // adds physics later from a script gets it then. Older game.json files lack
+  // the flag, so load it for them.
+  const physics = manifest.usesPhysics !== false;
+  const steps = manifest.pages.length + manifest.sounds.length + (physics ? 3 : 2);
   let done = 0;
   const step = (label: string) => progress(++done / steps, label);
 
-  await initPhysics();
-  step("fysik");
+  if (physics) {
+    await initPhysics();
+    step("fysik");
+  }
 
   const app = createGame({ canvas: opts.canvas, physics: manifest.physics });
   const world = app.world;

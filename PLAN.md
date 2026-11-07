@@ -456,7 +456,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - **Resultat:** En 2D-engine, man kan shippe spil med, både i browseren og som desktop-app.
 
 **Kendte begrænsninger i fase 5**
-- Playeren er ca. 1,75 MB (ca. 700 KB som zip), fordi Rapier indlejrer sin WASM. Den kunne lazy-loades, så spil uden fysik bliver små.
+- ~~Playeren er ca. 1,75 MB, fordi Rapier indlejrer sin WASM.~~ (fase 5.9)
 - Atlas-pakkeren pakker hele billeder. Sprites inde i et sprite sheet trimmes ikke enkeltvis, og der er kun extrude om hele billedet. Rotation i atlas er ikke understøttet.
 - Ingen PWA/offline-indpakning endnu.
 - Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke, kun JSON. Spejlede tiles importeres uden spejling.
@@ -526,6 +526,15 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - Headless har ingen renderer, så der er ingen skærmbilleder, og byg/eksport kan ikke køres derfra. Er projektet åbent i både editoren og headless, ser de ikke hinandens ændringer.
 - Scener, der er gemt før `boundsMode` kom, får "view" og skal have deres `bounds` sat til banens kanter (eller `boundsMode: "center"`).
 - Kameraets rotation tages ikke med, når udsnittet holdes inden for rammen.
+
+### Fase 5.9 — 2D gjort færdig
+De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og udgiver spil.
+
+- [x] Rapier lazy-loades: playeren er delt i `brik.js` (ca. 100 KB) og `brik-physics.js` (ca. 1,65 MB med Rapiers WASM). `game.json` får `usesPhysics`, når en scene eller prefab har fysik-komponenter, og så hentes fysikken, før spillet starter. Ellers hentes den kun, hvis spillet senere får brug for den (første gang en entity med fysik dukker op). Et spil uden fysik henter nu ca. 105 KB i stedet for 1,75 MB.
+- [ ] `CharacterController2D` kan stå på løse kasser
+- [ ] Auto-tiling (regel-tiles)
+- [ ] UI: `UISlider`, `UIToggle`, `UITextInput` og `UILayout`
+- [ ] UI-elementer kan vælges og trækkes i scene view
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

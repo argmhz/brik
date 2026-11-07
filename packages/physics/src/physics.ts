@@ -1,4 +1,4 @@
-import RAPIER from "@dimforge/rapier2d-compat";
+import type RAPIER from "@dimforge/rapier2d-compat";
 import {
   type App,
   type Entity,
@@ -33,7 +33,13 @@ let loading: Promise<R> | null = null;
 
 /** Loads the Rapier WASM module. Physics does nothing until this has finished. */
 export function initPhysics(): Promise<void> {
-  loading ??= RAPIER.init().then(() => (rapier = RAPIER));
+  // a separate chunk in exported games (Rapier embeds its WASM, ~1.5 MB), fetched only when needed
+  loading ??= import("@dimforge/rapier2d-compat").then(async (mod) => {
+    const R = (mod.default ?? mod) as R;
+    await R.init();
+    return (rapier = R);
+  });
+  loading.catch(() => (loading = null));
   return loading.then(() => {});
 }
 
@@ -247,6 +253,11 @@ export class Physics {
 
   /** Advances the simulation by `dt` seconds. */
   step(dt: number): void {
+    if (!rapier) {
+      // load Rapier the first time something needs physics; it runs once loaded
+      if (usesPhysics(this.world)) void initPhysics();
+      return;
+    }
     if (!this.sync()) return;
     const rw = this.rw!;
     rw.timestep = dt;
@@ -635,12 +646,22 @@ export class Physics {
   }
 }
 
-/** Rapier 2D physics. Steps in `fixedUpdate`. Call `await initPhysics()` first, or physics starts once it has loaded. */
+/** True when the world has anything the physics engine would simulate. */
+export function usesPhysics(world: World): boolean {
+  return PHYSICS_COMPONENTS.some((c) => !world.query([c]).isEmpty());
+}
+
+/** Components that need Rapier. Used to load it only for games that use physics. */
+export const PHYSICS_COMPONENTS = [RigidBody2D, Collider2D, CharacterController2D, TileMapCollider];
+
+/**
+ * Rapier 2D physics. Steps in `fixedUpdate`. Rapier loads on its own the first
+ * time an entity needs it; `await initPhysics()` first to have it from frame one.
+ */
 export function PhysicsPlugin(options: PhysicsOptions = {}) {
   return {
     name: "brik:physics",
     build(app: App) {
-      void initPhysics();
       const physics = app.world.insertResource(new Physics(app.world, options));
       app.addSystem("fixedUpdate", {
         name: "physics.step",

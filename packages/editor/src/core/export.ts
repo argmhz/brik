@@ -3,6 +3,7 @@ import {
   type PackOptions,
   type PackResult,
   type SceneData,
+  PHYSICS_COMPONENTS,
   type SceneEntityData,
   DEFAULT_PACK_OPTIONS,
   packRects,
@@ -46,8 +47,11 @@ export interface AtlasPlan {
 
 export interface ExportDeps {
   esbuild: EsbuildLike;
-  /** The built player (brik.js). */
-  playerJs: string;
+  /**
+   * The built player: brik.js, plus brik-physics.js (Rapier), which the game
+   * fetches only when it uses physics.
+   */
+  playerFiles: Record<string, string>;
   /** Draws an atlas page to PNG bytes (browser: canvas). Needed when packing. */
   drawPage?: (page: AtlasPlan["pages"][number], extrude: number) => Promise<Uint8Array>;
   /** Packs rects, e.g. in a Web Worker. Default: on this thread. */
@@ -249,6 +253,7 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
     title,
     startScene,
     ...(editor.settings.physics ? { physics: editor.settings.physics } : {}),
+    usesPhysics: [...Object.values(scenes), ...prefabs].some((s) => s.entities.some(hasPhysics)),
     pages: manifestPages,
     textures,
     clips: [...editor.assets.clips.values()],
@@ -258,13 +263,19 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
     scripts,
   };
   files["game.json"] = enc.encode(JSON.stringify(manifest));
-  files["brik.js"] = enc.encode(deps.playerJs);
+  for (const [name, code] of Object.entries(deps.playerFiles)) files[name] = enc.encode(code);
   files["index.html"] = enc.encode(indexHtml(title));
 
   const report = Object.entries(files)
     .map(([path, bytes]) => ({ path, bytes: bytes.length }))
     .sort((a, b) => b.bytes - a.bytes);
   return { files, manifest, atlas, report, warnings };
+}
+
+const PHYSICS_NAMES = new Set(PHYSICS_COMPONENTS.map((c) => c.name));
+/** True when an entity in saved scene data has a component that needs Rapier. */
+function hasPhysics(e: SceneEntityData): boolean {
+  return Object.keys(e.components).some((name) => PHYSICS_NAMES.has(name));
 }
 
 /** True for image files the exporter knows how to copy. */

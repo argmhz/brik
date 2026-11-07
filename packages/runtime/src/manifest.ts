@@ -14,6 +14,12 @@ export interface GameManifest {
   title: string;
   startScene: string;
   physics?: PhysicsOptions;
+  /**
+   * True when a scene or prefab has physics components: the player then loads
+   * Rapier (brik-physics.js) before the game starts. Otherwise it loads only
+   * if the game adds physics at runtime.
+   */
+  usesPhysics?: boolean;
   /** Atlas pages (or standalone images), relative to game.json. */
   pages: { file: string; filter: "nearest" | "linear"; wrap: "clamp" | "repeat" }[];
   /** Each project texture, as a region of a page. Sprite rects are in page pixels. */
