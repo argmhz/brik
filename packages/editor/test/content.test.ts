@@ -9,12 +9,14 @@ import {
   findBySceneId,
   initPhysics,
   serializeScene,
+  Scripts,
 } from "@brik/runtime";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   Editor,
   MemoryFS,
   addComponent,
+  addScript,
   applyToPrefab,
   computeOverrides,
   createPrefab,
@@ -25,7 +27,9 @@ import {
   revertOverride,
   revertToPrefab,
   sceneIdOf,
+  scriptPropKey,
   setEntityRef,
+  setScriptProp,
   setValues,
 } from "../src";
 
@@ -100,6 +104,48 @@ describe("prefabs in the editor", () => {
     await fs.writeFile(path, JSON.stringify(json));
     await editor.db.refresh();
     expect(w.has(findBySceneId(w, id), RigidBody2D)).toBe(true);
+  });
+
+  it("script fields are overridden one at a time", async () => {
+    const { editor } = await newEditor();
+    const w = editor.world;
+    const S = "scripts/Enemy.ts#Enemy";
+    const scripts = (id: string) => w.store(Scripts).list[findBySceneId(w, id)];
+    const coinId = editor.createEntity("circle", { name: "Enemy" });
+    editor.execute(addScript(w, coinId, S));
+    editor.execute(setScriptProp(w, coinId, 0, "hp", 3));
+    editor.execute(setScriptProp(w, coinId, 0, "speed", 50));
+    await createPrefab(editor, coinId);
+    const guid = w.store(PrefabInstance).prefab[findBySceneId(w, coinId)];
+    const otherId = placePrefab(editor, guid, { x: 100, y: 0 })!;
+    const other = () => findBySceneId(w, otherId);
+    expect(overridesFor(editor, other()).size).toBe(0);
+
+    // the other instance is tougher: one field differs, not the whole script list
+    editor.execute(setScriptProp(w, otherId, 0, "hp", 9));
+    expect(overridesFor(editor, other())).toEqual(new Set([scriptPropKey(S, 0, "hp")]));
+    expect(w.store(PrefabInstance).overrides[other()]).toHaveLength(1);
+
+    // the prefab changes speed (through the first instance): the other follows on speed and keeps its own hp
+    editor.execute(setScriptProp(w, coinId, 0, "speed", 80));
+    await applyToPrefab(editor, coinId);
+    expect(scripts(otherId)[0].props).toEqual({ hp: 9, speed: 80 });
+    expect(scripts(coinId)[0].props).toEqual({ hp: 3, speed: 80 });
+
+    // a new field on the prefab shows up on both without becoming an override
+    editor.execute(setScriptProp(w, coinId, 0, "armor", 2));
+    await applyToPrefab(editor, coinId);
+    expect(scripts(otherId)[0].props).toEqual({ hp: 9, speed: 80, armor: 2 });
+    expect(overridesFor(editor, other())).toEqual(new Set([scriptPropKey(S, 0, "hp")]));
+
+    // reverting the one field takes the prefab's value back
+    revertOverride(editor, otherId, scriptPropKey(S, 0, "hp"));
+    expect(scripts(otherId)[0].props.hp).toBe(3);
+    expect(overridesFor(editor, other()).size).toBe(0);
+
+    // adding another script is a change of the whole list, so that is one override of the list
+    editor.execute(addScript(w, otherId, "scripts/Other.ts#Other"));
+    expect(overridesFor(editor, other())).toEqual(new Set(["Scripts.list"]));
   });
 
   it("keeps per-field overrides when the prefab changes", async () => {

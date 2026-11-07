@@ -471,7 +471,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - [x] Dockbare paneler: træk en fane til en anden zone (venstre, midte, bund, højre), eller brug højreklik-menuen. Layoutet huskes, og ⊞ i menulinjen nulstiller det.
 
 **Kendte begrænsninger i 5.5**
-- Script-felter tæller som ét override (`Scripts.list`), ikke pr. `@expose`-felt.
+- ~~Script-felter tæller som ét override (`Scripts.list`).~~ (fase 5.9)
 - Docking har fire faste zoner. Zoner kan ikke deles yderligere, og paneler kan ikke flyde i egne vinduer.
 - `changed` ser ikke ændringer inde i `ref`-felter (fx arrays), som ændres på stedet.
 
@@ -543,7 +543,7 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] `Joint2D`: `hinge`, `fixed`, `spring`, `rope` og `slider` mellem to kroppe, eller til et punkt i verden, når `connected` er tom. `fixed` svejser kroppene, hvor de står. Scene view viser leddet som en stiplet linje mellem ankrene.
 - [x] Atlas-pakkeren pakker et sprite sheets sprites én for én (tæt og med padding og extrude om hver sprite, så tiles ikke bløder ind i hinanden) og lægger resultatet ind i atlasset som én blok. Billeder, der bruges som helt billede (sprite-id `""`), pakkes som før. Ikke afprøvet i et eksporteret spil i browseren endnu.
 - [ ] PWA/offline for udgivne spil
-- [ ] Prefab-overrides pr. script-felt
+- [x] Prefab-overrides pr. script-felt: et script-felt, der afviger fra prefab'en, er et eget override (`<id>:Scripts:<script>@<n>.<felt>`, hvor n tæller kopier af samme script). Prefab'en kan ændre de andre felter, og instansen beholder sit eget; felter, der kommer til, følger med. Inspectoren viser det som andre overrides, og dobbeltklik henter prefab'ens værdi. Tilføjes, fjernes eller flyttes scripts, er hele listen stadig ét override (`Scripts.list`).
 
 **Fra MCP-brug (et spil bygget gennem værktøjerne)**
 - [x] Rettet i motoren: `CharacterController2D` bruger figurens eget collision-filter, en `Spawner` uden `asChildren` spawner ved verdenspositionen under en flyttet forælder, og `Joint2D.connectedAnchor` følger den forbundne krops skalering.

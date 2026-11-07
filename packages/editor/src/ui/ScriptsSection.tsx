@@ -10,9 +10,10 @@ import {
   isEntityLink,
   scriptDisplayName,
 } from "@brik/runtime";
-import { For, Show } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { removeScript, setScriptProp } from "../core/commands";
 import type { Editor } from "../core/editor";
+import { overridesFor, revertOverride, scriptPropKey } from "../core/prefabs";
 import { AssetField, EntityField } from "./asset-fields";
 import { Checkbox, Part, SpriteField, TextBox, fromHex, toHex } from "./fields";
 import { useVersion } from "./hooks";
@@ -85,6 +86,15 @@ function ScriptField(props: {
   const version = useVersion(editor, "world", "play");
   const f = props.field;
   const isSet = () => (version(), f.key in props.entry().props);
+  // in a prefab instance: does this field differ from the prefab's? (the n-th copy of this script on the entity)
+  const overrides = createMemo(() => (version(), editor.play.active ? new Set<string>() : overridesFor(editor, props.e)));
+  const overrideKey = () => {
+    const list = editor.world.store(Scripts).list[props.e] ?? [];
+    let nth = 0;
+    for (let i = 0; i < props.index; i++) if (list[i].script === props.entry().script) nth++;
+    return scriptPropKey(props.entry().script, nth, f.key);
+  };
+  const overridden = () => overrides().has(overrideKey());
 
   /** In play mode show the live value of the running instance. */
   const read = (): any => {
@@ -188,9 +198,19 @@ function ScriptField(props: {
     <>
       <span
         class="field-label"
-        style={{ "font-weight": isSet() ? 600 : 400, color: isSet() ? "var(--text)" : undefined }}
-        title={isSet() ? "Ændret på denne entity. Dobbeltklik for at nulstille." : f.key}
-        onDblClick={() => isSet() && commit(undefined)}
+        classList={{ overridden: overridden() }}
+        style={overridden() ? undefined : { "font-weight": isSet() ? 600 : 400, color: isSet() ? "var(--text)" : undefined }}
+        title={
+          overridden()
+            ? "Ændret i forhold til prefab'en. Dobbeltklik for at hente prefab'ens værdi."
+            : isSet()
+              ? "Ændret på denne entity. Dobbeltklik for at nulstille."
+              : f.key
+        }
+        onDblClick={() => {
+          if (overridden()) revertOverride(editor, props.id, overrideKey());
+          else if (isSet()) commit(undefined);
+        }}
       >
         {f.label ?? f.key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase())}
       </span>

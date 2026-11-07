@@ -237,6 +237,8 @@ lav den fra et script med `this.spawnPrefab("Navn")`.
 - En instans husker, hvilke felter du har ændret på den. De står med fed skrift
   i inspectoren og bliver ikke overskrevet, når prefab'en ændres. Dobbeltklik
   på feltets navn for at hente prefab'ens værdi igen.
+  Det gælder også felter på scripts: en instans kan have sit eget `hp`, mens
+  prefab'en stadig bestemmer `speed`.
 - **Gendan** kasserer alle en instans' ændringer.
 - Prefabs kan indeholde andre prefabs. Ændrer du den inderste, følger de
   ydre med.

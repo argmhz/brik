@@ -29,6 +29,9 @@ import type { EditCommand } from "./history";
  *
  * Override keys use the entity ids of the prefab file ("rel" ids):
  *   "<rel>:<Component>.<field>"  a field with its own value
+ *   "<rel>:Scripts:<script>@<n>.<prop>"  an exposed field of a script (the n-th copy
+ *                                of that script on the entity); changing which scripts
+ *                                an entity has overrides "<rel>:Scripts.list" as a whole
  *   "<rel>:<Component>"          a component the prefab doesn't have
  *   "-<rel>:<Component>"         a prefab component removed from the instance
  *   "-<rel>"                     a prefab entity removed from the instance
@@ -44,6 +47,51 @@ type Data = SceneEntityData[];
 type Components = SceneEntityData["components"];
 
 const PLACEMENT = ["position", "rotation", "scale"];
+
+type ScriptList = { script: string; props: Record<string, unknown> }[];
+
+/** Override key part for one exposed field of a script (`nth` counts copies of the same script on an entity). */
+export function scriptPropKey(script: string, nth: number, prop: string): string {
+  return `Scripts:${script}@${nth}.${prop}`;
+}
+
+function parseScriptKey(rest: string): { script: string; nth: number; prop: string } | null {
+  if (!rest.startsWith("Scripts:")) return null;
+  const dot = rest.lastIndexOf(".");
+  const at = rest.lastIndexOf("@", dot);
+  if (dot < 0 || at < 0) return null;
+  const nth = Number(rest.slice(at + 1, dot));
+  return Number.isInteger(nth) ? { script: rest.slice(8, at), nth, prop: rest.slice(dot + 1) } : null;
+}
+
+/** The n-th entry of a script in a list, or undefined. */
+function nthEntry(list: ScriptList, script: string, nth: number): ScriptList[number] | undefined {
+  let seen = 0;
+  for (const e of list) if (e.script === script && seen++ === nth) return e;
+  return undefined;
+}
+
+/**
+ * Differences between two script lists, one key part per exposed field. Null
+ * when the lists don't hold the same scripts in the same order: that is an
+ * override of the whole list.
+ */
+function scriptFieldDiff(mine: ScriptList, theirs: ScriptList): string[] | null {
+  if (!Array.isArray(mine) || !Array.isArray(theirs) || mine.length !== theirs.length) return null;
+  if (mine.some((e, i) => e.script !== theirs[i].script)) return null;
+  const out: string[] = [];
+  const count = new Map<string, number>();
+  mine.forEach((m, i) => {
+    const nth = count.get(m.script) ?? 0;
+    count.set(m.script, nth + 1);
+    const a = m.props ?? {};
+    const b = theirs[i].props ?? {};
+    for (const p of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      if (p in a !== p in b || stable(a[p]) !== stable(b[p])) out.push(scriptPropKey(m.script, nth, p));
+    }
+  });
+  return out;
+}
 
 /** JSON with sorted object keys, so equal data compares equal. */
 function stable(v: unknown): string {
@@ -210,7 +258,11 @@ export function computeOverrides(instance: Data, rootId: string, prefab: SceneDa
           // files may leave out fields that have their default value
           const a = f in mine ? mine[f] : fieldDefault(c, f);
           const b = f in theirs ? theirs[f] : fieldDefault(c, f);
-          if (stable(a) !== stable(b)) out.push(`${d.id}:${c}.${f}`);
+          if (stable(a) === stable(b)) continue;
+          // scripts: one override per exposed field, unless scripts were added, removed or reordered
+          const fields = c === "Scripts" && f === "list" ? scriptFieldDiff(a as ScriptList, b as ScriptList) : null;
+          if (fields) for (const key of fields) out.push(`${d.id}:${key}`);
+          else out.push(`${d.id}:${c}.${f}`);
         }
       }
     }
@@ -256,7 +308,18 @@ export function rebuildInstanceData(instance: Data, rootId: string, prefab: Scen
     const rest = k.slice(colon + 1);
     const dot = rest.indexOf(".");
     const comps: Components = { ...target.components };
-    if (remove) delete comps[rest];
+    const sk = remove ? null : parseScriptKey(rest);
+    if (sk) {
+      // one exposed field of a script: take this instance's value on top of the prefab's script entry
+      const list = ((comps.Scripts as { list?: ScriptList } | undefined)?.list ?? []).map((e) => ({ ...e, props: { ...e.props } }));
+      const entry = nthEntry(list, sk.script, sk.nth);
+      const mineEntry = nthEntry(((mine.get(id)?.components.Scripts as { list?: ScriptList } | undefined)?.list ?? []), sk.script, sk.nth);
+      if (entry && mineEntry) {
+        if (sk.prop in (mineEntry.props ?? {})) entry.props[sk.prop] = clone(mineEntry.props[sk.prop]);
+        else delete entry.props[sk.prop];
+        comps.Scripts = { ...comps.Scripts, list };
+      }
+    } else if (remove) delete comps[rest];
     else if (dot < 0) {
       const src = mine.get(id)?.components[rest];
       if (src) comps[rest] = clone(src);
