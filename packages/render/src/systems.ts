@@ -1,6 +1,7 @@
 import { type AnimationClip, Assets, frameAt } from "@brik/assets";
 import { type App, type Entity, GlobalTransform2D, Parent, Time, Transform2D, type World, defineEvent } from "@brik/core";
 import { Camera2D, CameraFollow2D, Sprite, SpriteAnimator } from "./components";
+import { CameraFX, ScreenFade } from "./camera-fx";
 import { UILayout } from "./ui";
 import { ParticlesPlugin } from "./particles";
 
@@ -169,6 +170,9 @@ export const SpriteLogicPlugin = {
   build(app: App) {
     app.addSystem("update", { name: "sprite.animate", run: animateSprites });
     app.addSystem("postUpdate", { name: "camera.follow", run: followCameras });
+    const fx = app.world.insertResource(new CameraFX());
+    app.world.insertResource(new ScreenFade());
+    app.addSystem("postUpdate", { name: "camera.fx", run: (w: World) => fx.update(w) });
     app.addPlugin(ParticlesPlugin);
   },
 };

@@ -98,6 +98,28 @@ describe("AI bridge handlers", () => {
     }
   });
 
+  it("the manual's Zone example for exit hooks compiles", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const md = await readFile(new URL("../../../docs/manual/04-scripts.md", import.meta.url), "utf8");
+    const code = /```ts\n(import \{ Behaviour, type EntityRef \}[\s\S]*?)```/.exec(md)?.[1];
+    expect(code).toContain("export class Zone");
+    const { h } = await setup();
+    const r = (await h.write_script({ path: "scripts/Zone.ts", content: code! })) as { status: string; errors: string[] };
+    expect(r.errors).toEqual([]);
+    expect(r.status).toBe("ok");
+  });
+
+  it("the guide's Flashlight example compiles", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const md = await readFile(new URL("../../../docs/guide/06-lyssaetning.md", import.meta.url), "utf8");
+    const code = /```ts\n(import \{ Behaviour, Transform2D \}[\s\S]*?)```/.exec(md)?.[1];
+    expect(code).toContain("export class Flashlight");
+    const { h } = await setup();
+    const r = (await h.write_script({ path: "scripts/Flashlight.ts", content: code! })) as { status: string; errors: string[] };
+    expect(r.errors).toEqual([]);
+    expect(r.status).toBe("ok");
+  });
+
   it("a script that throws while loading is reported with its file and line", async () => {
     const { h } = await setup();
     const r = (await h.write_script({

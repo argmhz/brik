@@ -98,6 +98,7 @@ const ENTITY_KINDS: EntityKind[] = [
   "sound",
   "tilemap",
   "particles",
+  "light",
   "ui-canvas",
   "ui-image",
   "ui-text",

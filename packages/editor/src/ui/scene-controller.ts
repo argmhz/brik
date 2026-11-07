@@ -1,6 +1,7 @@
 import {
   Camera2D,
   Collider2D,
+  Light2D,
   ParticleEmitter2D,
   Particles,
   TileMap,
@@ -199,6 +200,7 @@ export class SceneController {
     this.drawCameras(ctx);
     this.drawColliders(ctx);
     this.drawJoints(ctx);
+    this.drawLights(ctx);
     this.drawUI(ctx);
     this.drawIcons(ctx);
     this.drawSelection(ctx);
@@ -247,6 +249,35 @@ export class SceneController {
     ctx.beginPath();
     pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
     ctx.closePath();
+  }
+
+  /** The reach of every light as a dashed circle (a cone for spot lights), stronger for the selected ones. */
+  private drawLights(ctx: CanvasRenderingContext2D): void {
+    const world = this.editor.world;
+    const L = world.store(Light2D);
+    const selected = new Set(this.editor.selectedEntities());
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    for (const e of world.query([Light2D, GlobalTransform2D])) {
+      const g = this.globalOf(e);
+      const scale = Math.max(Math.hypot(g.a, g.b), Math.hypot(g.c, g.d));
+      const r = L.radius[e] * scale * this.editor.view.zoom;
+      const o = this.worldToScreen(g.tx, g.ty);
+      const on = selected.has(e);
+      ctx.strokeStyle = on ? "rgba(255,214,90,0.95)" : "rgba(255,214,90,0.35)";
+      ctx.lineWidth = on ? 1.5 : 1;
+      // screen y points down, so a counter-clockwise world angle is clockwise on screen
+      const dir = -Math.atan2(g.b, g.a);
+      ctx.beginPath();
+      if (L.kind[e] === "spot") {
+        const half = (L.angle[e] * Math.PI) / 360;
+        ctx.moveTo(o.x, o.y);
+        ctx.arc(o.x, o.y, r, dir - half, dir + half);
+        ctx.closePath();
+      } else ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   private drawCameras(ctx: CanvasRenderingContext2D): void {
@@ -561,7 +592,7 @@ export class SceneController {
       if (spriteQuad(world, e) || isUI(world, e)) continue;
       const g = this.globalOf(e);
       const p = this.worldToScreen(g.tx, g.ty);
-      ctx.fillStyle = world.has(e, Camera2D) ? "rgba(255,255,255,0.8)" : "rgba(200,205,220,0.6)";
+      ctx.fillStyle = world.has(e, Camera2D) ? "rgba(255,255,255,0.8)" : world.has(e, Light2D) ? "rgba(255,214,90,0.95)" : "rgba(200,205,220,0.6)";
       ctx.strokeStyle = "rgba(0,0,0,0.6)";
       ctx.beginPath();
       if (world.has(e, Camera2D)) {

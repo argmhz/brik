@@ -31,11 +31,11 @@ import {
 } from "@brik/core";
 import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
-import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, UISubmit, UIValueChanged, playAnimation } from "@brik/render";
+import { AnimationEvent, AnimationFinished, Camera2D, CameraFX, Particles, UIClick, UILayout, UISubmit, UIValueChanged, playAnimation } from "@brik/render";
 import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
-import { Scenes } from "./scenes";
+import { type LoadSceneOptions, Scenes } from "./scenes";
 
 // ------------------------------------------------------------------ exposed fields
 
@@ -280,11 +280,42 @@ export abstract class Behaviour {
     return mat3.transformPoint({ a: g.a[cam], b: g.b[cam], c: g.c[cam], d: g.d[cam], tx: g.tx[cam], ty: g.ty[cam] }, local);
   }
 
-  /** Switches to another scene at the start of the next frame, e.g. `this.loadScene("level2")`. */
-  loadScene(name: string): void {
+  /**
+   * Switches to another scene at the start of the next frame, e.g. `this.loadScene("level2")`.
+   * `fade` fades the screen out and in around the switch, and `data` is carried into the next
+   * scene (read it there with `this.sceneData`): `this.loadScene("level2", { fade: 0.4, data: { score } })`.
+   */
+  loadScene(name: string, options?: LoadSceneOptions): void {
     const scenes = this.world.tryResource(Scenes);
     if (!scenes) throw new Error("Brik: scene switching is not available here");
-    scenes.load(name);
+    scenes.load(name, options);
+  }
+
+  /** Values carried between scenes with `loadScene(name, { data })`. Also writable: `this.sceneData.lives = 3`. */
+  get sceneData(): Record<string, unknown> {
+    const scenes = this.world.tryResource(Scenes);
+    if (!scenes) throw new Error("Brik: scene switching is not available here");
+    return scenes.data;
+  }
+
+  /** Shakes the screen: `strength` in pixels at most, fading out over `duration` seconds. */
+  shakeCamera(strength = 8, duration = 0.3): void {
+    this.world.resource(CameraFX).shake(strength, duration);
+  }
+
+  /** A quick zoom-in that settles back, e.g. `this.punchCamera(0.08, 0.2)`. */
+  punchCamera(amount = 0.1, duration = 0.2): void {
+    this.world.resource(CameraFX).punch(amount, duration);
+  }
+
+  /** Freezes the game for a moment (real seconds) to give a hit weight, e.g. `this.hitStop(0.06)`. */
+  hitStop(duration = 0.06): void {
+    this.world.resource(CameraFX).hitStop(duration, this.world);
+  }
+
+  /** Slow motion at `scale` (0.3 is slow) for `duration` real seconds, then back to normal speed. */
+  slowMotion(scale: number, duration: number): void {
+    this.world.resource(CameraFX).slowMotion(scale, duration, this.world);
   }
 
   /** Moves this entity's CharacterController2D, sliding along walls. Returns the actual movement. */

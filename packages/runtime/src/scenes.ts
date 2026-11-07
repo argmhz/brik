@@ -1,9 +1,20 @@
-import { type App, type SceneData, type World, loadScene } from "@brik/core";
+import { type App, type SceneData, Time, type World, loadScene } from "@brik/core";
+import { ScreenFade } from "@brik/render";
 
 /** Turns "level2" into "scenes/level2.scene.json"; full paths are kept. */
 export function scenePath(name: string): string {
   if (name.endsWith(".scene.json")) return name;
   return name.includes("/") ? `${name}.scene.json` : `scenes/${name}.scene.json`;
+}
+
+export interface LoadSceneOptions {
+  /**
+   * Fade out before the switch and in after it. A number is seconds per
+   * direction (0.4 is a good start); the colour is black unless set.
+   */
+  fade?: number | { duration: number; color?: { r: number; g: number; b: number } };
+  /** Values to carry into the next scene, merged into `Scenes.data`. */
+  data?: Record<string, unknown>;
 }
 
 /**
@@ -12,6 +23,7 @@ export function scenePath(name: string): string {
  *
  * ```ts
  * this.loadScene("level2"); // scenes/level2.scene.json
+ * this.loadScene("level2", { fade: 0.4, data: { score: 120 } }); // fade to black, carry the score along
  * ```
  */
 export class Scenes {
@@ -19,6 +31,12 @@ export class Scenes {
   current: string | null = null;
   /** How many scene switches have happened (also reloads of the same scene). */
   swaps = 0;
+  /**
+   * Values that survive scene switches, for score, lives, the player's choices.
+   * Fill it with `loadScene(name, { data })` or directly. Cleared only when the game starts over.
+   */
+  data: Record<string, unknown> = {};
+  private fading: { phase: "out" | "in"; t: number; duration: number; r: number; g: number; b: number } | null = null;
   private ready: { path: string; data: SceneData } | null = null;
   private loading: string | null = null;
   private pending: Promise<void> = Promise.resolve();
@@ -27,8 +45,19 @@ export class Scenes {
 
   constructor(private readonly source: (path: string) => SceneData | Promise<SceneData>) {}
 
-  load(name: string): void {
+  load(name: string, options: LoadSceneOptions = {}): void {
     const path = scenePath(name);
+    if (options.data) Object.assign(this.data, options.data);
+    const f = options.fade;
+    const duration = typeof f === "number" ? f : f?.duration ?? 0;
+    if (duration > 0) {
+      const c = (typeof f === "object" && f.color) || { r: 0, g: 0, b: 0 };
+      // fading out again while fading in picks up from where the screen is now
+      const from = this.fading?.phase === "in" ? 1 - this.fading.t / this.fading.duration : 0;
+      this.fading = { phase: "out", t: from * duration, duration, r: c.r, g: c.g, b: c.b };
+    } else {
+      this.fading = null;
+    }
     this.loading = path;
     this.pending = Promise.resolve()
       .then(() => this.source(path))
@@ -62,8 +91,28 @@ export class Scenes {
     return this.loading !== null;
   }
 
-  /** @internal Swaps in a loaded scene. Runs first thing in a frame. */
+  /** True while the screen is fading out or in around a scene switch. */
+  get fadingNow(): boolean {
+    return this.fading !== null;
+  }
+
+  /** @internal Moves a fade on and swaps in a loaded scene. Runs first thing in a frame. */
   swap(world: World): void {
+    const fade = this.fading;
+    const screen = world.tryResource(ScreenFade);
+    if (fade && screen) {
+      fade.t += world.resource(Time).unscaledDt;
+      screen.r = fade.r;
+      screen.g = fade.g;
+      screen.b = fade.b;
+      const k = Math.min(1, fade.t / fade.duration);
+      screen.alpha = fade.phase === "out" ? k : 1 - k;
+      if (fade.phase === "in" && k >= 1) this.fading = null;
+    } else if (fade && !screen) {
+      this.fading = null; // nothing to draw the fade with
+    }
+    // wait for the screen to be fully covered before switching
+    if (this.fading?.phase === "out" && this.fading.t < this.fading.duration) return;
     const next = this.ready;
     if (!next) return;
     this.ready = null;
@@ -72,6 +121,10 @@ export class Scenes {
     loadScene(world, next.data);
     this.current = next.path;
     this.swaps++;
+    if (this.fading) {
+      this.fading.phase = "in";
+      this.fading.t = 0;
+    }
   }
 }
 

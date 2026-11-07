@@ -1,8 +1,10 @@
 import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
 import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey } from "@brik/core";
+import { CameraFX, ScreenFade } from "./camera-fx";
 import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
 import { ParticleEmitter2D, Particles } from "./particles";
 import { UIFocus, UIImage, UILayout, UIText } from "./ui";
+import { LightRenderer, collectLights, lightingOf } from "./lighting";
 import { UISlider, UIToggle } from "./ui-widgets";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle, textResolution } from "./text";
@@ -108,6 +110,8 @@ export class Renderer {
   private nextTextureId = 1;
   private contextLost = false;
   private warnedNoCamera = false;
+  /** Made the first time a camera has lighting. */
+  private lighting: LightRenderer | null = null;
   /** Sprite problems already reported, so each is said once. */
   private warnedSprites = new Set<string>();
   private readonly maxPixelRatio: number;
@@ -147,6 +151,7 @@ export class Renderer {
     });
     canvas.addEventListener("webglcontextrestored", () => {
       this.textures.clear();
+      this.lighting = null;
       this.initGl();
       this.contextLost = false;
     });
@@ -192,6 +197,7 @@ export class Renderer {
     this.batcher.drawCalls = 0;
     this.batcher.instances = 0;
 
+    const fx = world.tryResource(CameraFX);
     gl.enable(gl.SCISSOR_TEST);
     for (const cam of cameras) {
       if (!G.active[cam]) continue;
@@ -205,18 +211,44 @@ export class Renderer {
         gl.clearColor(C.clearColor.r[cam], C.clearColor.g[cam], C.clearColor.b[cam], C.clearColor.a[cam]);
         gl.clear(gl.COLOR_BUFFER_BIT);
       }
+      // camera effects (shake, zoom punch) only change what is drawn, never the camera entity
+      const camM = globalOf(world, cam);
+      const view = fx && fx.active ? { ...camM, tx: camM.tx + fx.offsetX, ty: camM.ty + fx.offsetY } : camM;
       const bounds = this.setView(
-        globalOf(world, cam),
-        C.zoom[cam],
+        view,
+        C.zoom[cam] * (fx ? fx.zoomFactor : 1),
         this.width * C.viewport.w[cam],
         this.height * C.viewport.h[cam],
       );
       this.drawSprites(world, count, bounds);
+      // lighting: multiply what this camera drew by ambient light plus the lights (the UI comes after, unlit)
+      const ambient = lightingOf(world, cam);
+      if (ambient) {
+        this.lighting ??= new LightRenderer(gl);
+        this.lighting.apply(ambient, collectLights(world, bounds), this.viewProj, vx, vy, vw, vh);
+      }
     }
     gl.disable(gl.SCISSOR_TEST);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     this.drawUI(world);
+    this.drawFade(world);
     this.stats.drawCalls = this.batcher.drawCalls;
+  }
+
+  /** The ScreenFade colour over the whole screen, on top of the UI. */
+  private drawFade(world: World): void {
+    const f = world.tryResource(ScreenFade);
+    if (!f || f.alpha <= 0.001) return;
+    const p = this.viewProj;
+    p.fill(0);
+    p[0] = 2 / this.width;
+    p[4] = 2 / this.height;
+    p[6] = -1;
+    p[7] = -1;
+    p[8] = 1;
+    this.batcher.begin(p);
+    this.batcher.pushShape(this.width, 0, 0, this.height, 0, 0, 1, packColor(f.r, f.g, f.b, Math.min(1, f.alpha)), 0, 0, 0);
+    this.batcher.end();
   }
 
   /** Lays out and draws every UICanvas in screen space, on top of the world. */
@@ -851,6 +883,8 @@ export class Renderer {
     for (const gpu of this.textures.values()) this.batcher.releaseTexture(gpu.tex);
     this.textures.clear();
     this.batcher.dispose();
+    this.lighting?.dispose();
+    this.lighting = null;
   }
 
   private gpuTexture(asset: TextureAsset): GpuTexture | null {

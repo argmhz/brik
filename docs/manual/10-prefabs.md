@@ -17,4 +17,15 @@ Højreklik en entity og vælg **Lav prefab**. Træk prefab'en ind i scenen, elle
 
 ## Scener
 
-En scene er en fil i `scenes/`. Skift scene fra et script med `this.loadScene("level2")`.
+En scene er en fil i `scenes/`. Skift scene fra et script med `this.loadScene("level2")`. Skiftet sker i begyndelsen af næste frame, når scenen er læst.
+
+### Fade og data mellem scener
+
+```ts
+this.loadScene("level2", { fade: 0.4, data: { score: 120 } });
+```
+
+- **`fade`** er sekunder pr. retning. Skærmen toner til sort, scenen skiftes, mens den er dækket, og skærmen toner ind igen. Er scenen langsom at læse, bliver skærmen sort, til den er klar. Til en anden farve: `fade: { duration: 0.4, color: { r: 1, g: 1, b: 1 } }`.
+- **`data`** følger med til næste scene. Læs den der med `this.sceneData.score`. Værdierne lægges oven i det, der allerede er, og bliver, til du ændrer dem, så point og liv overlever flere baner. `this.sceneData` kan også skrives direkte.
+
+Entities, scripts og felter nulstilles ved et scene-skift. Det eneste, der overlever, er `sceneData`. Derfor skal alt, der skal huskes (point, liv, valgt figur), ligge der.

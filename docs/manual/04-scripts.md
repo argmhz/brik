@@ -19,6 +19,8 @@ export class Player extends Behaviour {
 
 Felter med `@expose` kan rettes i inspectoren, og værdien gemmes i scenen.
 
+![Kode-fanen med platformer-eksemplets Player-script](../images/kode.png)
+
 ## Hooks
 
 | Hook | Kaldes når |
@@ -50,7 +52,8 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 | `this.setActive(false, e)` | Slukker en entity og dens børn (fx en beskedboks): den skjules, dens scripts, timere og tweens holder pause, og dens colliders er ude af fysikken |
 | `this.tween(Transform2D, "position.y", 100, 0.5)`, `this.after(1, fn)`, `this.every(0.5, fn)` | Tweens og timere |
 | `this.emitParticles(20)` | Udsender partikler |
-| `this.loadScene("level2")` | Skifter scene |
+| `this.loadScene("level2", { fade: 0.4, data })` | Skifter scene, evt. med fade og data, der læses med `this.sceneData` |
+| `this.shakeCamera(8, 0.3)`, `this.punchCamera(0.08)`, `this.hitStop(0.06)`, `this.slowMotion(0.3, 1)` | Skærmryst, zoom-stød, frys og slowmotion ([Grafik](grafik.md#skaermryst-zoom-stoed-og-hit-stop)) |
 | `this.behaviourOf(Andet, e)` | Taler med et andet script |
 
 > **Pas på** Giv ikke dine egne metoder samme navn som Behaviours egne (fx `setActive` eller `find`), for så skygger de for dem.
@@ -65,20 +68,33 @@ Et felt kan pege på en anden entity, som du vælger i inspectoren:
 
 Felter af typen `"prefab"`, `"audio"` og `"clip"` får en asset-vælger.
 
-## Tilstand på tværs af scener
+> **Pas på** Et `Entity` er et indeks, og indekser genbruges, når en entity slettes. Et felt, der pegede på en slettet entity, kan derfor pludselig pege på en ny, uvedkommende entity, og `this.world.isAlive(target)` siger da `true`. Skal en reference kunne overleve, at målet slettes, så gem en `EntityRef` og slå den op, hver gang du bruger den:
+>
+> `const ref = this.world.ref(e);` og senere `const e = this.world.deref(ref);` (giver `-1`, hvis entity'en er væk).
 
-Tilstand, der skal leve på tværs af scener (liv, point), kan ligge i et almindeligt modul, som scripts importerer:
+## Når noget forsvinder
+
+`onCollisionExit` og `onTriggerExit` kommer også, når modparten slettes, slukkes (`setActive`) eller filtreres væk af en ny `group`/`mask`. Er modparten slettet, er `other` indekset på en entity, der ikke findes mere, og den slettede entity får selv ingen exit-hook (kun `onDestroy`). Tjek derfor, før du bruger `other`. Husk en `EntityRef` ved Enter, og slå den op ved Exit:
 
 ```ts
-// scripts/Game.ts
-export const Game = { lives: 3, coins: 0 };
+import { Behaviour, type EntityRef } from "brik";
+
+export class Zone extends Behaviour {
+  inside = new Map<number, EntityRef>();
+
+  onTriggerEnter(other: number) {
+    this.inside.set(other, this.world.ref(other));
+  }
+
+  onTriggerExit(other: number) {
+    const ref = this.inside.get(other);
+    this.inside.delete(other);
+    // -1: modparten er slettet, og `other` må ikke bruges til at læse komponenter
+    const alive = ref !== undefined && this.world.deref(ref) >= 0;
+    if (alive) this.log("gik ud:", other);
+  }
+}
 ```
-
-Modulerne indlæses forfra, hver gang du trykker Play, ligesom når det eksporterede spil startes.
-
-## Fejl
-
-Fejl i et script vises i Console med fil og linje, både når scriptet kompileres, og når det kaster en fejl, mens spillet kører. Klik på fejlen for at hoppe til linjen.
 
 ## Egne komponenter og systemer
 

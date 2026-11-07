@@ -54,6 +54,7 @@ export type EntityKind =
   | "sound"
   | "tilemap"
   | "particles"
+  | "light"
   | "ui-canvas"
   | "ui-image"
   | "ui-text"
@@ -432,6 +433,7 @@ export class Editor {
       sound: "Lyd",
       tilemap: "Tilemap",
       particles: "Partikler",
+      light: "Lys",
       "ui-canvas": "UI Canvas",
       "ui-image": "Billede",
       "ui-text": "UI-tekst",
@@ -475,6 +477,7 @@ export class Editor {
       components.TileMapCollider = {};
     }
     if (kind === "particles") components.ParticleEmitter2D = {};
+    if (kind === "light") components.Light2D = {};
     if (kind === "ui-canvas") components.UICanvas = {};
     if (kind === "ui-image") components.UIImage = { color: { r: 0.2, g: 0.22, b: 0.28, a: 0.9 } };
     if (kind === "ui-text") components.UIText = { text: "Tekst" };

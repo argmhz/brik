@@ -5,9 +5,11 @@ import { SpriteLogicPlugin } from "./systems";
 import { UILayout } from "./ui";
 
 export * from "./components";
+export { CameraFX, ScreenFade } from "./camera-fx";
 export * from "./renderer";
 export * from "./systems";
 export * from "./particles";
+export { collectLights, lightAt, lightingOf, type LightInfo } from "./lighting";
 export * from "./ui";
 export * from "./ui-widgets";
 export { PathCache, pathBounds, cssColor, type PathImage, type PathStyle } from "./shape-raster";

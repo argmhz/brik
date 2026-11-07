@@ -39,6 +39,40 @@ export const Sprite = defineComponent(
   { requires: [Transform2D] },
 );
 
+/**
+ * Turns on lighting for a camera: everything that camera draws in the world is multiplied by the light there.
+ * `ambient` is the light that is everywhere, so a dark color makes a dark scene, and `Light2D` entities add light.
+ * Put it on the same entity as the Camera2D. A camera without it draws everything fully lit. UI is never darkened.
+ */
+export const Lighting2D = defineComponent("Lighting2D", {
+  /** The light everywhere: black is pitch dark, white is no darkening at all. */
+  ambient: t.color(0.12, 0.12, 0.18, 1),
+  /** Switch lighting off without removing it. */
+  enabled: t.bool(true),
+});
+
+/**
+ * A light that brightens the world around it (needs a Lighting2D on a camera to show).
+ * A spot light points along the entity's rotation: 0 is to the right (+x), and it turns counter-clockwise.
+ * The entity's scale scales the radius.
+ */
+export const Light2D = defineComponent(
+  "Light2D",
+  {
+    kind: t.enum(["point", "spot"] as const, "point"),
+    color: t.color(1, 0.94, 0.78, 1),
+    /** How strong the light is. 1 lights the world fully at the center. */
+    intensity: withMeta(t.f32(1), { min: 0, step: 0.1 }),
+    /** How far the light reaches (world units). */
+    radius: withMeta(t.f32(160), { min: 1, step: 5 }),
+    /** 0: a sharp edge. 1: fades out smoothly from the center. */
+    softness: withMeta(t.f32(0.6), { min: 0, max: 1, step: 0.05 }),
+    /** A spot light's opening in degrees. */
+    angle: withMeta(t.f32(60), { min: 1, max: 360, step: 1 }),
+  },
+  { requires: [Transform2D] },
+);
+
 /** Draw order. Lower layers first; within a layer lower order first. */
 export const SortingOrder = defineComponent("SortingOrder", {
   layer: t.i32(0),
