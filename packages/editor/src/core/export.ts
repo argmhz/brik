@@ -24,11 +24,25 @@ export interface BuildSettings {
 
 export const DEFAULT_BUILD: BuildSettings = { atlas: true, pack: { ...DEFAULT_PACK_OPTIONS } };
 
-/** One image placed on an atlas page. */
+/** One sprite of a compacted texture: its rect in the image, and where it goes inside the placement. */
+export interface SpriteSlot {
+  id: string;
+  src: { x: number; y: number; w: number; h: number };
+  x: number;
+  y: number;
+}
+
+/**
+ * One image placed on an atlas page. A texture whose sprites are packed one
+ * by one (`sprites`) takes `w` x `h`; otherwise the whole image is copied.
+ */
 export interface Placement {
   entry: TextureEntry;
   x: number;
   y: number;
+  w: number;
+  h: number;
+  sprites?: SpriteSlot[];
 }
 
 export interface AtlasPlan {
@@ -84,7 +98,7 @@ export async function planAtlas(editor: Editor, settings: BuildSettings, pack = 
       used: 1,
       filter: e.meta.settings.filter,
       wrap: e.meta.settings.wrap,
-      placements: [{ entry: e, x: 0, y: 0 }],
+      placements: [{ entry: e, x: 0, y: 0, w: e.asset.width, h: e.asset.height }],
       standalone: e,
     });
   if (!settings.atlas) {
@@ -100,10 +114,31 @@ export async function planAtlas(editor: Editor, settings: BuildSettings, pack = 
     const key = e.meta.settings.filter;
     groups.set(key, [...(groups.get(key) ?? []), e]);
   }
+  // a sprite sheet's sprites are packed tightly one by one, each with its own
+  // padding and extrude (no bleeding between neighbouring tiles), unless
+  // something uses the whole image
+  const whole = await wholeTextureRefs(editor);
+  const compact = new Map<string, { w: number; h: number; sprites: SpriteSlot[] }>();
+  for (const e of entries) {
+    const sprites = e.meta.sprites;
+    if (sprites.length === 0 || whole.has(e.meta.guid) || e.meta.settings.wrap === "repeat") continue;
+    const local = await pack(
+      sprites.map((s) => ({ id: s.id, w: s.rect.w, h: s.rect.h })),
+      { ...settings.pack, pot: false },
+    );
+    if (local.oversized.length || local.pages.length !== 1) continue;
+    const byId = new Map(sprites.map((s) => [s.id, s]));
+    compact.set(e.path, {
+      w: local.pages[0].w,
+      h: local.pages[0].h,
+      sprites: local.items.map((it) => ({ id: it.id, src: { ...byId.get(it.id)!.rect }, x: it.x, y: it.y })),
+    });
+  }
+  const sizeOf = (e: TextureEntry) => compact.get(e.path) ?? { w: e.asset.width, h: e.asset.height };
   for (const [filter, list] of groups) {
     const byPath = new Map(list.map((e) => [e.path, e]));
     const result = await pack(
-      list.map((e) => ({ id: e.path, w: e.asset.width, h: e.asset.height })),
+      list.map((e) => ({ id: e.path, w: sizeOf(e).w, h: sizeOf(e).h })),
       settings.pack,
     );
     for (const id of result.oversized) {
@@ -112,12 +147,39 @@ export async function planAtlas(editor: Editor, settings: BuildSettings, pack = 
     }
     const first = plan.pages.length;
     for (const p of result.pages) plan.pages.push({ ...p, filter: filter as "nearest" | "linear", wrap: "clamp", placements: [] });
-    for (const it of result.items) plan.pages[first + it.page].placements.push({ entry: byPath.get(it.id)!, x: it.x, y: it.y });
+    for (const it of result.items) {
+      const entry = byPath.get(it.id)!;
+      const c = compact.get(entry.path);
+      plan.pages[first + it.page].placements.push({ entry, x: it.x, y: it.y, ...sizeOf(entry), ...(c ? { sprites: c.sprites } : {}) });
+    }
   }
   return plan;
 }
 
 const defaultPack = async (items: { id: string; w: number; h: number }[], o: PackOptions) => packRects(items, o);
+
+/** Guids of textures that scenes, prefabs or clips use as a whole image (a sprite ref with id ""). */
+async function wholeTextureRefs(editor: Editor): Promise<Set<string>> {
+  const out = new Set<string>();
+  const visit = (v: unknown): void => {
+    if (Array.isArray(v)) for (const x of v) visit(x);
+    else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      if (typeof o.texture === "string" && o.id === "") out.add(o.texture);
+      for (const x of Object.values(o)) visit(x);
+    }
+  };
+  for (const path of (await walk(editor.fs)).filter(isScene)) {
+    try {
+      visit(JSON.parse(await editor.fs.readText(path)));
+    } catch {
+      // a broken scene is reported elsewhere
+    }
+  }
+  for (const p of editor.assets.prefabs.values()) visit(p.data);
+  for (const c of editor.assets.clips.values()) visit(c.frames);
+  return out;
+}
 
 /** Removes entities marked EditorOnly, with their children. */
 export function stripEditorOnly(entities: SceneEntityData[]): SceneEntityData[] {
@@ -214,16 +276,20 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
     manifestPages.push({ file, filter: page.filter, wrap: page.wrap });
     for (const pl of page.placements) {
       const e = pl.entry;
+      // where each sprite ended up: packed one by one, or at its place in the whole image
+      const slots = new Map((pl.sprites ?? []).map((s) => [s.id, s]));
       textures.push({
         guid: e.meta.guid,
         name: e.asset.name,
         page: i,
-        region: [pl.x, pl.y, e.asset.width, e.asset.height],
+        region: [pl.x, pl.y, pl.w, pl.h],
         pixelsPerUnit: e.meta.settings.pixelsPerUnit,
         sprites: e.meta.sprites.map((s) => ({
           id: s.id,
           name: s.name,
-          rect: [s.rect.x + pl.x, s.rect.y + pl.y, s.rect.w, s.rect.h],
+          rect: slots.has(s.id)
+            ? [pl.x + slots.get(s.id)!.x, pl.y + slots.get(s.id)!.y, s.rect.w, s.rect.h]
+            : [s.rect.x + pl.x, s.rect.y + pl.y, s.rect.w, s.rect.h],
           pivot: [s.pivot.x, s.pivot.y],
           ...(s.border ? { border: [s.border.l, s.border.b, s.border.r, s.border.t] as [number, number, number, number] } : {}),
         })),

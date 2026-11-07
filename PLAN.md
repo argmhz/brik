@@ -541,7 +541,7 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] 9-slice på `Sprite` i verden: `drawMode: "sliced"` strækker spritet til `size` (verdensenheder), og et sprite med 9-slice-kanter beholder hjørnernes størrelse, mens kanter og midte strækkes. Virker med rotation og flip, og valg i scene view følger den strakte størrelse.
 - [x] `Shape2D` polygon og linje: `points` i lokale koordinater, tegnet med Canvas2D til en tekstur ved den viste opløsning (fyld, kant, runde samlinger). Inspectoren har et punktfelt.
 - [x] `Joint2D`: `hinge`, `fixed`, `spring`, `rope` og `slider` mellem to kroppe, eller til et punkt i verden, når `connected` er tom. `fixed` svejser kroppene, hvor de står. Scene view viser leddet som en stiplet linje mellem ankrene.
-- [ ] Atlas-pakkeren trimmer hver sprite
+- [x] Atlas-pakkeren pakker et sprite sheets sprites én for én (tæt og med padding og extrude om hver sprite, så tiles ikke bløder ind i hinanden) og lægger resultatet ind i atlasset som én blok. Billeder, der bruges som helt billede (sprite-id `""`), pakkes som før. Ikke afprøvet i et eksporteret spil i browseren endnu.
 - [ ] PWA/offline for udgivne spil
 - [ ] Prefab-overrides pr. script-felt
 
