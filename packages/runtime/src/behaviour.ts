@@ -174,8 +174,12 @@ export abstract class Behaviour {
   entity!: Entity;
   private _views?: Map<ComponentDef, unknown>;
 
-  /** Called once, before the first update. */
+  /** Called once, before the first update (after the first onEnable). */
   onStart?(): void;
+  /** Called when the entity is switched on: before onStart, and again after every setActive(true). */
+  onEnable?(): void;
+  /** Called when the entity is switched off (setActive(false), or a parent), and before onDestroy. */
+  onDisable?(): void;
   /** Called every frame. */
   onUpdate?(dt: number): void;
   /** Called at a fixed rate (default 60 Hz). Use it for physics-like movement. */
@@ -416,6 +420,8 @@ interface Slot {
   inst: Behaviour;
   applied: Record<string, unknown>;
   started: boolean;
+  /** onEnable has run and onDisable hasn't since. */
+  enabled: boolean;
 }
 
 /** Creates, updates and destroys Behaviour instances. Available as a resource. */
@@ -484,7 +490,17 @@ export class BehaviourRuntime {
   update(dt: number): void {
     this.each((s) => {
       // scripts on inactive entities sleep; onStart waits until the entity is first on
-      if (!isActive(s.inst.world, s.inst.entity)) return;
+      if (!isActive(s.inst.world, s.inst.entity)) {
+        if (s.enabled) {
+          s.enabled = false;
+          if (s.inst.onDisable) call(s, "onDisable");
+        }
+        return;
+      }
+      if (!s.enabled) {
+        s.enabled = true;
+        if (s.inst.onEnable) call(s, "onEnable");
+      }
       if (!s.started) {
         s.started = true;
         if (s.inst.onStart) call(s, "onStart");
@@ -527,7 +543,7 @@ export class BehaviourRuntime {
     const inst = new cls();
     inst.world = world;
     inst.entity = e;
-    const slot: Slot = { ref: world.ref(e), id: entry.script, cls, inst, applied: {}, started: false };
+    const slot: Slot = { ref: world.ref(e), id: entry.script, cls, inst, applied: {}, started: false, enabled: false };
     this.applyProps(slot, entry.props);
     return slot;
   }
@@ -553,6 +569,8 @@ export class BehaviourRuntime {
   }
 
   private destroySlot(s: Slot): void {
+    if (s.enabled && s.inst.onDisable) call(s, "onDisable");
+    s.enabled = false;
     if (s.started && s.inst.onDestroy) call(s, "onDestroy");
     s.started = false;
   }
@@ -560,6 +578,8 @@ export class BehaviourRuntime {
 
 type HookName =
   | "onStart"
+  | "onEnable"
+  | "onDisable"
   | "onUpdate"
   | "onFixedUpdate"
   | "onDestroy"

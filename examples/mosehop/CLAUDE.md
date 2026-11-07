@@ -43,7 +43,7 @@ export class Player extends Behaviour {
 }
 ```
 
-**Hooks:** `onStart`, `onUpdate(dt)`, `onFixedUpdate(dt)` (60 Hz), `onDestroy`,
+**Hooks:** `onStart`, `onEnable`/`onDisable` (switched on/off), `onUpdate(dt)`, `onFixedUpdate(dt)` (60 Hz), `onDestroy`,
 `onCollisionEnter/Exit(other)`, `onTriggerEnter/Exit(other)`,
 `onAnimationEvent(name)`, `onAnimationFinished(clip)`, `onTimer`, `onClick`
 (the entity's UIButton).

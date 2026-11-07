@@ -514,11 +514,11 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] Sceneskift under AI-afprøvning: `step` og `click` venter på en scene, der er ved at blive læst, så skiftet sker i samme frame som i et spil, der kører, og ses i det samme kald (`sceneLoaded` i svaret). En scene, der ikke kan læses, låser ikke længere `Scenes.busy`.
 - [x] AI-forbindelsen prøver igen hvert 2. sekund, også fra en baggrundsfane (timeren ligger i en Web Worker, som browseren ikke bremser), og med det samme, når fanen bliver synlig.
 - [x] Sprite-editoren og store sprite sheets (fx AI-genererede): Grid starter med én celle pr. figur, der findes i billedet (8 figurer på række giver 8 × 1 celler) i stedet for altid 16×16, og der er et felt "Antal" (kolonner × rækker), som regner cellestørrelsen ud. "Find automatisk" ignorerer næsten usynlige pixels (alfa ≤ 16), så støj i baggrunden ikke giver hundredvis af sprites. "Tilpas" kan nu zoome under 100 %, så store billeder kan ses helt.
+- [x] `onEnable`/`onDisable` i Behaviours: kaldes, når entity'en tændes og slukkes (også via en forælder). `onEnable` kommer lige før `onStart`, og `onDisable` før `onDestroy`.
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**
 - Autosave dækker kun den åbne scene.
-- Der er ingen `onEnable`/`onDisable`-hooks endnu, så et script kan ikke selv reagere på at blive tændt eller slukket.
 - Gendannelsesspørgsmålet bruger browserens `confirm()`-dialog.
 - Eksisterende projekter får ikke `CLAUDE.md` automatisk.
 - Scener, der er gemt før `boundsMode` kom, får "view" og skal have deres `bounds` sat til banens kanter (eller `boundsMode: "center"`).

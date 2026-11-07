@@ -95,6 +95,7 @@ export class Player extends Behaviour {
 | Hook | Kaldes når |
 |---|---|
 | `onStart` | Scriptet starter |
+| `onEnable` / `onDisable` | Entity'en tændes eller slukkes med `setActive` (også via en forælder). `onEnable` kommer også lige før `onStart`, og `onDisable` før `onDestroy` |
 | `onUpdate(dt)` | Hver frame |
 | `onFixedUpdate(dt)` | Ved et fast interval (60 Hz) |
 | `onDestroy` | Scriptet eller entity'en fjernes |

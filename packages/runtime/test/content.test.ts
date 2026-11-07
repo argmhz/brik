@@ -391,6 +391,45 @@ describe("inactive entities", () => {
     expect(log).toEqual([]);
   });
 
+  it("calls onEnable and onDisable when an entity is switched on and off", () => {
+    const log: string[] = [];
+    class Lamp extends Behaviour {
+      override onEnable() {
+        log.push("enable");
+      }
+      override onStart() {
+        log.push("start");
+      }
+      override onDisable() {
+        log.push("disable");
+      }
+      override onDestroy() {
+        log.push("destroy");
+      }
+    }
+    const registry = new ScriptRegistry();
+    registry.load({ "lamp.ts": { Lamp } });
+    const app = new App().addPlugin(GamePlugins()).addPlugin(ScriptsPlugin(registry));
+    const w = app.world;
+    const parent = w.spawn([Transform2D]);
+    const e = w.spawn([Transform2D], [Scripts, { list: [{ script: "lamp.ts#Lamp", props: {} }] }]);
+    setParent(w, e, parent);
+    run(app, 2);
+    expect(log).toEqual(["enable", "start"]);
+    setActive(w, e, false);
+    run(app, 2);
+    setActive(w, e, true);
+    run(app, 2);
+    // switching the parent off counts too (it takes effect after the transform pass)
+    setActive(w, parent, false);
+    run(app, 3);
+    setActive(w, parent, true);
+    run(app, 3);
+    w.destroy(e);
+    run(app, 1);
+    expect(log).toEqual(["enable", "start", "disable", "enable", "disable", "enable", "disable", "destroy"]);
+  });
+
   it("an inactive body stops falling and its collider is not hit", () => {
     const app = game();
     const w = app.world;
