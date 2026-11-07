@@ -7,7 +7,7 @@ TAURI   := $(DESKTOP)/src-tauri
 export PATH := $(HOME)/.cargo/bin:$(PATH)
 
 .DEFAULT_GOAL := help
-.PHONY: help install editor demo mcp test test-watch typecheck check types player \
+.PHONY: help install editor demo mcp test test-watch typecheck check types player docs \
         build desktop desktop-build desktop-deb clean clean-all
 
 help: ## Viser denne hjælp
@@ -45,6 +45,9 @@ check: typecheck test ## Typecheck og tests (før en commit)
 
 types: node_modules ## Genererer typerne til scripts (brik.d.ts)
 	$(PNPM) types
+
+docs: node_modules ## Bygger dokumentationen (manual, guide, roadmap) til apps/web/public/docs
+	$(PNPM) docs
 
 player: node_modules ## Bygger playeren (brik.js), som eksporterede spil bruger
 	$(PNPM) player

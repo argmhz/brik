@@ -363,6 +363,13 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
         <button onClick={downloadZip} title="Download hele projektet (kildefilerne) som .zip">
           Projekt .zip
         </button>
+        <button
+          class="ghost"
+          onClick={() => window.open(`${import.meta.env.BASE_URL}docs/index.html`, "_blank")}
+          title="Åbn manualen, guiderne og roadmappet i en ny fane"
+        >
+          Hjælp
+        </button>
         <button class="ghost" onClick={resetLayout} title="Sæt panelerne tilbage, hvor de var fra start">
           ⊞
         </button>

@@ -2,7 +2,7 @@
 
 En web-first 2D game engine med ECS, bygget i TypeScript og WebGL2. Spil eksporteres som en statisk mappe, der kan lægges på itch.io eller enhver webserver.
 
-- **[Kom i gang-guide](docs/GUIDE.md)**
+- **[Manual, guides og roadmap](docs/index.md)** (kør `make docs` for at bygge dem som en hjemmeside; editorens **Hjælp**-knap åbner den)
 - [PLAN.md](PLAN.md) beskriver hele planen og status.
 
 ## Kom i gang
@@ -46,7 +46,7 @@ En AI-klient, fx Claude Code eller Claude Desktop, kan arbejde i den åbne edito
 2. Klik **AI** i menulinjen. Prikken bliver gul, mens editoren venter på serveren.
 3. Start MCP-serveren fra din AI-klient. I Claude Code sker det automatisk via `.mcp.json` i dette repo, når du godkender serveren. Prikken bliver grøn.
 
-Se [guiden](docs/GUIDE.md#11-ai) for opsætning af andre klienter.
+Se [AI og MCP i manualen](docs/manual/12-ai-og-mcp.md) for opsætning af andre klienter.
 
 ## Pakker
 

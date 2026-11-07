@@ -452,7 +452,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - [x] Importers: Aseprite og TexturePacker (JSON hash og array: sprites, pivots, 9-slice fra slices, tags som animationer) samt Tiled (`.tmj`/`.tsj`: tile-lag i alle kodninger, også zlib og gzip, object-lag som entities, collision-lag som `TileMapCollider`)
 - [x] Tauri-desktop-app (`apps/desktop`) med `TauriFS`, native dialoger til at åbne, eksportere og gemme, og ikoner. Bygget og testet på Linux: projektmapper, platformer-skabelonen, scripts og Monaco, Play, atlas-worker og eksport virker i appen. `tauri build` giver en `.deb` på 7,6 MB.
 - [x] Eksempelspil som projektskabeloner: 2D-platformer og top-down shooter
-- [x] Dokumentation: [docs/GUIDE.md](docs/GUIDE.md)
+- [x] Dokumentation: manual, guides og roadmap i [docs/](docs/index.md). Roadmappet ([docs/ROADMAP.md](docs/ROADMAP.md)) opdateres, når en fase eller større del er færdig.
 - **Resultat:** En 2D-engine, man kan shippe spil med, både i browseren og som desktop-app.
 
 **Kendte begrænsninger i fase 5**

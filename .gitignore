@@ -7,3 +7,6 @@ dist/
 # generated
 packages/editor/src/generated/
 .types-out/
+
+# built docs site (node scripts/docs/build.mjs)
+apps/web/public/docs/

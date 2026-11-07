@@ -9,15 +9,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "editor": "node scripts/gen-types.mjs && node scripts/build-player.mjs && vite apps/web",
+    "editor": "node scripts/gen-types.mjs && node scripts/build-player.mjs && node scripts/docs/build.mjs && vite apps/web",
     "types": "node scripts/gen-types.mjs",
+    "docs": "node scripts/docs/build.mjs",
     "player": "node scripts/build-player.mjs",
-    "build:editor": "node scripts/gen-types.mjs && node scripts/build-player.mjs && vite build apps/web"
+    "build:editor": "node scripts/gen-types.mjs && node scripts/build-player.mjs && node scripts/docs/build.mjs && vite build apps/web"
   },
   "devDependencies": {
+    "esbuild": "0.21.5",
+    "happy-dom": "15.11.7",
     "typescript": "5.6.3",
     "vite": "5.4.11",
-    "vitest": "2.1.8",
-    "happy-dom": "15.11.7"
+    "vitest": "2.1.8"
   }
 }
