@@ -4,6 +4,8 @@
 
 Tryk **Byg spil** i menulinjen. Brik pakker billederne i atlasser og viser eventuelle advarsler.
 
+![Byg-vinduet: vælg Eksportér .zip for itch.io, eller Eksportér til mappe](../images/byg.png)
+
 ## 2. Eksportér
 
 Vælg **Eksportér .zip**.

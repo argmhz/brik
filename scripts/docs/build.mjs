@@ -13,7 +13,7 @@
 // Link between pages by their name without the number: [Scripts](scripts.md)
 // or [Guide](../guide/foerste-spil.md). The build checks every link.
 
-import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { componentReference } from "./components.mjs";
@@ -105,9 +105,12 @@ export async function buildDocs({ root = resolve(here, "../.."), out, log = () =
   await write(out, "search-index.json", JSON.stringify(results.map((r) => ({ href: r.href, title: r.title, section: SECTIONS.find((s) => s.id === r.section)?.title ?? "Brik", headings: r.headings, text: r.text }))));
   await copyFile(join(here, "style.css"), join(out, "style.css"));
   await copyFile(join(here, "search.js"), join(out, "search.js"));
+  // screenshots (made by scripts/docs/screenshots.mjs)
+  const images = (await readdir(join(docs, "images")).catch(() => [])).filter((n) => /\.(png|jpe?g|gif|svg|webp)$/i.test(n));
+  if (images.length) await cp(join(docs, "images"), join(out, "images"), { recursive: true });
   await writeFile(join(out, MARKER), "This folder is made by scripts/docs/build.mjs and emptied on every build.\n");
 
-  const problems = checkLinks(results);
+  const problems = checkLinks(results, new Set(images.map((n) => `images/${n}`)));
   log(`docs: ${results.length} sider i ${out}${problems.length ? `, ${problems.length} brudte links` : ""}`);
   return { pages: results.map(({ html, ...r }) => r), problems };
 }
@@ -119,7 +122,7 @@ async function write(out, href, content) {
 }
 
 /** Every relative link and #anchor in the built pages must lead somewhere. */
-function checkLinks(results) {
+function checkLinks(results, imageFiles = new Set()) {
   const pages = new Map(results.map((r) => [r.href, r]));
   const ids = new Map(results.map((r) => [r.href, new Set([...r.html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]))]));
   const problems = [];
@@ -131,6 +134,14 @@ function checkLinks(results) {
       const target = path ? new URL(path, `http://x/${r.href}`).pathname.slice(1) : r.href;
       if (!pages.has(target)) problems.push(`${r.href}: ${url} peger på en side, der ikke findes`);
       else if (hash && !ids.get(target)?.has(hash)) problems.push(`${r.href}: ${url} peger på et afsnit, der ikke findes`);
+    }
+  }
+  // pictures must exist too
+  for (const r of results) {
+    for (const m of r.html.matchAll(/<img [^>]*src="([^"]+)"/g)) {
+      if (/^(https?:|data:)/.test(m[1])) continue;
+      const target = new URL(m[1], `http://x/${r.href}`).pathname.slice(1);
+      if (!imageFiles.has(target)) problems.push(`${r.href}: billedet ${m[1]} findes ikke i docs/images`);
     }
   }
   return problems;

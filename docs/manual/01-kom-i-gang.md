@@ -15,6 +15,8 @@ make editor        # http://localhost:5180
 - **Mappe på din computer** (Chrome/Edge, eller desktop-appen): projektet er en almindelig mappe, så du kan bruge git og VS Code ved siden af.
 - **Browser-projekt**: gemmes i browseren. Kan eksporteres og importeres som `.zip`.
 
+![Startskærmen: åbn en mappe, eller opret et browser-projekt ud fra en skabelon](../images/start.png)
+
 ## Skabeloner
 
 Når du opretter et nyt projekt, kan du vælge en skabelon:
@@ -22,7 +24,7 @@ Når du opretter et nyt projekt, kan du vælge en skabelon:
 | Skabelon | Hvad du får |
 |---|---|
 | Tomt projekt | Et sprite sheet og et eksempel-script |
-| Platformer-eksempel | En tilemap-bane, en figur med animationer og lyd, mønter (prefab), partikler og UI |
+| Platformer-eksempel | En tilemap-bane, en figur med animationer og lyd, mønter (prefab), partikler og UI. Ingen fjender: se [Tilføj en fjende](../guide/tilfoej-en-fjende.md) |
 | Top-down shooter-eksempel | En arena, skud mod musen, fjender fra spawnere, point, liv og genstart |
 
 Eksemplerne er almindelige projektfiler, så du kan læse og rette alt.

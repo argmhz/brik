@@ -2,6 +2,8 @@
 
 Tryk **Byg spil** i menulinjen.
 
+![Byg-vinduet med atlas-oversigt og indstillinger](../images/byg.png)
+
 - Billeder pakkes i atlasser. Du kan se siderne, hvor fyldte de er, og eventuelle advarsler.
 - **Eksportér .zip** giver en fil, der kan uploades direkte på **itch.io**. Opret et "HTML"-projekt og vælg "This file will be played in the browser".
 - **Eksportér til mappe** skriver filerne, så de kan lægges på GitHub Pages, Netlify eller en anden webserver.

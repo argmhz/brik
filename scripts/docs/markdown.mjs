@@ -198,6 +198,7 @@ export function markdownToHtml(src) {
     html.push(`<p>${inline(para.join(" "))}</p>`);
     plain.push(para.join(" "));
   }
-  const text = plain.join(" ").replace(/[`*_>#|]/g, "").replace(/\s+/g, " ").trim();
+  // `_` stays: it is part of identifiers such as paint_tiles (emphasis in these docs only uses *)
+  const text = plain.join(" ").replace(/[`*>#|]/g, "").replace(/\s+/g, " ").trim();
   return { html: html.join("\n"), headings, title, text };
 }

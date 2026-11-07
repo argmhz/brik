@@ -2,6 +2,8 @@
 
 ## Panelerne
 
+![Editoren med platformer-eksemplet: Hierarki til venstre, Scene i midten, Inspector til højre og Assets nederst](../images/editor.png)
+
 | Område | Brug |
 |---|---|
 | Hierarki (venstre) | Entities i scenen. "+" eller højreklik opretter. Træk for at ændre forælder. |
@@ -12,6 +14,10 @@
 | Assets (bund) | Projektets filer. Træk billeder, animationer, prefabs og lyde ind i scenen. |
 
 Panelerne kan flyttes: træk en fane hen på et andet område, eller højreklik fanen og vælg "Flyt til …". Fx kan Scene og Spil ligge ved siden af hinanden. Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
+
+Under Play viser Spil-fanen spillet set gennem kameraet, med UI'et:
+
+![Spil-fanen under Play: banen, figuren, mønter og UI](../images/spil.png)
 
 ## Genveje
 

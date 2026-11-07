@@ -6,11 +6,12 @@ Dokumentet indeholder kun åbne fund. Numrene følger den oprindelige testliste.
 
 | ID | Type | Fund |
 | --- | --- | --- |
+| #29 | Bekræftet dokumentationsfejl | Søgning finder ikke dokumenterede identifikatorer med underscore, fx paint_tiles. |
 | #18 | Bekræftet fejl, udskudt API-beslutning | Scriptreferencer kan ramme en anden entity efter genbrug af indeks. |
 | #9 | Udskudt funktionsønske | Detaljeret lydinspektion gennem MCP. |
 | #16 | Kendt begrænsning; udvidelsen er fravalgt | Markering og caret-styring i tekstinput. |
-| #23 | Delvist implementeret ifølge udvikleragenten | Rest: Tab fra et tekstfelt under indtastning. Den nye implementering er endnu ikke gentestet i testprojektet. |
-| #26 | Planlagt MCP-/arkitekturændring | Gendannelsesdialogen kan ikke håndteres gennem MCP. |
+| #23 | Implementeret; MCP-gentest bestået | Tab/Shift+Tab under indtastning og Enter/Space består via MCP. Fysisk browsertest afventer. |
+| #26 | Rettet; browser-MCP-gendannelse bestået | Status, blokering af redigering og Gendan virker gennem den rigtige browserforbindelse. Kassér-grenen er ikke browser-gentestet. |
 
 Reproduktionerne nedenfor findes i testspilprojektet **Marz the game**. Scenestierne er relative til det projekt, ikke til engine-repositoriet.
 
@@ -64,7 +65,7 @@ Observeret MCP-forløb: `replace: "ABCD"`, derefter `press: ["ArrowLeft"]` og `t
 
 ## #23 — Tastaturnavigation og aktivering af native UI
 
-**Status:** Delvist implementeret ifølge udvikleragentens svar nedenfor. Fokusmodel, fokusramme, navigation og tastaturaktivering er meldt lavet; den nye adfærd er ikke gentestet i denne belastningsrunde. Åben rest: Tab ud af et tekstfelt, mens man skriver.
+**Aktuel status:** Implementeret og gentestet gennem native MCP: Tab fra A til B under indtastning, Shift+Tab tilbage, videre til knappen samt Enter og Space består. Feltværdier bevares, og knappen modtager præcis to klik. Fysisk browsertest er sat i gang og afventer brugeren. De følgende observationer beskriver den tidligere version.
 
 **Historisk observation før implementeringen:** Native UI havde ikke fokusrækkefølge, fokusmarkering og tastaturaktivering. Fysisk Tab fra et native tekstfelt gik ud af spillets UI i stedet for til næste felt eller knap. `UIButton` håndterede museinput, men havde ikke tilsvarende aktivering med Space/Enter. Udviklerens svar nedenfor erstatter denne observation som implementeringsstatus; Tab under indtastning er stadig åbent.
 
@@ -76,7 +77,7 @@ Observeret MCP-forløb: `replace: "ABCD"`, derefter `press: ["ArrowLeft"]` og `t
 
 ## #26 — Gendannelsesdialogen kan ikke håndteres gennem MCP
 
-**Status:** Åben MCP-/arkitekturbegrænsning. Manuel autosave og gendannelse virker.
+**Aktuel status:** Rettet og live-gentestet gennem den rigtige browser-MCP-forbindelse. Mens dialogen ventede på svar, virkede recovery-status og project_info; redigering blev korrekt afvist. MCP restore gendannede marker62626, barnets position(2626,6262), rotation0.75, parent og target. Scenen var ændret før gem, og gem ryddede pending recovery. Kassér-grenen er endnu ikke afprøvet gennem browseren. Se `/home/marz/Brik-MCP-recovery-browser-retest-result.json`. Nedenstående forløb er historik før rettelsen.
 
 Projektåbningens UI venter på svaret i gendannelsesdialogen, før editoren tilsluttes AI/MCP. Forbindelsen er derfor ikke tilgængelig til at håndtere spørgsmålet. Der findes heller ikke MCP-kommandoer til at inspicere ventende gendannelse eller vælge gendan/kassér.
 
@@ -200,3 +201,107 @@ Det er testopgaver og ikke fund. De skal planlægges som test, ikke registreres 
 **Afgrænsning:** Dette er kontrol af de målte ressourceantal og oprydningen, ikke en fuld JS-/GPU-heap-profil, en FPS-benchmark eller verifikation af hørbar lyd. Der er ikke grundlag for at hævde, at alle tænkelige hukommelseslæk er udelukket.
 
 Hovedscenen er gendannet i edit uden ugemte ændringer, scripts OK og 55 entities. **Næste testpunkt er eksport/build uden editoren.**
+
+
+---
+
+# Testagentens opfølgning — eksport/build og lokal offlinefunktion
+
+7. november 2026. **Ingen nye bekræftede funktionsfejl i den afprøvede eksport.** Brugeren eksporterede gennem editorens Byg-dialog, da native MCP ikke har en eksportkommando. Artefakt: `/home/marz/Hentet/Marz the game-web.zip` (6.043.642bytes). Zipfilen blev pakket ud uden for projektet og kørt uændret på `http://127.0.0.1:5183/marz/` i en isoleret Chromium-browser. Spilprojekt og engine-kode blev ikke ændret.
+
+- Opstart, menu, Marz-sprites, tilemap, animationer og fysik virker uden editoren. Fem teksturer, to lydklip og fysik-chunken indlæses fra eksporten.
+- Browserens muse- og tastaturinput starter spillet; gå, løb og hop virker. Otte mønter gav800point. Møntlyden blev dekodet til0,2sek/48kHz, og én aktiv stemme blev målt, efterfulgt af0. Hørbarheden er ikke kontrolleret.
+- E ved døren skifter main→courtyard→main med score800 og8mønter bevaret. R genstarter ved startpositionen med score0/mønter0.
+- Service workeren aktiveres med undermappens scope og cacher14filer. Efter offline-emulering og genindlæsning med almindelig HTTP-cache tilsidesat starter spillet igen fra service-worker-cachen; menuen kan startes, og Marz bevæges med D, mens navigator.onLine=false. Ingen nye runtimefejl i dette forløb.
+- De7eksisterende automatiske eksporttests består også. Resultater og afgrænsning: `/home/marz/Brik-MCP-export-browser-result.json`.
+
+**Teknisk observation, ikke en bekræftet funktionsfejl:** Rapier-chunken skriver ved opstart `using deprecated parameters for the initialization function; pass a single object instead`. Gentaget ved offline-opstart. Fysik og opstart virker. Kilden i stacken er `brik-physics.js`; Briks indgang er initPhysics i `packages/physics/src/physics.ts`. Årsagen inde i afhængighedens initialisering er ikke isoleret, og der er ikke ændret kode.
+
+**Ikke verificeret:** fysisk PWA-installation/installationsknap, hosting eller iframe på rigtig itch.io, Tauri og hørbar lyd. Den lokale offline-test lukker ikke disse testopgaver. Hjælp-knappens nye fane, guides og Behaviour-exit-callbacks ved slettede entities er også særskilte rester.
+
+Hovedscenen er tilbage i edit, uden ugemte ændringer,55entities og scripts OK. Næste selvstændige testpunkt er Behaviour-callbacks for CollisionExit/TriggerExit, især ved sletning. Den fysiske Enter/Space-test fra sidste runde forbliver uafklaret: de efterspurgte tastetryk blev ikke registreret før brugeren bad om næste punkt; dette er ikke et nyt fejlfund.
+
+
+---
+
+# Testagentens opfølgning — Behaviour-exit-callbacks
+
+7. november 2026. **Alle seks forløb bestået; ingen nye fejl fundet.** Separat scene `scenes/exit-callback-test.scene.json`, script `scripts/ExitCallbackTest.ts`, driver `8be46ec9154ec510`. Fixture og scripts er oprettet gennem native MCP; hovedbanen er ikke ændret. Dette tester de faktiske Behaviour-hooks og supplerer de allerede beståede native event-reader-tests.
+
+| Forløb | Enter pr. side | Exit på zone/modpart | Resultat |
+| --- | --- | --- | --- |
+| Trigger, almindelig adskillelse | 1 / 1 | 1 / 1 | Bestået |
+| Trigger, filter slås fra | 1 / 1 | 1 / 1 | Bestået |
+| Trigger, modpart slettes | 1 / 1 | 1 / 0 | Bestået |
+| Solid kollision, almindelig adskillelse | 1 / 1 | 1 / 1 | Bestået |
+| Solid kollision, filter slås fra | 1 / 1 | 1 / 1 | Bestået |
+| Solid kollision, modpart slettes | 1 / 1 | 1 / 0 | Bestået |
+
+Ved sletning kørte modpartens onDestroy præcis én gang ved tick60. Den overlevende zones onTriggerExit/onCollisionExit kørte ved tick61 med `otherAlive=false`, ugyldig oprindelig generationsreference og intet læst navn. Det slettede script fik ingen exit-callback. Alle seks overlevende zoneprober fortsatte mere end100onUpdate-kald efter exit; ingen konsolfejl. Ved almindelig adskillelse/filterændring var begge oprindelige entities fortsat gyldige i callbacken.
+
+**Semantik:** Exit-callbacken kan modtage indekset på en allerede slettet entity. Testscriptet kontrollerer isAlive og den oprindelige world.ref/world.deref-reference, før det læser komponenter. Det er ikke et løfte om, at ubevogtet komponentadgang er sikker; den kendte #18 ved indeksgenbrug er ikke gentestet eller lukket.
+
+Reproduktion: Play, step170frames ved60fps, inspect_entity på driveren; report.finished=true, report.passed=true og alle seks lanes.ok=true. Rå audit/resultat: `/home/marz/Brik-MCP-exit-callback-result.json`. Hovedscenen gendannes i edit efter testen. **Næste punkt: Hjælp-knappens browserfane og guide-workflow.**
+
+
+## #29 — Dokumentsøgning mister underscores i identifikatorer
+
+**Status:** Bekræftet i den serverede hjælp i rigtig Chromium; ikke rettet. Både `paint_tiles` og `read_tiles` giver ingen resultater, mens `painttiles` og `readtiles` finder AI/MCP-siden.
+
+1. Åbn `/docs/index.html` eller en hjælpeside, tryk `/` for søgning.
+2. Skriv `paint_tiles`.
+3. Observer: Ingen resultater, selv om `/docs/manual/ai-og-mcp.html` indeholder netop `paint_tiles`.
+
+**Årsag:** `scripts/docs/markdown.mjs` bygger søgeteksten med en generel fjernelse af Markdown-tegn, inklusive `_`. Derfor bliver værktøjsnavnet til `painttiles` i søgeindekset, mens `scripts/docs/search.js` søger med det uændrede ord.
+
+**Forventet:** Dokumenterede kode-/værktøjsnavne skal kunne findes med deres korrekte stavning. Bevar underscores i kode/identifikatorer, eller normalisér søgetekst og forespørgsel på en konsistent måde.
+
+**Gentest:** `paint_tiles` og `read_tiles` finder AI/MCP-siden; almindelig tekstsøgning og flerdelte søgninger virker fortsat. Ingen engine-/docs-kode ændret af testagenten.
+
+
+# Testagentens opfølgning — Hjælp og guider
+
+7. november 2026. **Nyt fund #29 er registreret ovenfor.** Brugeren klikkede Hjælp i editoren og rapporterede `http://localhost:5180/docs/index.html`. Den adresse indlæses korrekt i testbrowseren. Den konkrete Tauri-knap er ikke testet.
+
+- Alle23serverede hjælpesider svarer200 og har korrekt h1.682interne links inklusive fragmenter/ankre er kontrolleret uden brud. CSS, søgescript og søgeindeks svarer200.
+- Browserens søgning: `/` fokuserer feltet; `tilemaps` giver resultater, og Enter åbner Tilemaps-siden. Dansk `første` finder Dit første spil; pil ned vælger næste resultat; Escape skjuler listen. Underscore-søgning fejler som beskrevet i#29.
+- Alle7eksisterende dokumentationstests består; de dækker ikke den fundne søgefejl. Minimal parserkontrol viser HTML med `<code>paint_tiles</code>` men søgetekst med `painttiles`.
+- Guidernes Walker- og StartButton-kode er kopieret uændret og skrevet gennem MCP i en separat testscene. Walker går24enheder på60frames og vender korrekt efter distance48. En prefab-instans vedx150 har egen distance72 og påvirker ikke originalen. StartButton med standard firstScene="main" indlæser hovedscenen med ét klik. Ingen konsolfejl.
+
+**Testmateriale:** `scenes/guide-walkthrough-test.scene.json`, `scripts/Walker.ts`, `scripts/StartButton.ts`, `prefabs/Guide Walker.prefab.json`. Målinger: `/home/marz/Brik-MCP-help-guides-result.json`. Hovedscenen er tilbage i edit uden ugemte ændringer,55entities og scripts OK. Ingen engine-/docs-kode ændret.
+
+**Resterende guidekontrol:** Et komplet manuelt førstegangsforløb med nyt browserprojekt og Platformer-skabelon, ændring af Player-felter via Inspector og maling via editorens UI er ikke gennemført. Den verificerede script-/prefab-/menukomposition og hjælpenavigation skal ikke gentages som nye tests. Rigtig itch.io-udgivelse, fysisk PWA-installation og Tauri er stadig særskilte rester.
+
+
+---
+
+# Svar fra motorudvikleren: dokumentationen
+
+7. november 2026. Dokumentationen er gennemgået efter testagentens fund. Intet er committet endnu.
+
+## #29 — rettet
+
+Årsagen var den, testagenten fandt: `markdownToHtml` fjernede `_` fra søgeteksten. Underscore bevares nu (emphasis i manualen bruger kun `*`), og søgescriptet matcher både `paint_tiles` og `painttiles`. Kontrolleret mod det byggede søgeindeks: `paint_tiles`, `painttiles` og `read_tiles` finder AI/MCP-siden, og `tilemaps` og `første` giver de samme resultater som før. To nye tests i `packages/editor/test/docs.test.ts` dækker det.
+
+## #18 — manualen advarer nu
+
+Selve fejlen er stadig udskudt (se ovenfor), men [Scripts](docs/manual/04-scripts.md) forklarer nu, at et `Entity` er et indeks, der genbruges, og at `world.ref`/`world.deref` skal bruges til referencer, der skal overleve en sletning.
+
+## Exit-hooks ved slettede entities — dokumenteret
+
+Testagentens resultat er lagt ind i Scripts-siden under "Når noget forsvinder": Exit kommer også ved sletning, slukning og ændret `group`/`mask`. Er modparten slettet, er `other` et dødt indeks, og den slettede entity får ingen exit-hook (kun `onDestroy`). Siden har et eksempel med `EntityRef`, som er compilet gennem `write_script` i en test, så det ikke kan gå i stykker uden at nogen opdager det. Fysik-siden peger på det.
+
+## Roadmappet
+
+Roadmappet nævner nu tastaturstyring af UI, undo/redo og gendannelse gennem MCP som færdigt, og har fået afsnittene "Kendte fejl og mangler" og "Ikke afprøvet endnu" med #18, #9, #16, Rapier-advarslen, installér-knappen, itch.io, Tauri og det fulde førstegangsforløb.
+
+## Ikke gjort
+
+- **Rapier-advarslen** ("using deprecated parameters for the initialization function") er en teknisk observation i motoren, ikke dokumentation. Den er skrevet på roadmappet, men ikke undersøgt.
+- **Et fysisk førstegangsforløb** gennem guiderne i editorens egen brugerflade er ikke kørt. Testagentens afprøvning af scripts, prefab og menu dækker koden i guiderne, ikke klikkene.
+
+## Dokumentationen: skærmbilleder og to fejl i guiden
+
+7. november 2026. Manualen og guiderne har nu seks skærmbilleder (startskærm, editor med Player valgt, spillet under Play, kodeeditoren, sprite-editoren og byg-vinduet) i `docs/images/`. De tages af `scripts/docs/screenshots.mjs` (`make docs-screenshots`) i en headless Chromium ud fra en frisk platformer-skabelon, så de kan tages om, når editoren ændrer udseende. Docs-buildet kopierer dem og afviser et billede, der peger på en fil, som ikke findes.
+
+Arbejdet fandt to fejl i min egen guide, som testagentens gennemgang ikke fangede, fordi den afprøvede kode og ikke skabelonens indhold: guiden lovede en fjende i platformer-skabelonen (der er ingen) og talte om en "Tilemap" i hierarkiet (entity'en hedder **Level**). Begge er rettet, og manualen peger på guiden "Tilføj en fjende". Selve det manuelle førstegangsforløb i brugerfladen er stadig ikke kørt som en ny bruger; billederne er taget af scriptet, ikke af et menneske.

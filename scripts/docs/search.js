@@ -22,7 +22,9 @@
     const hits = [];
     for (const p of pages) {
       const hay = (p.title + " " + p.text).toLowerCase();
-      if (!words.every((w) => hay.includes(w))) continue;
+      // "paint_tiles" and "painttiles" both find paint_tiles
+      const flat = hay.replace(/_/g, "");
+      if (!words.every((w) => hay.includes(w) || flat.includes(w.replace(/_/g, "")))) continue;
       const inTitle = words.every((w) => p.title.toLowerCase().includes(w));
       const at = hay.indexOf(words[0]) - p.title.length - 1;
       const snippet = at >= 0 ? p.text.slice(Math.max(0, at - 40), at + 110) : p.text.slice(0, 120);

@@ -28,6 +28,12 @@ describe("markdown", () => {
     expect(r.html).not.toContain("<script>");
   });
 
+  it("keeps underscores in the search text, so identifiers like paint_tiles can be found", () => {
+    const r = markdownToHtml("Brug `paint_tiles` og *fremhævet* tekst.");
+    expect(r.text).toContain("paint_tiles");
+    expect(r.text).not.toContain("*");
+  });
+
   it("slugifies Danish letters", () => {
     expect(slugify("Byg og udgiv: på itch.io")).toBe("byg-og-udgiv-paa-itch-io");
   });
@@ -54,6 +60,21 @@ describe("docs site", () => {
   it("lists every component in the reference", async () => {
     const html = await readFile(join(out, "manual/komponenter.html"), "utf8");
     for (const name of ["Transform2D", "Sprite", "Collider2D", "CharacterController2D", "UIButton", "AudioSource", "TileMap"]) expect(html).toContain(`>${name}`);
+  });
+
+  it("finds tool names with underscores in the search index", async () => {
+    const index = JSON.parse(await readFile(join(out, "search-index.json"), "utf8")) as { href: string; text: string }[];
+    const hits = index.filter((i) => i.text.toLowerCase().includes("paint_tiles"));
+    expect(hits.map((h) => h.href)).toContain("manual/ai-og-mcp.html");
+    // the search script matches both spellings
+    const script = await readFile(join(out, "search.js"), "utf8");
+    expect(script).toContain('replace(/_/g, "")');
+  });
+
+  it("copies the screenshots and every picture on the pages exists", async () => {
+    await stat(join(out, "images/editor.png"));
+    const page = await readFile(join(out, "manual/editoren.html"), "utf8");
+    expect(page).toContain('src="../images/editor.png"');
   });
 
   it("puts every page in the search index and writes the marker", async () => {

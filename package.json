@@ -12,6 +12,7 @@
     "editor": "node scripts/gen-types.mjs && node scripts/build-player.mjs && node scripts/docs/build.mjs && vite apps/web",
     "types": "node scripts/gen-types.mjs",
     "docs": "node scripts/docs/build.mjs",
+    "docs:screenshots": "node scripts/docs/screenshots.mjs",
     "player": "node scripts/build-player.mjs",
     "build:editor": "node scripts/gen-types.mjs && node scripts/build-player.mjs && node scripts/docs/build.mjs && vite build apps/web"
   },
