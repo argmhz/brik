@@ -89,6 +89,8 @@ function snap(v: number, lo: number, hi: number, step: number): number {
 export class UITextEntry {
   focused: Entity = -1;
   private el: HTMLInputElement | null = null;
+  /** The focused field's text as of the last frame, for typing without a browser. */
+  private base = "";
   private pending: { value?: string; submit?: boolean }[] = [];
 
   /** Starts typing into a field. */
@@ -102,6 +104,7 @@ export class UITextEntry {
     this.focused = e;
     world.store(UITextInput).focused[e] = 1;
     const T = world.store(UITextInput);
+    this.base = T.value[e];
     if (typeof document === "undefined") return;
     if (!this.el) {
       const el = document.createElement("input");
@@ -143,9 +146,20 @@ export class UITextEntry {
     }
   }
 
+  /** Deletes the last `n` characters of the focused field. */
+  erase(n = 1): void {
+    const v = this.latest() ?? "";
+    this.pending.push({ value: v.slice(0, Math.max(0, v.length - n)) });
+  }
+
+  /** Replaces the whole text of the focused field. */
+  set(text: string): void {
+    this.pending.push({ value: text });
+  }
+
   private latest(): string | undefined {
     for (let i = this.pending.length - 1; i >= 0; i--) if (this.pending[i].value !== undefined) return this.pending[i].value;
-    return this.el?.value;
+    return this.el ? this.el.value : this.base;
   }
 
   /** @internal Applies what was typed since the last frame. */
@@ -168,6 +182,7 @@ export class UITextEntry {
           world.emit(UIValueChanged, { entity: e, value: v });
         }
       }
+      this.base = T.value[e];
       if (p.submit === true) world.emit(UISubmit, { entity: e, value: T.value[e] });
       if (p.submit !== undefined) {
         this.blur(world);

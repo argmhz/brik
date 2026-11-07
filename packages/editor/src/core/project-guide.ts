@@ -78,6 +78,10 @@ Scripts can also define components (\`defineComponent\`) and systems
 
 ## Rules of thumb
 
+- **Movement:** use \`dt\` in \`onUpdate\`, and put anything collision- or physics-sensitive
+  (\`moveCharacter\`, velocities) in \`onFixedUpdate\`. Moving in \`onUpdate\` at a high frame
+  rate can tunnel through thin colliders. Test other frame rates with the MCP tool
+  \`step({ fps: 144 })\`.
 - World units are pixels; **y points up**. The default camera is at (0, 0).
 - Static ground: \`Collider2D\` only. Falling objects: \`RigidBody2D\` (dynamic) + \`Collider2D\`.
   Characters: \`RigidBody2D\` (kinematic) + \`CharacterController2D\` + \`Collider2D\`, moved with \`moveCharacter\`.

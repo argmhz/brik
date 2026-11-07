@@ -242,11 +242,13 @@ const FALLBACK_SCREEN = { w: 960, h: 540 };
 /**
  * Where to put the mouse, in CSS pixels with y down (what Input.pointer uses).
  * `{ entity }` aims at the middle of a UI element, or at an entity's position
- * in the world; `{ x, y }` is a point in world units (y up).
+ * in the world; `{ x, y }` is a point in world units (y up). For a UI element,
+ * `at: { x, y }` picks a spot as fractions of its rect (0..1, y up; beyond that
+ * is outside it) and `offset: { x, y }` moves from there in UI units.
  */
 function pointerTarget(editor: Editor, target: unknown): { x: number; y: number; ui: Entity } {
   const world = editor.world;
-  const t = target as { entity?: unknown; x?: unknown; y?: unknown } | null;
+  const t = target as { entity?: unknown; x?: unknown; y?: unknown; at?: { x?: unknown; y?: unknown }; offset?: { x?: unknown; y?: unknown } } | null;
   if (!t || typeof t !== "object") {
     throw new BridgeError('`mouse` is { "entity": "<id>" } (a UI element or an entity) or { "x": 0, "y": 0 } in world units');
   }
@@ -260,7 +262,14 @@ function pointerTarget(editor: Editor, target: unknown): { x: number; y: number;
   if (t.entity !== undefined) {
     const e = need(editor, t.entity);
     const el = layout.byEntity.get(e);
-    if (el) return { x: el.rect.x + el.rect.w / 2, y: H - (el.rect.y + el.rect.h / 2), ui: e };
+    if (el) {
+      const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+      let ux = el.rect.x + num(t.at?.x, 0.5) * el.rect.w;
+      let uy = el.rect.y + num(t.at?.y, 0.5) * el.rect.h;
+      ux += num(t.offset?.x, 0) * el.scale;
+      uy += num(t.offset?.y, 0) * el.scale;
+      return { x: ux, y: H - uy, ui: e };
+    }
     if (!world.has(e, GlobalTransform2D)) throw new BridgeError("That entity is neither a visible UI element nor placed in the world");
     const g = world.store(GlobalTransform2D).matrix;
     wx = g.tx[e];
@@ -290,10 +299,10 @@ function pointerTarget(editor: Editor, target: unknown): { x: number; y: number;
  * requested with loadScene is waited for first: it then switches in this very
  * frame instead of some frames later, depending on disk speed.
  */
-async function stepFrame(editor: Editor): Promise<void> {
+async function stepFrame(editor: Editor, dt = 1 / 60): Promise<void> {
   const scenes = editor.world.tryResource(Scenes);
   if (scenes?.busy) await scenes.loaded();
-  editor.play.step();
+  editor.play.step(dt);
 }
 
 /** After the last frame of a call: a scene that was requested in it is swapped in now, so the AI sees it. */
@@ -870,7 +879,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { mode: editor.play.mode };
     },
 
-    step: async ({ frames = 1, hold = [], press = [], mouse, type }) => {
+    step: async ({ frames = 1, hold = [], press = [], mouse, type, fps = 60, backspace, replace }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const held = keyList(hold, "hold");
       const tapped = keyList(press, "press");
@@ -881,11 +890,25 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         const p = pointerTarget(editor, mouse);
         input!.injectPointer(p.x, p.y);
       }
-      if (type !== undefined) {
+      const rate = Number(fps);
+      if (!Number.isFinite(rate) || rate < 10 || rate > 1000) throw new BridgeError("`fps` is the frame rate to simulate, between 10 and 1000 (default 60)");
+      // editing the focused text field: replace, then backspace, then type; Backspace in `press` erases one character
+      const editing = type !== undefined || backspace !== undefined || replace !== undefined || tapped.includes("Backspace");
+      if (editing) {
         const entry = world.tryResource(UITextEntry);
-        if (typeof type !== "string") throw new BridgeError("`type` is the text to type");
-        if (!entry || entry.focused < 0) throw new BridgeError("No text field has focus. Click one first (click with its entity id).");
-        entry.type(type);
+        if (!entry || entry.focused < 0) {
+          if (type !== undefined || backspace !== undefined || replace !== undefined) {
+            throw new BridgeError("No text field has focus. Click one first (click with its entity id).");
+          }
+        } else {
+          if (replace !== undefined) entry.set(String(replace));
+          if (backspace !== undefined) entry.erase(Math.max(0, Math.floor(Number(backspace))));
+          if (tapped.includes("Backspace")) entry.erase(1);
+          if (type !== undefined) {
+            if (typeof type !== "string") throw new BridgeError("`type` is the text to type");
+            entry.type(type);
+          }
+        }
       }
       // keys stay down between calls while they are listed in `hold`, so holding isn't a new press
       if (input) {
@@ -897,23 +920,23 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const n = Math.max(1, Math.min(600, Number(frames)));
       const swapsBefore = world.tryResource(Scenes)?.swaps ?? 0;
       for (let i = 0; i < n; i++) {
-        await stepFrame(editor);
+        await stepFrame(editor, 1 / rate);
         if (i === 0) for (const k of tapped) if (!held.includes(k)) input!.inject("up", k);
       }
       await finishSceneSwitch(editor);
       const scenes = world.tryResource(Scenes);
       // also a reload of the same scene counts
-      return { mode: editor.play.mode, frames: n, ...(scenes && scenes.swaps !== swapsBefore ? { sceneLoaded: scenes.current, switches: scenes.swaps - swapsBefore } : {}) };
+      return { mode: editor.play.mode, frames: n, ...(rate !== 60 ? { fps: rate } : {}), ...(scenes && scenes.swaps !== swapsBefore ? { sceneLoaded: scenes.current, switches: scenes.swaps - swapsBefore } : {}) };
     },
 
-    click: async ({ entity, x, y, button = 0 }) => {
+    click: async ({ entity, x, y, at, offset, button = 0 }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const input = world.tryResource(Input);
       if (!input) throw new BridgeError("This game has no input");
       if (![0, 1, 2].includes(Number(button))) throw new BridgeError("`button` is 0 (left), 1 (middle) or 2 (right)");
       const code = `Mouse${Number(button)}`;
       editor.play.pause();
-      const p = pointerTarget(editor, entity !== undefined ? { entity } : { x, y });
+      const p = pointerTarget(editor, entity !== undefined ? { entity, at, offset } : { x, y });
       const layout = world.resource(UILayout);
       const hitButton = layout.buttonAt(world, p.x, p.y);
       const clicks = world.events(UIClick).reader();

@@ -510,5 +510,54 @@ export class Again extends Behaviour {
     await h.stop({});
     expect(editor.play.active).toBe(false);
   });
+
+  it("steps at another frame rate, aims at a spot on a UI element and edits text", async () => {
+    const { editor, h } = await setup();
+    await h.write_script({
+      path: "scripts/Dt.ts",
+      content: `import { Behaviour, expose } from "brik";
+export class Dt extends Behaviour {
+  @expose last = 0;
+  onUpdate(dt: number) { this.last = dt; }
+}`,
+    });
+    const { id: probe } = (await h.create_entity({ name: "Probe" })) as { id: string };
+    await h.attach_script({ id: probe, script: "Dt" });
+    const { id: slider } = (await h.create_entity({ kind: "ui-slider" })) as { id: string };
+    const { id: input } = (await h.create_entity({ kind: "ui-input" })) as { id: string };
+    // both sit in the middle by default: move the field down so it doesn't cover the slider
+    await h.set_fields({ id: input, component: "UIRect", values: { position: { x: 0, y: -100 } } });
+    await h.play({});
+    const live = async () => ((await h.inspect_entity({ id: probe })) as { scripts: { live: { last: number } }[] }).scripts[0].live.last;
+    await h.step({ frames: 2 });
+    expect(await live()).toBeCloseTo(1 / 60, 4);
+    const r = (await h.step({ frames: 2, fps: 30 })) as { fps?: number };
+    expect(r.fps).toBe(30);
+    expect(await live()).toBeCloseTo(1 / 30, 4);
+    await expect(async () => h.step({ fps: 5 })).rejects.toThrow(/fps/);
+
+    // a point on the slider: 100% along it is the maximum
+    const S = editor.world.store(UISlider);
+    const e = findBySceneId(editor.world, slider);
+    await h.step({ frames: 2, mouse: { entity: slider, at: { x: 1, y: 0.5 } }, hold: ["Mouse0"] });
+    await h.step({ frames: 2 });
+    expect(S.value[e]).toBe(1);
+    await h.step({ frames: 2, mouse: { entity: slider, at: { x: 0, y: 0.5 } }, hold: ["Mouse0"] });
+    await h.step({ frames: 2 });
+    expect(S.value[e]).toBe(0);
+
+    // text: type, erase, replace and Backspace
+    await h.click({ entity: input });
+    const text = () => editor.world.store(UITextInput).value[findBySceneId(editor.world, input)];
+    await h.step({ frames: 2, type: "hello" });
+    expect(text()).toBe("hello");
+    await h.step({ frames: 2, backspace: 2 });
+    expect(text()).toBe("hel");
+    await h.step({ frames: 2, press: ["Backspace"] });
+    expect(text()).toBe("he");
+    await h.step({ frames: 2, replace: "abc", type: "d" });
+    expect(text()).toBe("abcd");
+    await h.stop({});
+  });
 });
 

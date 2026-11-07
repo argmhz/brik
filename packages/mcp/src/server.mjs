@@ -22,6 +22,7 @@ How to work:
 - Before adding or editing a component, call list_components (with a name) to see its fields, kinds, defaults and allowed values. Field values use the saved scene format: vec2 {x,y}, color {r,g,b,a} 0..1, angles in radians, entity fields as an entity id or null.
 - Coordinates are world units (pixels by default) with y pointing UP. The default camera is at (0,0).
 - Gravity and collisions: a falling object needs RigidBody2D (type "dynamic") plus Collider2D; static ground needs only Collider2D. Platformer characters use RigidBody2D "kinematic" + CharacterController2D + Collider2D and are moved with this.moveCharacter(dx, dy) in a script.
+- Movement: do it with dt in onUpdate, or in onFixedUpdate for anything physics- or collision-sensitive (moveCharacter, velocities). Movement in onUpdate at a high frame rate can tunnel through thin colliders. step({ fps }) lets you test other frame rates (30, 144).
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
 - Art: draw_sprites makes pixel-art PNGs from text rows, create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
 - Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space, or moving the mouse), click (UI buttons or points in the world), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
@@ -274,10 +275,24 @@ tool(
     hold: z.array(z.string()).optional().describe('Key codes held during all these frames, e.g. ["ArrowRight"]'),
     press: z.array(z.string()).optional().describe('Key codes pressed in the first frame and released after it, e.g. ["Space"]'),
     mouse: z
-      .object({ entity: z.string().optional(), x: z.number().optional(), y: z.number().optional() })
+      .object({
+        entity: z.string().optional(),
+        x: z.number().optional(),
+        y: z.number().optional(),
+        at: z.object({ x: z.number(), y: z.number() }).optional().describe("On a UI element: a spot as fractions of its rect, x right and y up (0..1; 1.2 is outside it). Default: the middle"),
+        offset: z.object({ x: z.number(), y: z.number() }).optional().describe("On a UI element: move from there by UI units (y up)"),
+      })
       .optional()
-      .describe('Moves the mouse first: { entity: "<id>" } aims at a UI element or an entity, { x, y } at a point in world units. Use with hold/press "Mouse0" to shoot or drag.'),
-    type: z.string().optional().describe('Text typed into the focused text field (click it first); "\n" presses Enter'),
+      .describe('Moves the mouse first: { entity: "<id>" } aims at a UI element or an entity, { x, y } at a point in world units. For a slider, { entity, at: { x: 0.8, y: 0.5 } } is 80% along it. Use with hold/press "Mouse0" to shoot or drag.'),
+    type: z.string().optional().describe('Text typed into the focused text field (click it first); "\\n" presses Enter'),
+    backspace: z.number().int().min(0).optional().describe("Characters deleted from the end of the focused text field (before `type`)"),
+    replace: z.string().optional().describe("Sets the whole text of the focused text field (before backspace and type)"),
+    fps: z
+      .number()
+      .min(10)
+      .max(1000)
+      .optional()
+      .describe("Frame rate to simulate (default 60). Test 30 and 144 as well: movement in onUpdate that ignores dt, or collision-sensitive movement outside onFixedUpdate, behaves differently at other rates"),
   },
 );
 tool(
@@ -285,6 +300,8 @@ tool(
   "Clicks in the running game: moves the mouse to a UI element (entity id, e.g. a UIButton) or a world point (x, y in world units), presses and releases the button, and runs 4 frames. Returns the button under the mouse and which UIButtons sent a click, so you can see if you hit.",
   {
     entity: z.string().optional().describe("A UI element or entity id to click on"),
+    at: z.object({ x: z.number(), y: z.number() }).optional().describe("On a UI element: where, as fractions of its rect (x right, y up; default the middle)"),
+    offset: z.object({ x: z.number(), y: z.number() }).optional().describe("On a UI element: move from there by UI units (y up)"),
     x: z.number().optional(),
     y: z.number().optional(),
     button: z.number().int().min(0).max(2).optional().describe("0 left (default), 1 middle, 2 right"),
