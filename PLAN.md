@@ -522,7 +522,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 **Kendte begrænsninger i 5.8**
 - Autosave dækker kun den åbne scene.
 - Gendannelsesspørgsmålet bruger browserens `confirm()`-dialog.
-- Eksisterende projekter får ikke `CLAUDE.md` automatisk.
+- ~~Eksisterende projekter får ikke `CLAUDE.md`.~~ (gruppe 3: de får den, når de åbnes, hvis den mangler. En markør i `.brik/` sørger for, at en slettet fil ikke kommer tilbage, og en eksisterende røres aldrig.)
 - Headless har ingen renderer, så der er ingen skærmbilleder, og byg/eksport kan ikke køres derfra. Er projektet åbent i både editoren og headless, ser de ikke hinandens ændringer.
 - Scener, der er gemt før `boundsMode` kom, får "view" og skal have deres `bounds` sat til banens kanter (eller `boundsMode: "center"`).
 - Kameraets rotation tages ikke med, når udsnittet holdes inden for rammen.

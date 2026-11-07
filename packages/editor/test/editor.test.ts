@@ -268,3 +268,29 @@ describe("CLAUDE.md", () => {
     expect(mosehop).toBe(PROJECT_AI_GUIDE);
   });
 });
+
+describe("CLAUDE.md in older projects", () => {
+  it("is added once to a project without one, and never overwrites or comes back", async () => {
+    const { fs, editor } = await newEditor();
+    editor.dispose();
+    // an older project: no CLAUDE.md and no marker
+    await fs.remove("CLAUDE.md");
+    await fs.remove(".brik/ai-guide-written");
+    const opened = await Editor.open(fs, { decode: fakeDecode });
+    expect(await fs.readText("CLAUDE.md")).toBe(PROJECT_AI_GUIDE);
+    expect(await fs.exists(".brik/ai-guide-written")).toBe(true);
+    opened.dispose();
+
+    // deleted on purpose: not written again
+    await fs.remove("CLAUDE.md");
+    (await Editor.open(fs, { decode: fakeDecode })).dispose();
+    expect(await fs.exists("CLAUDE.md")).toBe(false);
+
+    // the user's own CLAUDE.md is left alone (even without the marker)
+    await fs.remove(".brik/ai-guide-written");
+    await fs.writeFile("CLAUDE.md", "# Mine\n");
+    (await Editor.open(fs, { decode: fakeDecode })).dispose();
+    expect(await fs.readText("CLAUDE.md")).toBe("# Mine\n");
+  });
+});
+

@@ -34,7 +34,7 @@ import { type EditCommand, History } from "./history";
 import { PlayController } from "./play";
 import { ScriptHost } from "./script-host";
 import type { EsbuildLike } from "./scripts";
-import { type ProjectSettings, defaultScene, readProject, sceneToJson, writeProject } from "./project";
+import { type ProjectSettings, defaultScene, ensureAiGuide, readProject, sceneToJson, writeProject } from "./project";
 import { Autosave, type RecoveryData, readRecovery, removeRecovery } from "./recovery";
 
 export type Tool = "move" | "rotate" | "scale";
@@ -155,6 +155,8 @@ export class Editor {
 
   static async open(fs: ProjectFS, options: EditorOptions = {}): Promise<Editor> {
     const editor = new Editor(fs, await readProject(fs), options);
+    // projects made before CLAUDE.md existed get one
+    await ensureAiGuide(fs);
     // unsaved changes from last time wait for restoreRecovery() or discardRecovery()
     editor.recovery = await readRecovery(fs);
     if (editor.recovery) {

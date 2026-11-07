@@ -78,6 +78,26 @@ export async function createProject(
   return settings;
 }
 
+/**
+ * Gives a project that has no CLAUDE.md one, so AI tools find out how Brik works.
+ * A marker in the git-ignored `.brik/` remembers that it was written: if the
+ * file is deleted later, it stays deleted. An existing CLAUDE.md is never touched.
+ * Returns true when the file was written.
+ */
+export async function ensureAiGuide(fs: ProjectFS): Promise<boolean> {
+  const marker = ".brik/ai-guide-written";
+  try {
+    if ((await fs.exists("CLAUDE.md")) || (await fs.exists(marker))) return false;
+    await fs.writeFile("CLAUDE.md", PROJECT_AI_GUIDE);
+    if (!(await fs.exists(".brik/.gitignore"))) await fs.writeFile(".brik/.gitignore", "*\n");
+    await fs.writeFile(marker, "");
+    return true;
+  } catch {
+    // a read-only folder: the editor works without it
+    return false;
+  }
+}
+
 const PROJECT_TSCONFIG = `${JSON.stringify(
   {
     compilerOptions: {
