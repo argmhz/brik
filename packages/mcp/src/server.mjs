@@ -12,6 +12,8 @@ for (const level of ["log", "info", "debug"]) console[level] = (...args) => cons
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod";
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
 import { EditorBridge } from "./bridge.mjs";
 import { HeadlessSession } from "./headless.mjs";
 
@@ -24,7 +26,7 @@ How to work:
 - Gravity and collisions: a falling object needs RigidBody2D (type "dynamic") plus Collider2D; static ground needs only Collider2D. Platformer characters use RigidBody2D "kinematic" + CharacterController2D + Collider2D and are moved with this.moveCharacter(dx, dy) in a script.
 - Movement: do it with dt in onUpdate, or in onFixedUpdate for anything physics- or collision-sensitive (moveCharacter, velocities). Movement in onUpdate at a high frame rate can tunnel through thin colliders. step({ fps }) lets you test other frame rates (30, 144).
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
-- Art: draw_sprites makes pixel-art PNGs from text rows, create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
+- Art: draw_sprites makes pixel-art PNGs from text rows; import_asset copies an image or sound from disk into the project; slice_texture cuts a sprite sheet into a grid and edit_sprites renames sprites and sets pivots; create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
 - Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space, or moving the mouse), click (UI buttons or points in the world), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
 - The scene is not saved automatically. Call save_scene when the user wants to keep the result.
 
@@ -184,6 +186,37 @@ tool(
 );
 
 tool(
+  "slice_texture",
+  "Cuts an imported image (a sprite sheet) into sprites with a grid, or makes it one whole sprite again. Give `cell: [w, h]` in pixels, or `grid: { cols, rows }` and the cell size is worked out. Optional offset, spacing and pivot ([0.5, 0.5] is the middle, [0.5, 0] bottom centre). Sprites keep their ids and names when the grid changes. Returns the sprites.",
+  {
+    path: z.string().describe("The image, e.g. assets/hero.png"),
+    mode: z.enum(["grid", "single"]).optional(),
+    cell: z.tuple([z.number(), z.number()]).optional(),
+    grid: z.object({ cols: z.number().int().min(1), rows: z.number().int().min(1) }).optional(),
+    offset: z.tuple([z.number(), z.number()]).optional(),
+    spacing: z.tuple([z.number(), z.number()]).optional(),
+    pivot: z.tuple([z.number(), z.number()]).optional(),
+  },
+);
+
+tool(
+  "edit_sprites",
+  "Renames sprites and sets their pivot, 9-slice border or rect on an imported image. `sprites` is a list like [{ sprite: 'hero_0', name: 'idle', pivot: { x: 0.5, y: 0 } }]; `sprite` is a name or id. A per-sprite pivot or rect turns a grid into hand-made sprites (they stay as they are). border: { l, b, r, t } in pixels, or null to remove it.",
+  {
+    path: z.string(),
+    sprites: z.array(
+      z.object({
+        sprite: z.string(),
+        name: z.string().optional(),
+        pivot: z.object({ x: z.number(), y: z.number() }).optional(),
+        border: z.object({ l: z.number(), b: z.number(), r: z.number(), t: z.number() }).nullable().optional(),
+        rect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+      }),
+    ),
+  },
+);
+
+tool(
   "create_animation",
   "Creates or replaces an animation clip (<name>.anim.json) from sprites of one texture. Scripts play it with this.playAnimation(name); a SpriteAnimator plays it with { clip: guid }.",
   {
@@ -308,6 +341,19 @@ tool(
   },
 );
 tool("stop", "Stops the game and restores the scene as it was before play.", {});
+
+local(
+  "import_asset",
+  "Copies an image or a sound from the computer into the project (png, jpg, webp, gif, wav, mp3, ogg). `source` is the file's path on this computer; `path` is where it goes in the project (default assets/<file name>). Sounds can then be played with this.playSound(name) or an AudioSource; images can be cut with slice_texture.",
+  { source: z.string().describe("Absolute path of the file on this computer"), path: z.string().optional().describe("Project path, e.g. assets/jump.wav") },
+  async ({ source, path }) => {
+    const bytes = await readFile(source).catch(() => {
+      throw new Error(`Could not read ${source}. Give the file's absolute path on this computer.`);
+    });
+    const target = path ?? `assets/${basename(source)}`;
+    return call("import_asset", { path: target, data: bytes.toString("base64") });
+  },
+);
 
 // ---------------------------------------------------------------- headless
 

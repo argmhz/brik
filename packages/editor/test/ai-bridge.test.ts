@@ -12,6 +12,8 @@ import {
   initPhysics,
 } from "@brik/runtime";
 import * as esbuild from "esbuild-wasm";
+import { encodePng } from "../src/core/png";
+import { tone, wav } from "../src/ui/platformer-template";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Editor, MemoryFS, createBridgeHandlers, createProject } from "../src";
 
@@ -558,6 +560,37 @@ export class Dt extends Behaviour {
     await h.step({ frames: 2, replace: "abc", type: "d" });
     expect(text()).toBe("abcd");
     await h.stop({});
+  });
+
+  it("imports an image and a sound, cuts the image into sprites and edits names and pivots", async () => {
+    const { editor, h } = await setup();
+    const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+    const png = b64(encodePng(32, 16, new Uint8Array(32 * 16 * 4)));
+    const wavBytes = wav(tone([440], [0.05], "sine", 0.3));
+    const img = (await h.import_asset({ path: "assets/sheet.png", data: png })) as { kind: string; guid: string; size: number[] };
+    expect(img).toMatchObject({ kind: "texture", size: [32, 16] });
+    const snd = (await h.import_asset({ path: "assets/ping.wav", data: b64(wavBytes) })) as { kind: string; name: string };
+    expect(snd).toMatchObject({ kind: "sound", name: "ping" });
+    await expect(async () => h.import_asset({ path: "assets/x.txt", data: "aGk=" })).rejects.toThrow(/images/);
+    await expect(async () => h.import_asset({ path: "assets/y.png", data: "***" })).rejects.toThrow(/base64/);
+
+    const cut = (await h.slice_texture({ path: "assets/sheet.png", cell: [16, 16] })) as { columns: number; rows: number; sprites: { id: string; name: string }[] };
+    expect([cut.columns, cut.rows, cut.sprites.length]).toEqual([2, 1, 2]);
+    // by count instead: 4 columns on a 32 px wide image is 8 px cells; the names of the first two sprites stay
+    await h.edit_sprites({ path: "assets/sheet.png", sprites: [{ sprite: "sheet_0", name: "idle" }] });
+    const again = (await h.slice_texture({ path: "assets/sheet.png", grid: { cols: 4, rows: 1 }, pivot: [0.5, 0] })) as { cell: number[]; sprites: { name: string }[] };
+    expect(again.cell).toEqual([8, 16]);
+    expect(again.sprites.map((x) => x.name)).toEqual(["idle", "sheet_1", "sheet_2", "sheet_3"]);
+
+    // a per-sprite pivot turns the grid into hand-made sprites; names can't clash
+    const edited = (await h.edit_sprites({ path: "assets/sheet.png", sprites: [{ sprite: "idle", pivot: { x: 0.25, y: 0.75 } }] })) as { notes: string[]; sprites: { name: string; pivot: number[] }[] };
+    expect(edited.notes[0]).toMatch(/manual/);
+    expect(edited.sprites[0]).toMatchObject({ name: "idle", pivot: [0.25, 0.75] });
+    expect(edited.sprites[1].pivot).toEqual([0.5, 0]);
+    await expect(async () => h.edit_sprites({ path: "assets/sheet.png", sprites: [{ sprite: "sheet_1", name: "idle" }] })).rejects.toThrow(/already/);
+    await expect(async () => h.edit_sprites({ path: "assets/sheet.png", sprites: [{ sprite: "nope", name: "x" }] })).rejects.toThrow(/idle/);
+    expect(editor.db.textures.get("assets/sheet.png")!.meta.sprites).toHaveLength(4);
+    await expect(async () => h.slice_texture({ path: "assets/sheet.png" })).rejects.toThrow(/cell/);
   });
 });
 

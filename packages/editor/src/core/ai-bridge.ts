@@ -4,6 +4,11 @@ import {
   type Field,
   Audio,
   BehaviourRuntime,
+  type Slicing,
+  type SpriteDef,
+  cellForCount,
+  gridCount,
+  sliceSprites,
   Camera2D,
   GlobalTransform2D,
   ParticleEmitter2D,
@@ -38,7 +43,7 @@ import {
   scriptDisplayName,
   serializeEntities,
 } from "@brik/runtime";
-import { SCENE_EXTENSION, isScene, metaPath } from "./asset-db";
+import { SCENE_EXTENSION, isAudio, isImage, isScene, metaPath, textureName } from "./asset-db";
 import {
   addComponent,
   addScript,
@@ -648,6 +653,115 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       };
     },
 
+    import_asset: async ({ path, data }) => {
+      noEdits(editor);
+      const p = projectPath(path);
+      if (!isImage(p) && !isAudio(p)) throw new BridgeError("Only images (png, jpg, webp, gif) and sounds (wav, mp3, ogg …) can be imported here");
+      if (typeof data !== "string" || !data) throw new BridgeError("`data` is the file's bytes as base64");
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+      } catch {
+        throw new BridgeError("`data` is not valid base64");
+      }
+      if (bytes.length > 32 * 1024 * 1024) throw new BridgeError("The file is larger than 32 MB");
+      const name = p.split("/").pop()!;
+      const [imported] = await editor.db.importFiles([{ name, bytes }], p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+      editor.emit("assets");
+      const tex = editor.db.textures.get(imported);
+      const sound = [...editor.db.sounds.values()].find((s) => s.path === imported);
+      return {
+        path: imported,
+        bytes: bytes.length,
+        ...(tex ? { kind: "texture", guid: tex.meta.guid, size: [tex.asset.width, tex.asset.height], note: "Use slice_texture to cut it into sprites" } : {}),
+        ...(sound ? { kind: "sound", guid: sound.guid, name: sound.name, use: { AudioSource: { clip: sound.name } }, play: 'this.playSound("' + sound.name + '") in a script' } : {}),
+      };
+    },
+
+    slice_texture: async ({ path, mode = "grid", cell, grid, offset = [0, 0], spacing = [0, 0], pivot = [0.5, 0.5] }) => {
+      noEdits(editor);
+      const p = projectPath(path);
+      const entry = editor.db.textures.get(p);
+      if (!entry) throw new BridgeError(`${p} is not an imported image. Use list_assets with kind "textures".`);
+      const pair = (v: unknown, what: string): [number, number] => {
+        if (!Array.isArray(v) || v.length !== 2 || v.some((n) => typeof n !== "number" || !Number.isFinite(n))) throw new BridgeError(`\`${what}\` is [x, y], e.g. [16, 16]`);
+        return [v[0], v[1]];
+      };
+      const { width, height } = entry.asset;
+      let slicing: Slicing;
+      if (mode === "single") slicing = { mode: "single" };
+      else if (mode === "grid") {
+        const sl = { mode: "grid" as const, cell: [16, 16] as [number, number], offset: pair(offset, "offset"), spacing: pair(spacing, "spacing"), pivot: pair(pivot, "pivot") };
+        if (cell !== undefined) sl.cell = pair(cell, "cell");
+        else if (grid) {
+          const g = grid as { cols?: number; rows?: number };
+          if (!g.cols || !g.rows) throw new BridgeError("`grid` is { cols, rows }");
+          sl.cell = cellForCount(sl, width, height, g.cols, g.rows);
+        } else throw new BridgeError("Give `cell: [w, h]` (pixels per sprite) or `grid: { cols, rows }`");
+        if (sl.cell[0] < 1 || sl.cell[1] < 1) throw new BridgeError("The cell must be at least 1 x 1");
+        slicing = sl;
+      } else throw new BridgeError('mode is "grid" or "single" (use edit_sprites for hand-made rects)');
+      const sprites = sliceSprites(slicing, width, height, textureName(p), entry.meta.sprites);
+      if (sprites.length > 4096) throw new BridgeError(`That makes ${sprites.length} sprites. Check the cell size against the image size (${width} x ${height}).`);
+      await editor.db.saveMeta(p, { ...entry.meta, slicing, sprites });
+      editor.emit("assets");
+      editor.emit("world");
+      const counts = slicing.mode === "grid" ? gridCount(slicing, width, height) : null;
+      return {
+        path: p,
+        size: [width, height],
+        ...(slicing.mode === "grid" ? { cell: slicing.cell, columns: counts![0], rows: counts![1], leftOver: [width - (counts![0] * (slicing.cell[0] + slicing.spacing[0]) - slicing.spacing[0] + slicing.offset[0]), height - (counts![1] * (slicing.cell[1] + slicing.spacing[1]) - slicing.spacing[1] + slicing.offset[1])] } : {}),
+        sprites: sprites.map((s) => ({ id: s.id, name: s.name, rect: [s.rect.x, s.rect.y, s.rect.w, s.rect.h] })),
+      };
+    },
+
+    edit_sprites: async ({ path, sprites }) => {
+      noEdits(editor);
+      const p = projectPath(path);
+      const entry = editor.db.textures.get(p);
+      if (!entry) throw new BridgeError(`${p} is not an imported image. Use list_assets with kind "textures".`);
+      if (!Array.isArray(sprites) || sprites.length === 0) throw new BridgeError("`sprites` is a list like [{ sprite: \"hero_0\", name: \"idle\", pivot: { x: 0.5, y: 0 } }]");
+      const edits = sprites as { sprite?: string; id?: string; name?: string; pivot?: { x: number; y: number }; border?: { l: number; b: number; r: number; t: number } | null; rect?: { x: number; y: number; w: number; h: number } }[];
+      let meta = structuredClone(entry.meta);
+      const notes: string[] = [];
+      // a grid owns every sprite's pivot and rect, so a per-sprite pivot or rect turns it into hand-made sprites (keeping them as they are)
+      if (meta.slicing.mode === "grid" && edits.some((e) => e.pivot || e.rect)) {
+        meta = { ...meta, slicing: { mode: "manual" } };
+        notes.push("The grid became manual slicing so single sprites can have their own pivot or rect");
+      }
+      const byKey = new Map<string, SpriteDef>();
+      for (const s of meta.sprites) {
+        byKey.set(s.id, s);
+        byKey.set(s.name, s);
+      }
+      for (const e of edits) {
+        const key = e.sprite ?? e.id;
+        const s = key !== undefined ? byKey.get(key) : undefined;
+        if (!s) throw new BridgeError(`No sprite "${key}" in ${p}. Sprites: ${meta.sprites.map((x) => x.name).join(", ")}`);
+        if (e.name !== undefined) {
+          const name = String(e.name).trim();
+          if (!name) throw new BridgeError("A sprite name can't be empty");
+          if (meta.sprites.some((x) => x !== s && x.name === name)) throw new BridgeError(`Another sprite is already called "${name}"`);
+          s.name = name;
+        }
+        if (e.pivot) {
+          if (typeof e.pivot.x !== "number" || typeof e.pivot.y !== "number") throw new BridgeError("`pivot` is { x, y } from 0 to 1, y up (0.5, 0 is bottom centre)");
+          s.pivot = { x: Math.min(1, Math.max(0, e.pivot.x)), y: Math.min(1, Math.max(0, e.pivot.y)) };
+        }
+        if (e.border === null) delete s.border;
+        else if (e.border) s.border = { l: e.border.l, b: e.border.b, r: e.border.r, t: e.border.t };
+        if (e.rect) {
+          const r = e.rect;
+          if ([r.x, r.y, r.w, r.h].some((n) => typeof n !== "number") || r.w < 1 || r.h < 1) throw new BridgeError("`rect` is { x, y, w, h } in pixels (y down from the top)");
+          s.rect = { x: r.x, y: r.y, w: r.w, h: r.h };
+        }
+      }
+      await editor.db.saveMeta(p, meta);
+      editor.emit("assets");
+      editor.emit("world");
+      return { path: p, notes, sprites: meta.sprites.map((s) => ({ id: s.id, name: s.name, rect: [s.rect.x, s.rect.y, s.rect.w, s.rect.h], pivot: [s.pivot.x, s.pivot.y] })) };
+    },
+
     create_animation: async ({ path, texture, frames, fps = 8, mode = "loop", events = [] }) => {
       let p = projectPath(path);
       if (!p.endsWith(".anim.json")) p += ".anim.json";
@@ -979,6 +1093,9 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
 /** Handlers that change the project; the editor logs these in its console. */
 export const MUTATING = new Set([
   "draw_sprites",
+  "import_asset",
+  "slice_texture",
+  "edit_sprites",
   "create_animation",
   "paint_tiles",
   "create_entity",

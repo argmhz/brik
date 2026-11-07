@@ -282,12 +282,16 @@ den åbne editor. AI'en kan:
 - se scenen, komponenternes felter og projektets assets,
 - oprette og ændre entities, komponenter, prefabs og scener,
 - skrive scripts (den får kompileringsfejl tilbage med det samme) og sætte dem på,
+- importere billeder og lyde fra computeren (`import_asset`), opdele et
+  sprite sheet i et grid (`slice_texture`) og omdøbe sprites og sætte pivots
+  (`edit_sprites`),
 - tegne pixel art (`draw_sprites`: hvert tegn er en pixel, slået op i en
   palet), lave animationer af den og male tilemaps ud fra tekst (`paint_tiles`,
   `read_tiles`),
 - trykke Play, gå frem et antal frames med taster holdt nede (fx `ArrowRight`
-  og `Space`), flytte musen, klikke på UI-knapper eller steder i verden
-  (`click`), læse konsollen og tage skærmbilleder af Scene- og
+  og `Space`), med en anden billedrate (`fps`, fx 30 eller 144), flytte musen
+  (også til et sted på et UI-element, fx 80 % henad en slider), klikke på
+  UI-knapper eller steder i verden (`click`), skrive i og redigere tekstfelter, læse konsollen og tage skærmbilleder af Scene- og
   Spil-visningen.
 
 Eksempelspillet `examples/mosehop` (åbn mappen i editoren) er bygget på
