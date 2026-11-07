@@ -188,21 +188,34 @@ export class Physics {
       return { x: dx, y: dy };
     }
     const ppm = this.pixelsPerMeter;
-    // Dynamic bodies are left out: the kinematic body pushes them through the
-    // solver instead. (Treating them as walls makes the character get stuck when
-    // something lands on its head. The cost: it can't stand on loose crates yet.)
+    // Two passes. The move itself leaves dynamic bodies out: the kinematic body
+    // pushes them through the solver instead, and a ball resting on the head
+    // doesn't stop the character. Then, when moving down, the vertical part is
+    // checked again with dynamic bodies included, so it lands on loose crates
+    // instead of falling through them.
     // Flags rather than a JS predicate: a predicate callback leaves the collider
     // set borrowed inside Rapier, and the world can then never be freed.
     const flags = rapier!.QueryFilterFlags;
-    ch.controller.computeColliderMovement(
-      col.collider,
-      { x: dx / ppm, y: dy / ppm },
-      flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS,
-    );
-    const m = ch.controller.computedMovement();
+    const c = ch.controller;
+    c.computeColliderMovement(col.collider, { x: dx / ppm, y: dy / ppm }, flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS);
+    const m = { ...c.computedMovement() };
+    let grounded = c.computedGrounded();
+    if (m.y < 0) {
+      c.computeColliderMovement(col.collider, { x: 0, y: m.y }, flags.EXCLUDE_SENSORS);
+      let onDynamic = false;
+      for (let i = 0; i < c.numComputedCollisions(); i++) {
+        if (c.computedCollision(i)?.collider?.parent()?.isDynamic()) onDynamic = true;
+      }
+      const down = c.computedMovement().y;
+      if (onDynamic && down > m.y) {
+        // a loose body is underneath: stop on it
+        m.y = down;
+        grounded ||= c.computedGrounded();
+      }
+    }
     const mx = m.x * ppm;
     const my = m.y * ppm;
-    world.store(CharacterController2D).grounded[e] = ch.controller.computedGrounded() ? 1 : 0;
+    world.store(CharacterController2D).grounded[e] = grounded ? 1 : 0;
     // Only set the *next* position: the step then gives the body a velocity, so it
     // pushes and carries dynamic bodies instead of teleporting into them.
     const body = this.bodies.get(e);

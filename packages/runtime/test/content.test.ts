@@ -204,6 +204,65 @@ describe("physics", () => {
   });
 });
 
+describe("characters and loose crates", () => {
+  // ground top at y 0, a 32x32 crate resting on it (top at 32), hero 16x24
+  const scene = () => {
+    const app = game();
+    const w = app.world;
+    w.spawn([Transform2D, { position: { x: 0, y: -10 } }], [Collider2D, { size: { x: 600, y: 20 } }]);
+    const crate = w.spawn([Transform2D, { position: { x: 0, y: 16 } }], [RigidBody2D], [Collider2D, { size: { x: 32, y: 32 } }]);
+    return { app, w, crate, physics: w.resource(Physics), T: w.store(Transform2D) };
+  };
+
+  it("stands on a crate", () => {
+    const { app, w, crate, physics, T } = scene();
+    const hero = w.spawn([Transform2D, { position: { x: 0, y: 80 } }], [RigidBody2D], [CharacterController2D], [Collider2D, { size: { x: 16, y: 24 } }]);
+    run(app, 30); // let the crate settle
+    for (let i = 0; i < 90; i++) {
+      physics.moveCharacter(hero, 0, -3);
+      app.update(1 / 60);
+    }
+    // on top of the crate (top 32 + half height 12), not pushed through it
+    expect(T.position.y[hero]).toBeCloseTo(44, 0);
+    expect(w.store(CharacterController2D).grounded[hero]).toBe(1);
+    expect(T.position.y[crate]).toBeCloseTo(16, 0);
+  });
+
+  it("jumps onto a crate from the side and stays on it", () => {
+    const { app, w, crate, physics, T } = scene();
+    const hero = w.spawn([Transform2D, { position: { x: -60, y: 12 } }], [RigidBody2D], [CharacterController2D], [Collider2D, { size: { x: 16, y: 24 } }]);
+    run(app, 30);
+    let vy = 0;
+    for (let i = 0; i < 120; i++) {
+      if (i === 0) vy = 6; // jump
+      vy = Math.max(vy - 0.25, -4);
+      // run right while in the air, stand still once on the crate
+      const dx = i < 40 ? 1.5 : 0;
+      physics.moveCharacter(hero, dx, vy);
+      app.update(1 / 60);
+    }
+    expect(T.position.x[hero]).toBeGreaterThan(-16);
+    expect(T.position.x[hero]).toBeLessThan(16);
+    expect(T.position.y[hero]).toBeCloseTo(44, 0);
+    expect(w.store(CharacterController2D).grounded[hero]).toBe(1);
+    expect(T.position.y[crate]).toBeCloseTo(16, 0);
+  });
+
+  it("walks into a crate and pushes it along", () => {
+    const { app, w, crate, physics, T } = scene();
+    const hero = w.spawn([Transform2D, { position: { x: -100, y: 12 } }], [RigidBody2D], [CharacterController2D], [Collider2D, { size: { x: 16, y: 24 } }]);
+    run(app, 30);
+    for (let i = 0; i < 120; i++) {
+      physics.moveCharacter(hero, 2, -2);
+      app.update(1 / 60);
+    }
+    // the crate moved right, and the hero is still beside it, not inside or on top
+    expect(T.position.x[crate]).toBeGreaterThan(40);
+    expect(T.position.x[hero]).toBeLessThan(T.position.x[crate] - 20);
+    expect(T.position.y[hero]).toBeCloseTo(12, 0);
+  });
+});
+
 describe("physics cleanup", () => {
   it("frees a world after a character walked through a trigger", () => {
     const app = game();

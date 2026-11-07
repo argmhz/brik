@@ -439,7 +439,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - `Sprite` har ikke 9-slice i verdenen. Det har kun `UIImage`.
 
 **Kendte begrænsninger fra 4a**
-- `CharacterController2D` ignorerer dynamiske kroppe i sine forespørgsler og skubber dem i stedet væk. Den kan derfor endnu ikke stå på løse kasser.
+- ~~`CharacterController2D` kan ikke stå på løse kasser.~~ (fase 5.9)
 - `Text2D` bruger canvas-tekst i stedet for MSDF. Den er skarp ved normal zoom, men bliver blød, hvis man zoomer meget ind.
 - `Shape2D` har ikke polygon og linje endnu, og `Joint2D` mangler.
 - ~~`CameraFollow2D` tager ikke højde for, hvor stor visningen er.~~ (fase 5.8)
@@ -531,7 +531,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og udgiver spil.
 
 - [x] Rapier lazy-loades: playeren er delt i `brik.js` (ca. 100 KB) og `brik-physics.js` (ca. 1,65 MB med Rapiers WASM). `game.json` får `usesPhysics`, når en scene eller prefab har fysik-komponenter, og så hentes fysikken, før spillet starter. Ellers hentes den kun, hvis spillet senere får brug for den (første gang en entity med fysik dukker op). Et spil uden fysik henter nu ca. 105 KB i stedet for 1,75 MB.
-- [ ] `CharacterController2D` kan stå på løse kasser
+- [x] `CharacterController2D` kan stå på løse kasser: bevægelsen beregnes som før uden dynamiske kroppe (så figuren skubber dem væk og ikke går i stå, hvis noget lander på hovedet), og når den bevæger sig nedad, tjekkes den lodrette del igen mod dynamiske kroppe, så den lander på dem i stedet for at falde igennem. Testet med at stå på, hoppe op på og skubbe en kasse.
 - [ ] Auto-tiling (regel-tiles)
 - [ ] UI: `UISlider`, `UIToggle`, `UITextInput` og `UILayout`
 - [ ] UI-elementer kan vælges og trækkes i scene view
