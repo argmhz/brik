@@ -19,6 +19,7 @@ import {
   Input,
   UIClick,
   UITextEntry,
+  UIFocus,
   UILayout,
   Name,
   PrefabInstance,
@@ -125,6 +126,9 @@ function component(name: unknown): ComponentDef {
 }
 
 function noEdits(editor: Editor): void {
+  if (editor.recovery) {
+    throw new BridgeError("Unsaved changes from an earlier session are waiting. Call recovery with action \"status\", then \"restore\" or \"discard\", before editing.");
+  }
   if (editor.play.active) throw new BridgeError("The game is running. Call stop before editing the scene.");
 }
 
@@ -352,6 +356,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       mode: editor.play.mode,
       scripts: { status: editor.scripts.status, errors: editor.scripts.errors.length },
       entities: world.entityCount,
+      ...(editor.pendingRecovery ? { recovery: { ...editor.pendingRecovery, savedAt: new Date(editor.pendingRecovery.savedAt).toISOString() } } : {}),
       undo: editor.history.undoLabel ?? null,
       redo: editor.history.redoLabel ?? null,
       // sound state while the game runs: whether WebAudio exists here (not in headless) and how many sounds play
@@ -399,6 +404,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const live: Record<string, unknown> = {};
       if (editor.play.active) {
         live.active = isActive(world, e);
+        if (world.tryResource(UIFocus)?.entity === e) live.uiFocused = true;
         if (world.has(e, GlobalTransform2D)) {
           const g = world.store(GlobalTransform2D).matrix;
           live.worldPosition = { x: Math.round(g.tx[e] * 100) / 100, y: Math.round(g.ty[e] * 100) / 100 };
@@ -595,6 +601,17 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       if (!label) throw new BridgeError("Nothing to undo");
       editor.undo();
       return { undone: label, redo: editor.history.redoLabel ?? null };
+    },
+
+    recovery: async ({ action = "status" }) => {
+      const pending = editor.pendingRecovery;
+      const info = pending ? { scene: pending.scene, savedAt: new Date(pending.savedAt).toISOString(), entities: pending.entities } : null;
+      if (action === "status") return { pending: info };
+      if (action !== "restore" && action !== "discard") throw new BridgeError('`action` is "status", "restore" or "discard"');
+      if (!pending) throw new BridgeError("There are no unsaved changes waiting");
+      if (action === "restore") editor.restoreRecovery();
+      else await editor.discardRecovery();
+      return { done: action, pending: null, ...(action === "restore" ? { note: "The scene now shows the restored changes; it is not saved until save_scene." } : {}) };
     },
 
     redo: () => {
@@ -1116,6 +1133,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
 
 /** Handlers that change the project; the editor logs these in its console. */
 export const MUTATING = new Set([
+  "recovery",
   "draw_sprites",
   "import_asset",
   "slice_texture",

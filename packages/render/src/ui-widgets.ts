@@ -1,6 +1,6 @@
 import { type App, type Entity, Time, type World, defineComponent, defineEvent, t, withMeta } from "@brik/core";
 import { Input } from "@brik/input";
-import { INTERACTIVE, UILayout, UIRect, UIText } from "./ui";
+import { INTERACTIVE, UIButton, UIClick, UIFocus, UILayout, UIRect, UIText } from "./ui";
 
 /*
  * Interactive UI elements beyond the button: a slider, a toggle and a text
@@ -91,7 +91,9 @@ export class UITextEntry {
   private el: HTMLInputElement | null = null;
   /** The focused field's text as of the last frame, for typing without a browser. */
   private base = "";
-  private pending: { value?: string; submit?: boolean }[] = [];
+  private pending: { value?: string; submit?: boolean; tab?: 1 | -1 }[] = [];
+  /** True in the frame typing ended (Enter, Escape or lost focus), so the same Enter does not start it again. */
+  justEnded = false;
 
   /** Starts typing into a field. */
   focus(world: World, e: Entity): void {
@@ -116,6 +118,11 @@ export class UITextEntry {
       el.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter") this.pending.push({ submit: true });
         if (ev.key === "Escape") this.pending.push({ submit: false });
+        if (ev.key === "Tab") {
+          // on to the next element, instead of out of the page
+          ev.preventDefault();
+          this.pending.push({ tab: ev.shiftKey ? -1 : 1 });
+        }
       });
       // the page's focus moved elsewhere (another field, the editor): stop typing
       el.addEventListener("blur", () => this.pending.push({ submit: false }));
@@ -138,12 +145,18 @@ export class UITextEntry {
     this.el?.blur();
   }
 
-  /** Types text into the focused field, e.g. from tests or an AI. `\n` submits. */
+  /** Types text into the focused field, e.g. from tests or an AI. `\n` submits and `\t` moves on to the next element. */
   type(text: string): void {
-    for (const part of text.split(/(\n)/)) {
+    for (const part of text.split(/(\n|\t)/)) {
       if (part === "\n") this.pending.push({ submit: true });
+      else if (part === "\t") this.pending.push({ tab: 1 });
       else if (part) this.pending.push({ value: (this.latest() ?? "") + part });
     }
+  }
+
+  /** Ends typing and moves on to the next (1) or previous (-1) element, as Tab does. */
+  tab(direction: 1 | -1 = 1): void {
+    this.pending.push({ tab: direction });
   }
 
   /** Submits the focused field, as Enter does. */
@@ -172,6 +185,7 @@ export class UITextEntry {
     const e = this.focused;
     const queue = this.pending;
     this.pending = [];
+    this.justEnded = false;
     if (e < 0 || !world.isAlive(e) || !world.has(e, UITextInput)) {
       this.focused = -1;
       return;
@@ -188,9 +202,18 @@ export class UITextEntry {
         }
       }
       this.base = T.value[e];
+      if (p.tab !== undefined) {
+        const from = e;
+        this.blur(world);
+        this.justEnded = true;
+        // coming from a field: carry on typing in the next one, like a form
+        moveFocus(world, from, p.tab, true);
+        break;
+      }
       if (p.submit === true) world.emit(UISubmit, { entity: e, value: T.value[e] });
       if (p.submit !== undefined) {
         this.blur(world);
+        this.justEnded = true;
         break;
       }
     }
@@ -199,6 +222,94 @@ export class UITextEntry {
   dispose(): void {
     this.el?.remove();
     this.el = null;
+  }
+}
+
+/** The elements the keyboard can reach, in the order Tab visits them (the UI's draw order, i.e. the hierarchy's). */
+export function focusable(world: World): Entity[] {
+  const layout = world.resource(UILayout);
+  const B = world.store(UIButton);
+  const S = world.store(UISlider);
+  const G = world.store(UIToggle);
+  const T = world.store(UITextInput);
+  const ok = (e: Entity) =>
+    (world.has(e, UIButton) && B.interactable[e] !== 0) ||
+    (world.has(e, UISlider) && S.interactable[e] !== 0) ||
+    (world.has(e, UIToggle) && G.interactable[e] !== 0) ||
+    (world.has(e, UITextInput) && T.interactable[e] !== 0);
+  // before the first draw there is no layout (headless, tests): fall back to creation order
+  const all = layout.elements.length > 0 ? layout.elements.map((el) => el.e) : [...world.query([UIRect])].sort((a, b) => a - b);
+  return all.filter(ok);
+}
+
+/** Moves the keyboard focus from `from` to the next (1) or previous (-1) element, wrapping around. With `typeInTextFields`, a text field starts typing at once. */
+function moveFocus(world: World, from: Entity, direction: 1 | -1, typeInTextFields = false): void {
+  const focus = world.resource(UIFocus);
+  const list = focusable(world);
+  if (list.length === 0) {
+    focus.entity = -1;
+    return;
+  }
+  const at = list.indexOf(from);
+  const next = at < 0 ? (direction > 0 ? list[0] : list[list.length - 1]) : list[(at + direction + list.length) % list.length];
+  focus.entity = next;
+  if (typeInTextFields && world.has(next, UITextInput)) world.resource(UITextEntry).focus(world, next);
+}
+
+/**
+ * Keyboard use of the UI. Tab and Shift+Tab move between buttons, sliders, toggles and text fields;
+ * Enter or Space presses a button or flips a toggle; Left and Right move a slider; Enter starts typing in a
+ * text field; Escape lets go. It does nothing until Tab has been pressed once.
+ */
+export function updateFocus(world: World): void {
+  const input = world.tryResource(Input);
+  const focus = world.resource(UIFocus);
+  if (!input) return;
+  const entry = world.resource(UITextEntry);
+  // typing owns the keyboard; mouse presses hand it back to the pointer
+  if (entry.focused >= 0) {
+    focus.entity = entry.focused;
+    return;
+  }
+  if (entry.justEnded) return;
+  if (input.key("Mouse0").pressed) {
+    focus.entity = -1;
+    return;
+  }
+  const list = focusable(world);
+  if (focus.entity >= 0 && !list.includes(focus.entity)) focus.entity = -1;
+
+  if (input.key("Tab").pressed) {
+    if (list.length === 0) return;
+    const shift = input.key("ShiftLeft").down || input.key("ShiftRight").down;
+    moveFocus(world, focus.entity, shift ? -1 : 1);
+    return;
+  }
+  const f = focus.entity;
+  if (f < 0) return;
+  if (input.key("Escape").pressed) {
+    focus.entity = -1;
+    return;
+  }
+  const activate = input.key("Enter").pressed || input.key("Space").pressed;
+  if (world.has(f, UIButton) && activate) world.emit(UIClick, { entity: f });
+  if (world.has(f, UIToggle) && activate) {
+    const G = world.store(UIToggle);
+    G.on[f] = G.on[f] ? 0 : 1;
+    world.emit(UIValueChanged, { entity: f, value: G.on[f] !== 0 });
+  }
+  if (world.has(f, UITextInput) && input.key("Enter").pressed) entry.focus(world, f);
+  if (world.has(f, UISlider)) {
+    const dir = (input.key("ArrowRight").pressed ? 1 : 0) - (input.key("ArrowLeft").pressed ? 1 : 0);
+    if (dir !== 0) {
+      const S = world.store(UISlider);
+      const span = S.max[f] - S.min[f];
+      const v = snap(S.value[f] + dir * (S.step[f] > 0 ? S.step[f] : span / 20), S.min[f], S.max[f], S.step[f]);
+      if (v !== S.value[f]) {
+        S.value[f] = v;
+        world.emit(UIValueChanged, { entity: f, value: v });
+      }
+    }
   }
 }
 
@@ -247,6 +358,7 @@ export function updateWidgets(world: World): void {
   // Enter from the Input (e.g. injected by tests or an AI) submits too, not only the hidden field's keydown.
   // A real Enter reaches both; the second submit is dropped because the first ends typing.
   if (entry.focused >= 0 && input?.key("Enter").pressed) entry.submit();
+  if (entry.focused >= 0 && input?.key("Tab").pressed) entry.tab(input.key("ShiftLeft").down || input.key("ShiftRight").down ? -1 : 1);
   entry.apply(world);
 
   // the field's UIText shows its text (or the placeholder) and a blinking caret
@@ -264,6 +376,10 @@ export const UIWidgetsPlugin = {
   name: "brik:ui-widgets",
   build(app: App) {
     if (!app.world.hasResource(UITextEntry)) app.world.insertResource(new UITextEntry());
+    if (!app.world.hasResource(UIFocus)) app.world.insertResource(new UIFocus());
+    // Tab is the key that moves between elements: keep the browser from moving its own focus instead
+    app.world.tryResource(Input)?.bindAction("ui.tab", "Tab");
     app.addSystem("preUpdate", { name: "ui.widgets", run: updateWidgets });
+    app.addSystem("preUpdate", { name: "ui.focus", run: updateFocus });
   },
 };

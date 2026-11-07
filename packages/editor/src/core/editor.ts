@@ -64,7 +64,7 @@ export type EntityKind =
   | "ui-stack";
 
 const UI_KINDS = new Set<EntityKind>(["ui-image", "ui-text", "ui-button", "ui-slider", "ui-toggle", "ui-input", "ui-stack"]);
-export type EditorEvent = "world" | "selection" | "assets" | "scene" | "settings" | "scripts" | "console" | "play";
+export type EditorEvent = "world" | "selection" | "assets" | "scene" | "settings" | "scripts" | "console" | "play" | "recovery";
 
 export interface EditorOptions {
   decode?: Decoder;
@@ -338,6 +338,7 @@ export class Editor {
     this.autosave.paused = false;
     this.resetAfterLoad();
     this.history.markUnsaved();
+    this.emit("recovery");
   }
 
   /** Throws away the unsaved changes found at startup. */
@@ -347,6 +348,13 @@ export class Editor {
     await removeRecovery(this.fs);
     this.autosave.paused = false;
     this.autosave.changed();
+    this.emit("recovery");
+  }
+
+  /** What is waiting to be restored or discarded, or null. */
+  get pendingRecovery(): { scene: string | null; savedAt: number; entities: number } | null {
+    const r = this.recovery;
+    return r ? { scene: r.scenePath, savedAt: r.savedAt, entities: r.scene.entities.length } : null;
   }
 
   /** Saves to the current path, or `path` if given (save as). */

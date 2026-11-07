@@ -19,14 +19,20 @@ export function offerRecovery(ed: Editor): Promise<void> {
   const rec = ed.recovery;
   if (!rec) return Promise.resolve();
   return new Promise((resolve) => {
+    // the AI can answer too (the recovery tool): then the question goes away by itself
+    const stop = ed.on("recovery", () => {
+      if (ed.recovery) return;
+      stop();
+      setPending(null);
+      resolve();
+    });
     setPending({
       scene: rec.scenePath ?? "en ny scene, der aldrig blev gemt",
       when: new Date(rec.savedAt).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" }),
       entities: rec.scene.entities.length,
       answer: (restore) => {
-        setPending(null);
         if (restore) ed.restoreRecovery();
-        resolve(restore ? undefined : ed.discardRecovery());
+        else void ed.discardRecovery();
       },
     });
   });

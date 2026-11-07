@@ -15,7 +15,13 @@ import {
   TriggerEnter,
   TriggerExit,
   UIRect,
+  UIButton,
+  UIClick,
+  UIFocus,
+  UISlider,
   UISubmit,
+  UIToggle,
+  UIValueChanged,
   UITextEntry,
   UITextInput,
   initPhysics,
@@ -211,6 +217,138 @@ describe("text fields", () => {
     const got = sub.read();
     expect(got.length).toBe(1);
     expect(got[0].value).toBe("hej");
+    expect(entry.focused).toBe(-1);
+  });
+});
+
+describe("keyboard on the UI", () => {
+  const setup = () => {
+    const app = game();
+    const w = app.world;
+    const rect = (y: number) => [UIRect, { size: { x: 100, y: 20 }, position: { x: 0, y } }] as const;
+    const button = w.spawn([Transform2D], rect(0), [UIButton]);
+    const toggle = w.spawn([Transform2D], rect(30), [UIToggle]);
+    const slider = w.spawn([Transform2D], rect(60), [UISlider, { min: 0, max: 10, step: 1, value: 5 }]);
+    const input = w.resource(Input);
+    const press = (...codes: string[]) => {
+      for (const c of codes) input.inject("down", c);
+      app.update(1 / 60);
+      for (const c of codes) input.inject("up", c);
+      app.update(1 / 60);
+    };
+    return { app, w, button, toggle, slider, press, focus: () => w.resource(UIFocus).entity };
+  };
+
+  it("does nothing until Tab is pressed", () => {
+    const { w, button, press, focus } = setup();
+    const clicks = w.events(UIClick).reader();
+    press("Enter", "Space");
+    expect(focus()).toBe(-1);
+    expect(clicks.read()).toHaveLength(0);
+    expect(button).toBeGreaterThanOrEqual(0);
+  });
+
+  it("Tab and Shift+Tab move through the elements and wrap around", () => {
+    const { button, toggle, slider, press, focus } = setup();
+    press("Tab");
+    expect(focus()).toBe(button);
+    press("Tab");
+    expect(focus()).toBe(toggle);
+    press("Tab");
+    expect(focus()).toBe(slider);
+    press("Tab");
+    expect(focus()).toBe(button);
+    press("Tab", "ShiftLeft");
+    expect(focus()).toBe(slider);
+  });
+
+  it("Enter or Space presses a button and flips a toggle", () => {
+    const { w, button, toggle, press } = setup();
+    const clicks = w.events(UIClick).reader();
+    const changes = w.events(UIValueChanged).reader();
+    press("Tab");
+    const got: number[] = [];
+    press("Enter");
+    got.push(...clicks.read().map((c) => c.entity));
+    press("Space");
+    got.push(...clicks.read().map((c) => c.entity));
+    expect(got).toEqual([button, button]);
+    press("Tab");
+    press("Space");
+    expect(w.store(UIToggle).on[toggle]).toBe(1);
+    expect(changes.read().map((c) => c.value)).toEqual([true]);
+  });
+
+  it("the arrow keys move a slider by its step, within its range", () => {
+    const { w, slider, press } = setup();
+    press("Tab", "ShiftLeft"); // last element: the slider
+    press("ArrowRight");
+    press("ArrowRight");
+    press("ArrowLeft");
+    expect(w.store(UISlider).value[slider]).toBe(6);
+    for (let i = 0; i < 20; i++) press("ArrowRight");
+    expect(w.store(UISlider).value[slider]).toBe(10);
+  });
+
+  it("Escape and a mouse press let go; an element that is switched off loses focus", () => {
+    const { w, button, press, focus } = setup();
+    press("Tab");
+    expect(focus()).toBe(button);
+    press("Escape");
+    expect(focus()).toBe(-1);
+    press("Tab");
+    w.store(UIButton).interactable[button] = 0;
+    press("Enter");
+    expect(focus()).toBe(-1);
+  });
+
+  it("Enter on a text field starts typing in it", () => {
+    const app = game();
+    const w = app.world;
+    const e = w.spawn([Transform2D], [UIRect], [UITextInput]);
+    const input = w.resource(Input);
+    const press = (c: string) => {
+      input.inject("down", c);
+      app.update(1 / 60);
+      input.inject("up", c);
+      app.update(1 / 60);
+    };
+    press("Tab");
+    expect(w.resource(UIFocus).entity).toBe(e);
+    press("Enter");
+    expect(w.resource(UITextEntry).focused).toBe(e);
+  });
+
+  it("Tab (typed, injected or pressed) leaves a text field for the next element, and a field there starts typing", () => {
+    const app = game();
+    const w = app.world;
+    const a = w.spawn([Transform2D], [UIRect], [UITextInput]);
+    const b = w.spawn([Transform2D], [UIRect], [UITextInput]);
+    const button = w.spawn([Transform2D], [UIRect], [UIButton]);
+    const entry = w.resource(UITextEntry);
+    const input = w.resource(Input);
+    const focus = w.resource(UIFocus);
+    entry.focus(w, a);
+    entry.type("x\t");
+    app.update(1 / 60);
+    expect(entry.focused).toBe(b);
+    expect(focus.entity).toBe(b);
+    expect(w.store(UITextInput).value[a]).toBe("x");
+    // Tab from the Input, as an AI's `press` does
+    input.inject("down", "Tab");
+    app.update(1 / 60);
+    input.inject("up", "Tab");
+    app.update(1 / 60);
+    expect(entry.focused).toBe(-1);
+    expect(focus.entity).toBe(button);
+    // Shift+Tab goes back to a text field: it only takes focus (Enter starts typing) when the Tab did not come from a field
+    input.inject("down", "ShiftLeft");
+    input.inject("down", "Tab");
+    app.update(1 / 60);
+    input.inject("up", "Tab");
+    input.inject("up", "ShiftLeft");
+    app.update(1 / 60);
+    expect(focus.entity).toBe(b);
     expect(entry.focused).toBe(-1);
   });
 });

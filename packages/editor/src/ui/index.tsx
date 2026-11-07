@@ -55,10 +55,11 @@ function Root() {
     setLoading(true);
     try {
       const ed = await Editor.open(fs, { makeUrl, esbuild: loadEsbuild });
-      if (ed.recovery) await offerRecovery(ed);
       releaseConsole = captureConsole(ed);
       resetUiState();
       setEditor(ed);
+      // unsaved changes from last time: the question is shown over the editor, so the AI (which connects now) can answer it too
+      if (ed.recovery) void offerRecovery(ed);
       // types for VS Code & co. (not needed for the editor itself, so in the background)
       import("../generated/brik-types.json")
         .then((t) => writeProjectTypes(fs, t.default as Record<string, string>))

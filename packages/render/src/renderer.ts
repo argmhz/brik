@@ -2,7 +2,7 @@ import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
 import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey } from "@brik/core";
 import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
 import { ParticleEmitter2D, Particles } from "./particles";
-import { UIImage, UILayout, UIText } from "./ui";
+import { UIFocus, UIImage, UILayout, UIText } from "./ui";
 import { UISlider, UIToggle } from "./ui-widgets";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle, textResolution } from "./text";
@@ -236,6 +236,7 @@ export class Renderer {
     const I = world.store(UIImage);
     const X = world.store(UIText);
     const r = {} as ResolvedSprite;
+    const focused = world.tryResource(UIFocus)?.entity ?? -1;
     for (const el of layout.elements) {
       const e = el.e;
       const { x, y, w, h } = el.rect;
@@ -251,6 +252,11 @@ export class Renderer {
           this.batcher.pushShape(w, 0, 0, h, x, y, 1, rgba, 0, 0, 0);
         }
         this.stats.sprites++;
+      }
+      if (focused === e) {
+        // the keyboard focus: an outline just outside the element
+        const pad = 2 * el.scale;
+        this.batcher.pushShape(w + 2 * pad, 0, 0, h + 2 * pad, x - pad, y - pad, 1, 0, packColor(1, 0.85, 0.2, 1), Math.max(2, 2 * el.scale), 4 * el.scale);
       }
       if (world.has(e, UISlider)) this.drawSlider(world, e, x, y, w, h);
       if (world.has(e, UIToggle)) this.drawToggle(world, e, x, y, w, h);

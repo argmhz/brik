@@ -171,6 +171,13 @@ tool("select", "Selects entities in the editor, so the user sees what you mean."
 
 tool("undo", "Undoes the last change in the editor. project_info shows the next undo and redo steps (`undo`, `redo`).", {}, { destructive: true });
 
+tool(
+  "recovery",
+  'Unsaved changes from an earlier session can be waiting when a project opens (project_info shows `recovery`). Editing is blocked until you choose. action "status" (default) describes them; "restore" brings them back (the scene is then changed but unsaved); "discard" throws them away for good.',
+  { action: z.enum(["status", "restore", "discard"]).optional() },
+  { destructive: true },
+);
+
 tool("redo", "Redoes the change that undo took back (not possible after a new change).", {}, { destructive: true });
 
 // ---------------------------------------------------------------- art and tiles

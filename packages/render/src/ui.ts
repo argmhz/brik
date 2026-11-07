@@ -112,6 +112,15 @@ export interface UIElement {
   scale: number;
 }
 
+/**
+ * Which UI element has the keyboard (Tab, Shift+Tab, Enter, Space, arrows), or -1.
+ * Nothing has it until the player presses Tab, so games that never use the keyboard on their UI are not affected.
+ * A mouse press clears it. Available as a resource: `world.resource(UIFocus)`.
+ */
+export class UIFocus {
+  entity: Entity = -1;
+}
+
 /** Laid out UI. Available as a resource: `world.resource(UILayout)`. */
 export class UILayout {
   /** Elements in draw order (later ones on top). */
@@ -281,6 +290,7 @@ export const UIPlugin = {
   name: "brik:ui",
   build(app: App) {
     if (!app.world.hasResource(UILayout)) app.world.insertResource(new UILayout());
+    if (!app.world.hasResource(UIFocus)) app.world.insertResource(new UIFocus());
     app.addSystem("preUpdate", { name: "ui.buttons", run: updateButtons });
   },
 };

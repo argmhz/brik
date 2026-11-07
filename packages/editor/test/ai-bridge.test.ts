@@ -55,6 +55,49 @@ describe("AI bridge handlers", () => {
     expect(info.warnings?.[0]).toMatch(/Sprite is not drawn: texture findes-ikke does not exist/);
   });
 
+  it("unsaved changes from an earlier session can be inspected, restored or discarded through the bridge", async () => {
+    const make = async () => {
+      const fs = new MemoryFS("rec");
+      await createProject(fs, "Rec", {});
+      const first = await Editor.open(fs, { decode: fakeDecode, esbuild: async () => esbuild, importCode });
+      const h1 = createBridgeHandlers(first);
+      await h1.create_entity({ kind: "rect", name: "Ikke gemt" });
+      await first.autosave.flush();
+      const again = await Editor.open(fs, { decode: fakeDecode, esbuild: async () => esbuild, importCode });
+      return { fs, editor: again, h: createBridgeHandlers(again) };
+    };
+
+    // restore
+    {
+      const { editor, h } = await make();
+      expect(editor.recovery).not.toBeNull();
+      const info = (await h.project_info({})) as { recovery?: { entities: number } };
+      expect(info.recovery?.entities).toBeGreaterThan(0);
+      const st = (await h.recovery({})) as { pending: { scene: string | null } | null };
+      expect(st.pending).not.toBeNull();
+      // editing waits for the choice
+      await expect(async () => h.create_entity({ kind: "rect" })).rejects.toThrow(/recovery/);
+      let events = 0;
+      editor.on("recovery", () => events++);
+      await h.recovery({ action: "restore" });
+      expect(events).toBe(1);
+      expect(editor.recovery).toBeNull();
+      expect(((await h.get_hierarchy({})) as { name: string }[]).map((n) => n.name)).toContain("Ikke gemt");
+      expect(editor.dirty).toBe(true);
+      expect(((await h.project_info({})) as { recovery?: unknown }).recovery).toBeUndefined();
+      await expect(async () => h.recovery({ action: "restore" })).rejects.toThrow(/no unsaved changes/);
+    }
+    // discard
+    {
+      const { fs, editor, h } = await make();
+      await h.recovery({ action: "discard" });
+      expect(editor.recovery).toBeNull();
+      expect(((await h.get_hierarchy({})) as { name: string }[]).map((n) => n.name)).not.toContain("Ikke gemt");
+      expect(await fs.exists(".brik/recovery.json")).toBe(false);
+      await h.create_entity({ kind: "rect", name: "Nyt" });
+    }
+  });
+
   it("a script that throws while loading is reported with its file and line", async () => {
     const { h } = await setup();
     const r = (await h.write_script({

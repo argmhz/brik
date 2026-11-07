@@ -27,9 +27,17 @@ Server og editor finder hinanden på `ws://127.0.0.1:5181`. Porten kan ændres m
 
 Nye projekter får en `CLAUDE.md`, som forklarer projektets filer og Brik-API'et. Så kan en AI-klient også skrive scripts uden MCP-serveren.
 
+## Ugemte ændringer fra sidste gang
+
+Findes der ugemte ændringer fra en tidligere session, spørger editoren, om de skal gendannes. AI'en kan svare på spørgsmålet i stedet for dig, og dialogen forsvinder, når den gør:
+
+- `project_info` viser `recovery` (scene, tidspunkt og antal entities), så længe noget venter.
+- `recovery` med `action: "status"` beskriver det, `"restore"` bringer det tilbage (scenen står så som ændret, men er ikke gemt), og `"discard"` kasserer det for altid.
+- Indtil der er valgt, kan AI'en ikke ændre scenen. Autosave rører ikke den ventende kopi.
+
 ## Uden editoren (headless)
 
-Kører editoren ikke, kan AI'en selv åbne en projektmappe med `open_project` (fx `open_project({ path: "examples/mosehop" })`). Projektet åbnes så inde i MCP-serveren, uden browser. Alle værktøjer virker som i editoren, undtagen skærmbilleder: AI'en kan bygge scener, skrive scripts, spille og gå frem frame for frame, og `save_scene` skriver til mappen. `close_project` lukker igen, og den nægter, hvis der er ændringer, der ikke er gemt.
+Kører editoren ikke, kan AI'en selv åbne en projektmappe med `open_project` (fx `open_project({ path: "examples/mosehop" })`). Projektet åbnes så inde i MCP-serveren, uden browser. Alle værktøjer virker som i editoren, undtagen skærmbilleder: AI'en kan bygge scener, skrive scripts, spille og gå frem frame for frame, og `save_scene` skriver til mappen. `close_project` lukker igen, og den nægter, hvis der er ændringer, der ikke er gemt. Ligger der en ventende gendannelse i projektet, skal AI'en vælge med `recovery`, før den kan ændre noget.
 
 > **Pas på** Har du projektet åbent i editoren samtidig, så luk det først, ellers arbejder I i hver sin kopi.
 
