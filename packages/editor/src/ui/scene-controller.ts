@@ -16,6 +16,7 @@ import {
   tileKey,
   type Entity,
   GlobalTransform2D,
+  Joint2D,
   type Mat3,
   Renderer,
   SortingOrder,
@@ -197,6 +198,7 @@ export class SceneController {
     if (this.editor.showGrid) this.drawGrid(ctx);
     this.drawCameras(ctx);
     this.drawColliders(ctx);
+    this.drawJoints(ctx);
     this.drawUI(ctx);
     this.drawIcons(ctx);
     this.drawSelection(ctx);
@@ -385,6 +387,40 @@ export class SceneController {
     ctx.moveTo(sa.x, sa.y);
     ctx.lineTo(sb.x, sb.y);
     ctx.stroke();
+  }
+
+  /** Joints: a dashed line from this body's anchor to the other body's anchor (or the world point). */
+  private drawJoints(ctx: CanvasRenderingContext2D): void {
+    const world = this.editor.world;
+    if (world.query([Joint2D]).isEmpty()) return;
+    const J = world.store(Joint2D);
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,150,80,0.9)";
+    ctx.fillStyle = "rgba(255,150,80,0.9)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 3]);
+    for (const e of world.query([Joint2D, GlobalTransform2D])) {
+      const a = mat3.transformPoint(this.globalOf(e), { x: J.anchor.x[e], y: J.anchor.y[e] });
+      const other = world.deref(J.connected[e]);
+      const b =
+        other >= 0 && world.has(other, GlobalTransform2D)
+          ? J.type[e] === "fixed"
+            ? mat3.transformPoint(this.globalOf(other), { x: 0, y: 0 })
+            : mat3.transformPoint(this.globalOf(other), { x: J.connectedAnchor.x[e], y: J.connectedAnchor.y[e] })
+          : { x: J.connectedAnchor.x[e], y: J.connectedAnchor.y[e] };
+      const sa = this.worldToScreen(a.x, a.y);
+      const sb = this.worldToScreen(b.x, b.y);
+      ctx.beginPath();
+      ctx.moveTo(sa.x, sa.y);
+      ctx.lineTo(sb.x, sb.y);
+      ctx.stroke();
+      for (const p of [sa, sb]) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   /** Collider outlines: green for solid, dashed yellow for triggers. */

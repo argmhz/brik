@@ -86,3 +86,35 @@ export const CollisionExit = defineEvent<CollisionData>("CollisionExit");
 export const TriggerEnter = defineEvent<CollisionData>("TriggerEnter");
 /** A collider left a trigger. */
 export const TriggerExit = defineEvent<CollisionData>("TriggerExit");
+
+/**
+ * Connects this body to another one (`connected`), or to a point in the world
+ * when `connected` is empty. Anchors are in each body's local units; without
+ * a connected body, `connectedAnchor` is a world position.
+ */
+export const Joint2D = defineComponent(
+  "Joint2D",
+  {
+    /**
+     * hinge: turns around the anchors (pendulums, doors, wheels). fixed: welded
+     * where the bodies are when it starts (connectedAnchor is ignored).
+     * spring: pulled towards `length` apart. rope: at most `length` apart.
+     * slider: moves only along `axis`.
+     */
+    type: t.enum(["hinge", "fixed", "spring", "rope", "slider"] as const, "hinge"),
+    connected: t.entity(),
+    anchor: t.vec2(0, 0),
+    connectedAnchor: t.vec2(0, 0),
+    /** Rest length of a spring, or the most a rope allows (world units). */
+    length: withMeta(t.f32(32), { min: 0, step: 1 }),
+    /** How hard a spring pulls. */
+    stiffness: withMeta(t.f32(20), { min: 0, step: 1 }),
+    /** How quickly a spring stops bouncing. */
+    damping: withMeta(t.f32(1), { min: 0, step: 0.1 }),
+    /** Direction a slider moves along, in this body's local space. */
+    axis: t.vec2(1, 0),
+    /** Let the two bodies collide with each other. */
+    collideConnected: t.bool(false),
+  },
+  { requires: [RigidBody2D] },
+);

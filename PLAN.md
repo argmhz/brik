@@ -441,7 +441,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 **Kendte begrænsninger fra 4a**
 - ~~`CharacterController2D` kan ikke stå på løse kasser.~~ (fase 5.9)
 - ~~`Text2D` bliver blød, hvis man zoomer meget ind.~~ (fase 5.9, uden MSDF)
-- `Shape2D` har ikke polygon og linje endnu, og `Joint2D` mangler.
+- ~~`Shape2D` har ikke polygon og linje, og `Joint2D` mangler.~~ (fase 5.9)
 - ~~`CameraFollow2D` tager ikke højde for, hvor stor visningen er.~~ (fase 5.8)
 - **Resultat (4a+4b):** Et rigtigt 2D-spil, fx en platformer med UI og lyd
 
@@ -539,7 +539,8 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 **Gruppe 2**
 - [x] Skarp tekst ved zoom: `Text2D` rasteriseres ved den opløsning, den vises med (kameraets eller scene views zoom × entityens skala × skærmens pixeltæthed), rundet op til faste trin (1, 1,5, 2, 3 … 32 pixels pr. enhed), så zoom kun giver ny rasterisering, når et trin krydses. Højst 4096 pixels pr. side. Valgt frem for MSDF: alle systemfonte virker stadig, og der skal ikke genereres font-atlasser.
 - [x] 9-slice på `Sprite` i verden: `drawMode: "sliced"` strækker spritet til `size` (verdensenheder), og et sprite med 9-slice-kanter beholder hjørnernes størrelse, mens kanter og midte strækkes. Virker med rotation og flip, og valg i scene view følger den strakte størrelse.
-- [ ] `Shape2D` polygon og linje, `Joint2D`
+- [x] `Shape2D` polygon og linje: `points` i lokale koordinater, tegnet med Canvas2D til en tekstur ved den viste opløsning (fyld, kant, runde samlinger). Inspectoren har et punktfelt.
+- [x] `Joint2D`: `hinge`, `fixed`, `spring`, `rope` og `slider` mellem to kroppe, eller til et punkt i verden, når `connected` er tom. `fixed` svejser kroppene, hvor de står. Scene view viser leddet som en stiplet linje mellem ankrene.
 - [ ] Atlas-pakkeren trimmer hver sprite
 - [ ] PWA/offline for udgivne spil
 - [ ] Prefab-overrides pr. script-felt

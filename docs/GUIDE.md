@@ -173,6 +173,10 @@ export const follow = system("follow", (world) => {
 - **Tilemaps:** `TileMapCollider` gør tiles faste.
 - **Opslag:** `this.physics.raycast(origin, dir, distance)` og `this.physics.overlapPoint(p)`.
 
+- **Led:** `Joint2D` forbinder en krop med en anden (`connected`) eller med et
+  punkt i verden: `hinge` (pendul, dør, hjul), `fixed` (svejst fast), `spring`
+  (fjeder), `rope` (reb med en største længde) og `slider` (glider langs en akse).
+
 Tyngdekraft og skala sættes i `brik.project.json` under `physics`.
 
 ## 6. Tilemaps

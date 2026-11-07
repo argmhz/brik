@@ -13,6 +13,7 @@ import {
   CollisionEnter,
   GamePlugins,
   GlobalTransform2D,
+  Joint2D,
   Physics,
   PrefabInstance,
   RigidBody2D,
@@ -561,6 +562,69 @@ describe("polygon and line shapes", () => {
     expect(q.ty).toBeCloseTo(49);
     expect(q.a).toBeCloseTo(42);
     expect(q.d).toBeCloseTo(32);
+  });
+});
+
+describe("joints", () => {
+  const ball = (w: App["world"], x: number, y: number, ...extra: Parameters<App["world"]["spawn"]>) =>
+    w.spawn([Transform2D, { position: { x, y } }], [RigidBody2D], [Collider2D, { shape: "circle", size: { x: 10, y: 10 } }], ...extra);
+  const dist = (w: App["world"], e: number, x: number, y: number) => {
+    const T = w.store(Transform2D);
+    return Math.hypot(T.position.x[e] - x, T.position.y[e] - y);
+  };
+
+  it("a hinge to a world point swings like a pendulum at a fixed distance", () => {
+    const app = game();
+    const w = app.world;
+    // hangs from (0, 100), starting out to the side
+    const bob = ball(w, 60, 100, [Joint2D, { type: "hinge", connectedAnchor: { x: 0, y: 100 }, anchor: { x: -60, y: 0 } }]);
+    let lowest = 100;
+    for (let i = 0; i < 90; i++) {
+      app.update(1 / 60);
+      lowest = Math.min(lowest, w.store(Transform2D).position.y[bob]);
+      expect(dist(w, bob, 0, 100)).toBeCloseTo(60, -0.5);
+    }
+    // it swung down through the bottom of the arc
+    expect(lowest).toBeLessThan(50);
+    expect(w.resource(Physics).jointCount).toBe(1);
+  });
+
+  it("a rope allows at most its length; a spring settles near its rest length", () => {
+    const app = game();
+    const w = app.world;
+    const roped = ball(w, -100, 100, [Joint2D, { type: "rope", connectedAnchor: { x: -100, y: 100 }, length: 40 }]);
+    const sprung = ball(w, 100, 100, [Joint2D, { type: "spring", connectedAnchor: { x: 100, y: 100 }, length: 30, stiffness: 200, damping: 5 }]);
+    let maxRope = 0;
+    for (let i = 0; i < 240; i++) {
+      app.update(1 / 60);
+      maxRope = Math.max(maxRope, dist(w, roped, -100, 100));
+    }
+    expect(maxRope).toBeLessThan(42);
+    expect(dist(w, roped, -100, 100)).toBeGreaterThan(38);
+    // gravity stretches the spring a little past its rest length, but it holds
+    const d = dist(w, sprung, 100, 100);
+    expect(d).toBeGreaterThan(29);
+    expect(d).toBeLessThan(60);
+  });
+
+  it("fixed keeps two bodies together; a slider moves only along its axis; removing the joint frees the body", () => {
+    const app = game();
+    const w = app.world;
+    const a = ball(w, 0, 200);
+    const b = ball(w, 30, 200, [Joint2D, { type: "fixed" }]);
+    w.store(Joint2D).connected[b] = w.ref(a);
+    const slid = ball(w, 300, 0, [Joint2D, { type: "slider", connectedAnchor: { x: 300, y: 0 }, axis: { x: 0, y: 1 } }]);
+    for (let i = 0; i < 60; i++) app.update(1 / 60);
+    const T = w.store(Transform2D);
+    // they fell together, still 30 apart
+    expect(T.position.y[a]).toBeLessThan(150);
+    expect(Math.hypot(T.position.x[b] - T.position.x[a], T.position.y[b] - T.position.y[a])).toBeCloseTo(30, 0);
+    // the slider fell straight down along its axis
+    expect(T.position.x[slid]).toBeCloseTo(300, 1);
+    expect(T.position.y[slid]).toBeLessThan(-20);
+    w.remove(b, Joint2D);
+    app.update(1 / 60);
+    expect(w.resource(Physics).jointCount).toBe(1);
   });
 });
 

@@ -20,6 +20,7 @@ import {
   CollisionEnter,
   CollisionExit,
   CollisionFilter,
+  Joint2D,
   RigidBody2D,
   TriggerEnter,
   TriggerExit,
@@ -94,6 +95,14 @@ function objectId(o: object): number {
   return id;
 }
 
+interface JointEntry {
+  ref: number;
+  joint: RAPIER.ImpulseJoint;
+  /** The fixed body a joint to a world point hangs from. */
+  anchorBody: RAPIER.RigidBody | null;
+  sig: string;
+}
+
 interface CharacterEntry {
   ref: number;
   controller: RAPIER.KinematicCharacterController;
@@ -113,6 +122,7 @@ export class Physics {
   private colliders = new Map<Entity, ColliderEntry>();
   private characters = new Map<Entity, CharacterEntry>();
   private tilemaps = new Map<Entity, TileMapEntry>();
+  private joints = new Map<Entity, JointEntry>();
   private byHandle = new Map<number, Entity>();
 
   constructor(
@@ -261,6 +271,7 @@ export class Physics {
     this.colliders.clear();
     this.characters.clear();
     this.tilemaps.clear();
+    this.joints.clear();
     this.byHandle.clear();
   }
 
@@ -372,6 +383,7 @@ export class Physics {
     }
 
     this.syncTileMaps();
+    this.syncJoints();
 
     // character controllers
     const CC = world.store(CharacterController2D);
@@ -456,6 +468,101 @@ export class Physics {
       }
       this.tilemaps.set(e, { ref: world.ref(e), body, colliders, sig });
     }
+  }
+
+  /** Creates, updates and removes Rapier joints to match the Joint2D components. */
+  private syncJoints(): void {
+    const world = this.world;
+    const rw = this.rw!;
+    const R = rapier!;
+    const J = world.store(Joint2D);
+    const ppm = this.pixelsPerMeter;
+    for (const [e, j] of this.joints) {
+      if (world.ref(e) !== j.ref || !world.has(e, Joint2D)) this.dropJoint(e);
+    }
+    for (const e of world.query([Joint2D, RigidBody2D])) {
+      const body = this.bodies.get(e)?.body;
+      if (!body) continue;
+      const other = world.deref(J.connected[e]);
+      const otherBody = other >= 0 ? this.bodies.get(other)?.body : undefined;
+      if (other >= 0 && !otherBody) {
+        // connected to an entity without a body: nothing to join yet
+        this.dropJoint(e);
+        continue;
+      }
+      const type = J.type[e];
+      const scale = this.worldScale(e);
+      const sig = [
+        type,
+        other >= 0 ? world.ref(other) : -1,
+        J.anchor.x[e] * scale.x,
+        J.anchor.y[e] * scale.y,
+        J.connectedAnchor.x[e],
+        J.connectedAnchor.y[e],
+        J.length[e],
+        J.stiffness[e],
+        J.damping[e],
+        J.axis.x[e],
+        J.axis.y[e],
+        J.collideConnected[e],
+        body.handle,
+        otherBody?.handle ?? -1,
+      ].join("|");
+      const old = this.joints.get(e);
+      // removing a body removes its joints too, so check the joint still exists
+      if (old && old.sig === sig && rw.getImpulseJoint(old.joint.handle)) continue;
+      if (old) this.dropJoint(e);
+
+      const a1 = { x: (J.anchor.x[e] * scale.x) / ppm, y: (J.anchor.y[e] * scale.y) / ppm };
+      let a2 = { x: J.connectedAnchor.x[e] / ppm, y: J.connectedAnchor.y[e] / ppm };
+      let body2 = otherBody;
+      let anchorBody: RAPIER.RigidBody | null = null;
+      if (!body2) {
+        // no connected body: hang from a fixed point in the world
+        anchorBody = rw.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(a2.x, a2.y));
+        body2 = anchorBody;
+        a2 = { x: 0, y: 0 };
+      }
+      let data: RAPIER.JointData;
+      if (type === "fixed") {
+        // welded where they are now: the anchor on the other body is this body's anchor point, seen from it
+        const p1 = body.translation();
+        const r1 = body.rotation();
+        const world1 = { x: p1.x + Math.cos(r1) * a1.x - Math.sin(r1) * a1.y, y: p1.y + Math.sin(r1) * a1.x + Math.cos(r1) * a1.y };
+        const p2 = body2.translation();
+        const r2 = body2.rotation();
+        const dx = world1.x - p2.x;
+        const dy = world1.y - p2.y;
+        a2 = { x: Math.cos(-r2) * dx - Math.sin(-r2) * dy, y: Math.sin(-r2) * dx + Math.cos(-r2) * dy };
+        data = R.JointData.fixed(a1, 0, a2, r1 - r2);
+      } else if (type === "spring") {
+        data = R.JointData.spring(J.length[e] / ppm, J.stiffness[e], J.damping[e], a1, a2);
+      } else if (type === "rope") {
+        data = R.JointData.rope(J.length[e] / ppm, a1, a2);
+      } else if (type === "slider") {
+        const len = Math.hypot(J.axis.x[e], J.axis.y[e]) || 1;
+        data = R.JointData.prismatic(a1, a2, { x: J.axis.x[e] / len, y: J.axis.y[e] / len });
+      } else {
+        data = R.JointData.revolute(a1, a2);
+      }
+      const joint = rw.createImpulseJoint(data, body, body2, true);
+      joint.setContactsEnabled(J.collideConnected[e] !== 0);
+      this.joints.set(e, { ref: world.ref(e), joint, anchorBody, sig });
+    }
+  }
+
+  private dropJoint(e: Entity): void {
+    const j = this.joints.get(e);
+    if (!j) return;
+    const rw = this.rw;
+    if (rw?.getImpulseJoint(j.joint.handle)) rw.removeImpulseJoint(j.joint, true);
+    if (j.anchorBody) rw?.removeRigidBody(j.anchorBody);
+    this.joints.delete(e);
+  }
+
+  /** Number of joints in the simulation (for tests and stats). */
+  get jointCount(): number {
+    return this.joints.size;
   }
 
   private dropTileMap(e: Entity): void {
