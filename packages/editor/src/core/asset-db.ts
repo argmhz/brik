@@ -1,3 +1,4 @@
+import { tmxToJson, tsxToJson } from "./tiled-xml";
 import {
   ANIMATION_EXTENSION,
   AUDIO_EXTENSIONS,
@@ -93,13 +94,16 @@ async function convertToolFiles(db: AssetDatabase, fs: ProjectFS, paths: string[
   for (const path of paths) {
     let data: unknown;
     try {
-      data = JSON.parse(await fs.readText(path));
-    } catch {
+      const text = await fs.readText(path);
+      data = path.toLowerCase().endsWith(".tmx") ? tmxToJson(text) : JSON.parse(text);
+    } catch (err) {
+      // a .tmx that can't be read is worth saying; other JSON is just not ours
+      if (path.toLowerCase().endsWith(".tmx")) report.warnings.push(`${basename(path)}: ${err instanceof Error ? err.message : String(err)}`);
       continue;
     }
     const kind = detectJson(data);
     const dir = dirname(path);
-    const base = basename(path).replace(/\.(json|tmj|tsj)$/i, "");
+    const base = basename(path).replace(/\.(json|tmj|tsj|tmx)$/i, "");
     try {
       if (kind === "aseprite" || kind === "texturepacker") {
         const sheet = importSpriteSheet(data as Parameters<typeof importSpriteSheet>[0], base);
@@ -129,10 +133,17 @@ async function convertToolFiles(db: AssetDatabase, fs: ProjectFS, paths: string[
         const tilesets: (TiledMap["tilesets"][number] & { image?: string })[] = [];
         for (const ts of map.tilesets) {
           if (ts.source) {
-            // external tileset (.tsj / .json); .tsx (XML) isn't supported
+            // external tileset: .tsj / .json, or .tsx (XML)
             const src = joinPath(dir, ts.source);
-            if (!src.endsWith(".tsx") && (await fs.exists(src))) tilesets.push({ ...(JSON.parse(await fs.readText(src)) as object), firstgid: ts.firstgid } as never);
-            else report.warnings.push(`${basename(path)}: tilesettet ${ts.source} mangler (eller er XML). Eksportér det som JSON (.tsj) og importér det med.`);
+            if (await fs.exists(src)) {
+              try {
+                const text = await fs.readText(src);
+                const loaded = src.toLowerCase().endsWith(".tsx") ? tsxToJson(text) : (JSON.parse(text) as object);
+                tilesets.push({ ...loaded, firstgid: ts.firstgid } as never);
+              } catch (err) {
+                report.warnings.push(`${basename(path)}: tilesettet ${ts.source} kunne ikke læses (${err instanceof Error ? err.message : String(err)})`);
+              }
+            } else report.warnings.push(`${basename(path)}: tilesettet ${ts.source} mangler. Importér det sammen med kortet.`);
           } else tilesets.push(ts);
         }
         const guids = new Map<object, string>();
@@ -388,7 +399,7 @@ export class AssetDatabase {
       paths.push(path);
     }
     await this.refresh();
-    this.lastImport = await convertToolFiles(this, this.fs, paths.filter((p) => p.endsWith(".json") || p.endsWith(".tmj") || p.endsWith(".tsj")));
+    this.lastImport = await convertToolFiles(this, this.fs, paths.filter((p) => /\.(json|tmj|tsj|tmx)$/i.test(p)));
     if (this.lastImport.created.length > 0) await this.refresh();
     return paths;
   }

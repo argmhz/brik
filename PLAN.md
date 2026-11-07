@@ -459,7 +459,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - ~~Playeren er ca. 1,75 MB, fordi Rapier indlejrer sin WASM.~~ (fase 5.9)
 - Atlas-pakkeren pakker hele billeder. Sprites inde i et sprite sheet trimmes ikke enkeltvis, og der er kun extrude om hele billedet. Rotation i atlas er ikke understøttet.
 - ~~Ingen PWA/offline-indpakning.~~ (fase 5.9)
-- Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke, kun JSON. Spejlede tiles importeres uden spejling.
+- ~~Tiled: XML-formaterne (`.tmx`/`.tsx`) understøttes ikke.~~ (gruppe 3: de oversættes til JSON-formen af en lille XML-læser, også eksterne tilesets og kort med chunks.) Spejlede tiles importeres stadig uden spejling.
 - TexturePacker: Roterede frames understøttes ikke (der gives en advarsel).
 - Desktop-appen er kun bygget og testet på Linux. De native åbn- og gem-dialoger er ikke testet automatisk, og der er ingen signering, auto-opdatering eller builds til Windows og macOS.
 

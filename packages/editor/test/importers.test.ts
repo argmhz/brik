@@ -2,6 +2,7 @@ import { Assets, PrefabInstance, TileMap, TileMapCollider, Collider2D, spawnPref
 import { zlibSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { Editor, MemoryFS, createProject, decodeTiledData, detectJson, importSpriteSheet, importTiledMap, tilesetSprites } from "../src";
+import { tmxToJson, tsxToJson } from "../src/core/tiled-xml";
 
 const enc = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
 const fakeDecode = async () => ({ width: 64, height: 32 }) as unknown as HTMLCanvasElement;
@@ -130,6 +131,100 @@ describe("importers", () => {
     expect(app.world.query([TileMapCollider]).count()).toBe(1);
     expect(app.world.query([Collider2D]).count()).toBe(1);
     expect(editor.db.textures.get("assets/dungeon.png")!.meta.sprites).toHaveLength(8);
+  });
+
+  describe("Tiled XML (.tmx and .tsx)", () => {
+    const tsx = `<?xml version="1.0" encoding="UTF-8"?>
+<!-- a tileset -->
+<tileset version="1.10" tiledversion="1.10.2" name="dungeon" tilewidth="16" tileheight="16" tilecount="8" columns="4">
+ <image source="../art/dungeon.png" width="64" height="32"/>
+ <tile id="1"><objectgroup draworder="index" id="2"><object id="1" x="0" y="0" width="16" height="16"/></objectgroup></tile>
+</tileset>
+`;
+    const tmx = `<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" orientation="orthogonal" renderorder="right-down" width="4" height="3" tilewidth="16" tileheight="16" infinite="0">
+ <tileset firstgid="1" source="dungeon.tsx"/>
+ <layer id="1" name="Ground" width="4" height="3">
+  <data encoding="csv">
+0,0,0,0,
+0,0,0,0,
+1,2,2,3
+</data>
+ </layer>
+ <layer id="2" name="Deco" width="4" height="3">
+  <data>
+   <tile gid="0"/><tile gid="5"/><tile gid="0"/><tile gid="0"/>
+   <tile gid="0"/><tile gid="0"/><tile gid="0"/><tile gid="0"/>
+   <tile gid="0"/><tile gid="0"/><tile gid="0"/><tile gid="0"/>
+  </data>
+ </layer>
+ <objectgroup id="3" name="Objects">
+  <object id="1" name="Spawn" x="8" y="8"><point/></object>
+  <object id="2" name="Exit" type="trigger" x="48" y="16" width="16" height="16">
+   <properties><property name="next" value="level &amp; 2"/><property name="hp" type="int" value="3"/></properties>
+  </object>
+ </objectgroup>
+</map>
+`;
+
+    it("reads maps and tilesets into Tiled's JSON shape", () => {
+      const map = tmxToJson(tmx) as { width: number; infinite: boolean; tilesets: { firstgid: number; source: string }[]; layers: { type: string; name: string; data?: number[]; objects?: { name: string; point?: boolean; type?: string; properties?: { name: string; value: unknown }[] }[] }[] };
+      expect(map).toMatchObject({ type: "map", width: 4, infinite: false, tilesets: [{ firstgid: 1, source: "dungeon.tsx" }] });
+      expect(map.layers.map((l) => [l.type, l.name])).toEqual([["tilelayer", "Ground"], ["tilelayer", "Deco"], ["objectgroup", "Objects"]]);
+      expect(map.layers[0].data).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3]);
+      expect(map.layers[1].data).toEqual([0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      const [spawn, exit] = map.layers[2].objects!;
+      expect(spawn).toMatchObject({ name: "Spawn", point: true });
+      expect(exit).toMatchObject({ name: "Exit", type: "trigger", properties: [{ name: "next", value: "level & 2" }, { name: "hp", value: 3 }] });
+      expect(tsxToJson(tsx)).toMatchObject({ type: "tileset", name: "dungeon", image: "../art/dungeon.png", imagewidth: 64, columns: 4 });
+      expect(() => tmxToJson("<map><layer></map>")).toThrow(/XML/);
+      expect(() => tmxToJson("<tileset/>")).toThrow(/kort/);
+    });
+
+    it("reads base64 (with zlib) data and chunks of infinite maps", () => {
+      const gids = [1, 2, 3, 4];
+      const b64 = btoa(String.fromCharCode(...zlibSync(new Uint8Array(new Uint32Array(gids).buffer))));
+      const xml = `<map width="2" height="2" tilewidth="8" tileheight="8" infinite="1">
+        <layer name="A" width="2" height="2"><data encoding="base64" compression="zlib">
+          <chunk x="-2" y="0" width="2" height="2">${b64}</chunk></data></layer></map>`;
+      const layer = (tmxToJson(xml).layers as { chunks: { x: number; data: string }[]; encoding: string; compression: string }[])[0];
+      expect(layer.encoding).toBe("base64");
+      expect(layer.compression).toBe("zlib");
+      expect(layer.chunks[0].x).toBe(-2);
+      expect(decodeTiledData(layer.chunks[0].data, layer.encoding, layer.compression)).toEqual(gids);
+    });
+
+    it("imports a .tmx with an external .tsx the same way as the JSON files", async () => {
+      const fs = new MemoryFS("t");
+      await createProject(fs, "T");
+      const editor = await Editor.open(fs, { decode: fakeDecode });
+      await editor.db.importFiles([
+        { name: "dungeon.png", bytes: new Uint8Array([2]) },
+        { name: "dungeon.tsx", bytes: new TextEncoder().encode(tsx.replace("../art/", "")) },
+        { name: "level1.tmx", bytes: new TextEncoder().encode(tmx) },
+      ]);
+      expect(editor.db.lastImport.warnings).toEqual([]);
+      const prefab = editor.assets.prefab("level1")!;
+      expect(prefab).toBeDefined();
+      const byName = (n: string) => prefab.data.entities.find((e) => e.components.Name?.value === n)!;
+      expect(byName("Ground").components.TileMap).toMatchObject({ tiles: { "0,0": "tile_0", "1,0": "tile_1", "2,0": "tile_1", "3,0": "tile_2" } });
+      expect(byName("Deco").components.TileMap).toMatchObject({ tiles: { "1,2": "tile_4" } });
+      expect(byName("Exit").components.Transform2D).toMatchObject({ position: { x: 56, y: 24 } });
+      expect(editor.db.textures.get("assets/dungeon.png")!.meta.sprites).toHaveLength(8);
+    });
+
+    it("says so when the external tileset is missing or broken", async () => {
+      const fs = new MemoryFS("t");
+      await createProject(fs, "T");
+      const editor = await Editor.open(fs, { decode: fakeDecode });
+      await editor.db.importFiles([{ name: "a.tmx", bytes: new TextEncoder().encode(tmx) }]);
+      expect(editor.db.lastImport.warnings.join("\n")).toMatch(/dungeon\.tsx mangler/);
+      await editor.db.importFiles([
+        { name: "dungeon.tsx", bytes: new TextEncoder().encode("<tileset><image") },
+        { name: "b.tmx", bytes: new TextEncoder().encode(tmx) },
+      ]);
+      expect(editor.db.lastImport.warnings.join("\n")).toMatch(/dungeon\.tsx kunne ikke læses/);
+    });
   });
 
   it("warns when the image for a sheet is missing", async () => {

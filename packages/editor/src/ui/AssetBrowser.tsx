@@ -176,7 +176,7 @@ export function AssetBrowser(props: { editor: Editor }) {
           ref={fileInput}
           type="file"
           multiple
-          accept="image/*,audio/*,.json,.tmj,.tsj"
+          accept="image/*,audio/*,.json,.tmj,.tsj,.tmx,.tsx"
           style={{ display: "none" }}
           onChange={(ev) => {
             if (ev.currentTarget.files) importFiles(ev.currentTarget.files);

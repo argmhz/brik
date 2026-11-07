@@ -69,8 +69,9 @@ Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
 - **Fra andre værktøjer:**
   - **Aseprite og TexturePacker:** Importér `.png` og `.json` sammen. Du får
     sprites, og Aseprite-tags bliver til animationer.
-  - **Tiled:** Importér `.tmj`, tileset (`.tsj`) og billede sammen. Kortet
-    bliver til en prefab med ét tilemap pr. lag.
+  - **Tiled:** Importér kortet (`.tmj` eller `.tmx`), tilesettet (`.tsj` eller
+    `.tsx`) og billedet sammen. Kortet bliver til en prefab med ét tilemap pr.
+    lag.
 
 ## 4. Scripts
 
