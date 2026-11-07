@@ -14,7 +14,7 @@ export interface FsEntry {
 }
 
 export interface ProjectFS {
-  readonly kind: "fsa" | "opfs" | "memory" | "tauri";
+  readonly kind: "fsa" | "opfs" | "memory" | "tauri" | "node";
   readonly name: string;
   list(dir?: string): Promise<FsEntry[]>;
   readFile(path: string): Promise<Uint8Array>;

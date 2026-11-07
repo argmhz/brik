@@ -483,7 +483,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 
 **Næste skridt for AI**
 - ~~`CLAUDE.md` i projekt-skabelonerne~~ (fase 5.8)
-- Headless-tilstand: MCP-serveren åbner selv projektet i Node, når editoren ikke kører.
+- ~~Headless-tilstand~~ (fase 5.8)
 - AI-chat inde i editoren.
 
 ### Fase 5.7 — Første rigtige spil
@@ -515,12 +515,14 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] AI-forbindelsen prøver igen hvert 2. sekund, også fra en baggrundsfane (timeren ligger i en Web Worker, som browseren ikke bremser), og med det samme, når fanen bliver synlig.
 - [x] Sprite-editoren og store sprite sheets (fx AI-genererede): Grid starter med én celle pr. figur, der findes i billedet (8 figurer på række giver 8 × 1 celler) i stedet for altid 16×16, og der er et felt "Antal" (kolonner × rækker), som regner cellestørrelsen ud. "Find automatisk" ignorerer næsten usynlige pixels (alfa ≤ 16), så støj i baggrunden ikke giver hundredvis af sprites. "Tilpas" kan nu zoome under 100 %, så store billeder kan ses helt.
 - [x] `onEnable`/`onDisable` i Behaviours: kaldes, når entity'en tændes og slukkes (også via en forælder). `onEnable` kommer lige før `onStart`, og `onDisable` før `onDestroy`.
+- [x] Headless-tilstand: `open_project({ path })` åbner en projektmappe inde i MCP-serveren, når editoren ikke kører. Editorens egen kode gør arbejdet (bundtet med esbuild første gang), med et Node-filsystem og billedstørrelser læst fra filernes header. Alle værktøjer virker undtagen `screenshot`. `console.log` fra scripts havner i `get_console` og på stderr, aldrig på stdout, som MCP bruger. `close_project` beskytter ændringer, der ikke er gemt.
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**
 - Autosave dækker kun den åbne scene.
 - Gendannelsesspørgsmålet bruger browserens `confirm()`-dialog.
 - Eksisterende projekter får ikke `CLAUDE.md` automatisk.
+- Headless har ingen renderer, så der er ingen skærmbilleder, og byg/eksport kan ikke køres derfra. Er projektet åbent i både editoren og headless, ser de ikke hinandens ændringer.
 - Scener, der er gemt før `boundsMode` kom, får "view" og skal have deres `bounds` sat til banens kanter (eller `boundsMode: "center"`).
 - Kameraets rotation tages ikke med, når udsnittet holdes inden for rammen.
 

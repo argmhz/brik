@@ -282,5 +282,15 @@ forbundet, men skal ikke længere arbejde, så klik **AI** igen.
 Nye projekter får en `CLAUDE.md`, som forklarer projektets filer og Brik-API'et.
 Så kan en AI-klient også skrive scripts uden MCP-serveren.
 
+**Uden editoren (headless)**
+
+Kører editoren ikke, kan AI'en selv åbne en projektmappe med `open_project`
+(fx `open_project({ path: "examples/mosehop" })`). Projektet åbnes så inde i
+MCP-serveren, uden browser. Alle værktøjer virker som i editoren, undtagen
+skærmbilleder: AI'en kan bygge scener, skrive scripts, spille og gå frem frame
+for frame, og `save_scene` skriver til mappen. `close_project` lukker igen, og
+den nægter, hvis der er ændringer, der ikke er gemt. Har du projektet åbent i
+editoren samtidig, så luk det først, ellers arbejder I i hver sin kopi.
+
 Til fejlsøgning kan serveren startes alene med `make mcp`. Den venter så på
 editoren og skriver i terminalen, når den forbinder.

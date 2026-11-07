@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "description": "MCP server that lets AI clients work in a running Brik editor",
+  "description": "MCP server that lets AI clients work in a Brik project: in the running editor, or headless without it",
   "bin": {
     "brik-mcp": "./src/server.mjs"
   },
@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
+    "esbuild": "0.21.5",
+    "esbuild-wasm": "0.24.0",
     "ws": "8.22.0",
     "zod": "4.6.7"
   },

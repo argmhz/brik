@@ -86,4 +86,5 @@ Scripts can also define components (`defineComponent`) and systems
 - Compile errors and `console.log` output show in the editor's Console.
 - With the Brik MCP server connected (the **AI** button in the editor), you can
   edit the open scene, play, step frames with keys held, click UI, take
-  screenshots and read the console.
+  screenshots and read the console. Without the editor, the MCP tool
+  `open_project` opens this folder headless (everything but screenshots).

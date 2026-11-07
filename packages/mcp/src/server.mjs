@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 // Brik MCP server: lets AI clients (Claude Code, Claude Desktop, ...) work in a
-// running Brik editor. The client talks MCP over stdio; the editor connects to
-// this process over a local WebSocket when the user switches "AI" on.
+// Brik project. The client talks MCP over stdio. Two ways to reach a project:
+// - the running editor connects over a local WebSocket when the user switches
+//   "AI" on, and every change shows live there;
+// - without the editor, open_project opens a project folder headless, in this
+//   process (see headless.mjs).
+
+// stdout carries the MCP protocol: anything else printed there would break it
+for (const level of ["log", "info", "debug"]) console[level] = (...args) => console.error(...args);
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod";
 import { EditorBridge } from "./bridge.mjs";
+import { HeadlessSession } from "./headless.mjs";
 
 const INSTRUCTIONS = `Brik is a web-first 2D game engine (ECS, TypeScript scripts). These tools work in the Brik editor the user has open, live: they see every change, and each change can be undone with Ctrl+Z (or the undo tool).
 
@@ -18,7 +25,9 @@ How to work:
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
 - Art: draw_sprites makes pixel-art PNGs from text rows, create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
 - Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space, or moving the mouse), click (UI buttons or points in the world), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
-- The scene is not saved automatically. Call save_scene when the user wants to keep the result.`;
+- The scene is not saved automatically. Call save_scene when the user wants to keep the result.
+
+Without the editor: if the editor isn't connected, open_project({ path }) opens a project folder (the one with brik.project.json) headless, here in the MCP server. All tools work the same, except screenshot; save_scene writes to the folder. close_project ends it. Prefer the editor when the user has it open, so they see the changes.`;
 
 const bridge = new EditorBridge({ port: Number(process.env.BRIK_MCP_PORT) || 5181 });
 
@@ -27,14 +36,29 @@ const server = new McpServer({ name: "brik", version: "0.1.0" }, { instructions:
 const id = z.string().describe("Entity id from get_hierarchy, find_entities or create_entity");
 const values = z.record(z.string(), z.any());
 
-/** Registers a tool that forwards to the editor. */
+/** A project opened headless with open_project, or null. While open, tools work on it instead of the editor. */
+let headless = null;
+
+/** Sends a tool call to the headless project if one is open, otherwise to the editor. */
+async function call(name, args) {
+  if (headless) return headless.call(name, args);
+  try {
+    return await bridge.call(name, args);
+  } catch (err) {
+    if (bridge.connected) throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`${msg}\nOr work without the editor: open_project({ path: "<project folder>" }) opens the project headless (no screenshots).`);
+  }
+}
+
+/** Registers a tool that forwards to the editor (or the headless project). */
 function tool(name, description, inputSchema, opts = {}) {
   server.registerTool(
     name,
     { description, inputSchema, annotations: { readOnlyHint: !!opts.readOnly, destructiveHint: !!opts.destructive } },
     async (args) => {
       try {
-        const result = await bridge.call(name, args ?? {});
+        const result = await call(name, args ?? {});
         if (opts.image && result?.data) {
           return { content: [{ type: "image", data: result.data, mimeType: result.mimeType ?? "image/png" }] };
         }
@@ -266,6 +290,54 @@ tool(
   },
 );
 tool("stop", "Stops the game and restores the scene as it was before play.", {});
+
+// ---------------------------------------------------------------- headless
+
+/** Registers a tool handled here in the server. */
+function local(name, description, inputSchema, run) {
+  server.registerTool(name, { description, inputSchema }, async (args) => {
+    try {
+      return { content: [{ type: "text", text: JSON.stringify((await run(args ?? {})) ?? null, null, 1) }] };
+    } catch (err) {
+      return { isError: true, content: [{ type: "text", text: err instanceof Error ? err.message : String(err) }] };
+    }
+  });
+}
+
+local(
+  "open_project",
+  "Opens a Brik project folder headless, without the editor: here in the MCP server. Use it when the editor isn't running. All tools then work on this project (except screenshot) until close_project. save_scene writes to the folder.",
+  { path: z.string().describe("The project folder (the one with brik.project.json), absolute or relative to the MCP server's working directory") },
+  async ({ path }) => {
+    if (bridge.connected) {
+      throw new Error("The Brik editor is connected: work there, so the user sees the changes. (They can click the AI button to disconnect it first.)");
+    }
+    if (headless?.dirty) {
+      throw new Error(`${headless.folder} is open with unsaved changes. Call save_scene, or close_project with discardChanges: true, first.`);
+    }
+    headless?.close();
+    headless = null;
+    headless = await HeadlessSession.open(path);
+    bridge.log(`opened ${headless.folder} headless`);
+    return headless.call("project_info");
+  },
+);
+
+local(
+  "close_project",
+  "Closes the project opened with open_project. Refuses when there are unsaved changes unless discardChanges is true. Afterwards tools work in the editor again.",
+  { discardChanges: z.boolean().optional() },
+  async ({ discardChanges = false }) => {
+    if (!headless) return { closed: null };
+    if (headless.dirty && !discardChanges) {
+      throw new Error("The scene has unsaved changes. Call save_scene first, or pass discardChanges: true.");
+    }
+    const folder = headless.folder;
+    headless.close();
+    headless = null;
+    return { closed: folder };
+  },
+);
 
 // ---------------------------------------------------------------- start
 
