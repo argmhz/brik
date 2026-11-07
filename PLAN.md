@@ -549,7 +549,7 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 - [x] Rettet i motoren: `CharacterController2D` bruger figurens eget collision-filter, en `Spawner` uden `asChildren` spawner ved verdenspositionen under en flyttet forælder, og `Joint2D.connectedAnchor` følger den forbundne krops skalering.
 - [x] MCP: `create_entity` oplyser komponenter, børn og automatisk oprettet canvas; `create_prefab` returnerer en id-oversættelse for børnene; `click` læser klik efter hver frame og opdager genindlæsning af samme scene; `project_info` viser spillets scene under Play og lydstatus; `inspect_entity` viser levende partikler, aktiv og verdensposition under Play.
 - [x] MCP: `step({ fps })`, `mouse`/`click` med `at` og `offset` på UI-elementer, tekstredigering (`backspace`, `replace`, Backspace i `press`), `import_asset` (billeder og lyd fra disken), `slice_texture` og `edit_sprites`. Vejledning om bevægelse i `onUpdate` og `onFixedUpdate` står i MCP-instruktionerne og i `CLAUDE.md`.
-- [ ] Flere MCP-klienter om port 5181: den nye server skal kunne overtage uden manuel håndtering.
+- [x] Flere MCP-klienter om port 5181: en ny server beder den gamle om at slippe porten (den nyeste vinder), og editoren kobler selv over. Den gamle bliver passiv og forklarer sin AI, hvad der skete. Ligger noget andet på porten, ventes der som før.
 - [ ] Hørbar lyd kan ikke kontrolleres gennem MCP (kun antal afspilninger og om WebAudio findes).
 
 ### Fase 6 — 3D

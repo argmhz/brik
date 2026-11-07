@@ -330,5 +330,11 @@ for frame, og `save_scene` skriver til mappen. `close_project` lukker igen, og
 den nægter, hvis der er ændringer, der ikke er gemt. Har du projektet åbent i
 editoren samtidig, så luk det først, ellers arbejder I i hver sin kopi.
 
+**Flere AI-sessioner:** Kun én MCP-server kan have editoren ad gangen. Starter du
+en ny (fx i en ny Claude Code-session), beder den den gamle om at slippe
+porten, og editoren kobler selv over til den nye. Den gamle server melder så
+til sin AI, at en nyere har overtaget, og hvordan den kommer tilbage (genstart
+den, eller brug `open_project`).
+
 Til fejlsøgning kan serveren startes alene med `make mcp`. Den venter så på
 editoren og skriver i terminalen, når den forbinder.
