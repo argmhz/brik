@@ -150,6 +150,8 @@ describe("export", () => {
 
     const html = text("index.html");
     expect(html).toContain('rel="manifest" href="manifest.webmanifest"');
+    // the page's own icon, so the browser doesn't ask for /favicon.ico (a 404 on most hosts)
+    expect(html).toContain('rel="icon" href="icons/icon-192.png"');
     expect(html).toContain('navigator.serviceWorker.register("sw.js")');
     const manifest = JSON.parse(text("manifest.webmanifest")) as { name: string; start_url: string; icons: { src: string; sizes: string }[] };
     expect(manifest.name).toBe("Mit Spil");
@@ -243,6 +245,8 @@ describe("export", () => {
     const html = new TextDecoder().decode(off.files["index.html"]);
     expect(html).not.toContain("serviceWorker");
     expect(html).not.toContain("manifest");
+    // no icon file, but still no request for /favicon.ico
+    expect(html).toContain('rel="icon" href="data:,"');
   });
 
   it("refuses to export when scripts don't compile", async () => {

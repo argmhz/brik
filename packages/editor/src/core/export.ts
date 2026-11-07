@@ -212,10 +212,12 @@ export function indexHtml(title: string, pwa = false): string {
     <title>${esc}</title>${
       pwa
         ? `
+    <link rel="icon" href="icons/icon-192.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#111216" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />`
-        : ""
+        : `
+    <link rel="icon" href="data:," />`
     }
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
