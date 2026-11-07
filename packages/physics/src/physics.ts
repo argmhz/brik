@@ -207,11 +207,14 @@ export class Physics {
     // set borrowed inside Rapier, and the world can then never be freed.
     const flags = rapier!.QueryFilterFlags;
     const c = ch.controller;
-    c.computeColliderMovement(col.collider, { x: dx / ppm, y: dy / ppm }, flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS);
+    // the character's own collision filter decides what it collides with (and lands on)
+    const F = world.store(CollisionFilter);
+    const groups = world.has(e, CollisionFilter) ? ((((F.group[e] & 0xffff) << 16) | (F.mask[e] & 0xffff)) >>> 0) : undefined;
+    c.computeColliderMovement(col.collider, { x: dx / ppm, y: dy / ppm }, flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS, groups);
     const m = { ...c.computedMovement() };
     let grounded = c.computedGrounded();
     if (m.y < 0) {
-      c.computeColliderMovement(col.collider, { x: 0, y: m.y }, flags.EXCLUDE_SENSORS);
+      c.computeColliderMovement(col.collider, { x: 0, y: m.y }, flags.EXCLUDE_SENSORS, groups);
       let onDynamic = false;
       for (let i = 0; i < c.numComputedCollisions(); i++) {
         if (c.computedCollision(i)?.collider?.parent()?.isDynamic()) onDynamic = true;
@@ -492,13 +495,15 @@ export class Physics {
       }
       const type = J.type[e];
       const scale = this.worldScale(e);
+      // the anchor on the connected body is in that body's local units, so it scales with it
+      const otherScale = otherBody ? this.worldScale(other) : { x: 1, y: 1 };
       const sig = [
         type,
         other >= 0 ? world.ref(other) : -1,
         J.anchor.x[e] * scale.x,
         J.anchor.y[e] * scale.y,
-        J.connectedAnchor.x[e],
-        J.connectedAnchor.y[e],
+        J.connectedAnchor.x[e] * otherScale.x,
+        J.connectedAnchor.y[e] * otherScale.y,
         J.length[e],
         J.stiffness[e],
         J.damping[e],
@@ -514,7 +519,7 @@ export class Physics {
       if (old) this.dropJoint(e);
 
       const a1 = { x: (J.anchor.x[e] * scale.x) / ppm, y: (J.anchor.y[e] * scale.y) / ppm };
-      let a2 = { x: J.connectedAnchor.x[e] / ppm, y: J.connectedAnchor.y[e] / ppm };
+      let a2 = { x: (J.connectedAnchor.x[e] * otherScale.x) / ppm, y: (J.connectedAnchor.y[e] * otherScale.y) / ppm };
       let body2 = otherBody;
       let anchorBody: RAPIER.RigidBody | null = null;
       if (!body2) {

@@ -10,6 +10,8 @@ import {
   type World,
   defineComponent,
   instantiate,
+  mat3,
+  parentOf,
   t,
   withMeta,
 } from "@brik/core";
@@ -95,10 +97,19 @@ export function spawnPrefab(world: World, prefab: string | PrefabAsset, opts: Sp
   return root;
 }
 
+/** World position from the Transform2D chain (valid even before the first transform pass). */
+function worldPosition(world: World, e: Entity): Vec2 {
+  const T = world.store(Transform2D);
+  let m = mat3.fromTRS(T.position.x[e], T.position.y[e], T.rotation[e], T.scale.x[e], T.scale.y[e]);
+  for (let p = parentOf(world, e); p >= 0 && world.has(p, Transform2D); p = parentOf(world, p)) {
+    m = mat3.multiply(mat3.fromTRS(T.position.x[p], T.position.y[p], T.rotation[p], T.scale.x[p], T.scale.y[p]), m);
+  }
+  return { x: m.tx, y: m.ty };
+}
+
 function spawners(world: World): void {
   const dt = world.resource(Time).dt;
   const S = world.store(Spawner);
-  const T = world.store(Transform2D);
   const assets = world.resource(Assets);
   for (const e of world.query([Spawner])) {
     const guid = S.prefab[e];
@@ -117,7 +128,8 @@ function spawners(world: World): void {
       const child = S.asChildren[e] !== 0;
       const root = spawnPrefab(w, prefab, {
         parent: child ? e : undefined,
-        position: child ? { x: 0, y: 0 } : { x: T.position.x[e], y: T.position.y[e] },
+        // not a child: spawn where the spawner is in the world, also when it sits under a moved parent
+        position: child ? { x: 0, y: 0 } : worldPosition(w, e),
       });
       S.alive[e].push(w.ref(root));
     });

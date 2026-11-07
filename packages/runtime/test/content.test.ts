@@ -11,6 +11,7 @@ import {
   CharacterController2D,
   Collider2D,
   CollisionEnter,
+  CollisionFilter,
   GamePlugins,
   GlobalTransform2D,
   Joint2D,
@@ -369,6 +370,62 @@ describe("prefabs", () => {
     const spawned = w.query([PrefabInstance]).toArray();
     expect(spawned).toHaveLength(3);
     expect(spawned.every((e) => w.store(Transform2D).position.x[e] === 7)).toBe(true);
+  });
+
+  it("a spawner under a moved and scaled parent spawns at its world position", () => {
+    const app = game();
+    const w = app.world;
+    const proto = w.spawn([Transform2D]);
+    w.resource(Assets).addPrefab({ guid: "p", name: "Thing", data: { version: 1, entities: serializeEntities(w, [proto]) } });
+    w.destroy(proto);
+    const parent = w.spawn([Transform2D, { position: { x: 100, y: 50 }, scale: { x: 2, y: 2 } }]);
+    const spawner = w.spawn([Transform2D, { position: { x: 10, y: 5 } }], [Spawner, { prefab: "p", interval: 5, maxAlive: 1 }]);
+    setParent(w, spawner, parent);
+    run(app, 3);
+    const [thing] = w.query([PrefabInstance]).toArray();
+    // 100 + 10 * 2 and 50 + 5 * 2, not the local (10, 5)
+    expect(w.store(Transform2D).position.x[thing]).toBeCloseTo(120);
+    expect(w.store(Transform2D).position.y[thing]).toBeCloseTo(60);
+  });
+});
+
+describe("character filters and scaled joints", () => {
+  it("a character doesn't land on a body its collision filter excludes", () => {
+    const app = game();
+    const w = app.world;
+    w.spawn([Transform2D, { position: { x: 0, y: -100 } }], [Collider2D, { size: { x: 600, y: 20 } }]);
+    // a crate in group 2, where the hero (group 1) only collides with group 1
+    w.spawn([Transform2D, { position: { x: 0, y: -74 } }], [RigidBody2D, { type: "kinematic" }], [Collider2D, { size: { x: 32, y: 32 } }], [CollisionFilter, { group: 2, mask: 2 }]);
+    const hero = w.spawn(
+      [Transform2D, { position: { x: 0, y: 40 } }],
+      [RigidBody2D],
+      [CharacterController2D],
+      [Collider2D, { size: { x: 16, y: 24 } }],
+      [CollisionFilter, { group: 1, mask: 1 }],
+    );
+    const physics = w.resource(Physics);
+    for (let i = 0; i < 120; i++) {
+      physics.moveCharacter(hero, 0, -4);
+      app.update(1 / 60);
+    }
+    // it passes the excluded crate (top at -58, which would hold it at -46) and lands on the floor (top -90)
+    expect(w.store(Transform2D).position.y[hero]).toBeLessThan(-70);
+  });
+
+  it("a joint's connected anchor follows the other body's scale", () => {
+    const app = game();
+    const w = app.world;
+    const other = w.spawn([Transform2D, { position: { x: 0, y: 0 }, scale: { x: 2, y: 2 } }], [RigidBody2D, { type: "static" }], [Collider2D, { size: { x: 10, y: 10 } }]);
+    const bob = w.spawn(
+      [Transform2D, { position: { x: 40, y: 0 } }],
+      [RigidBody2D, { gravityScale: 0 }],
+      [Collider2D, { shape: "circle", size: { x: 6, y: 6 } }],
+      [Joint2D, { type: "hinge", anchor: { x: 0, y: 0 }, connectedAnchor: { x: 20, y: 0 } }],
+    );
+    w.store(Joint2D).connected[bob] = w.ref(other);
+    run(app, 30);
+    // the anchor is 20 local units = 40 world units from the scaled body: the bob stays put
+    expect(w.store(Transform2D).position.x[bob]).toBeCloseTo(40, 0);
   });
 });
 
