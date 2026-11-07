@@ -31,7 +31,7 @@ import {
 } from "@brik/core";
 import { Input } from "@brik/input";
 import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
-import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, playAnimation } from "@brik/render";
+import { AnimationEvent, AnimationFinished, Camera2D, Particles, UIClick, UILayout, UISubmit, UIValueChanged, playAnimation } from "@brik/render";
 import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
@@ -200,6 +200,10 @@ export abstract class Behaviour {
   onTimer?(): void;
   /** This entity's UIButton was clicked. */
   onClick?(): void;
+  /** This entity's UISlider (number), UIToggle (boolean) or UITextInput (string) changed. */
+  onValueChanged?(value: number | boolean | string): void;
+  /** Enter was pressed in this entity's UITextInput. */
+  onSubmit?(text: string): void;
 
   get time(): Time {
     return this.world.resource(Time);
@@ -590,7 +594,9 @@ type HookName =
   | "onAnimationEvent"
   | "onAnimationFinished"
   | "onTimer"
-  | "onClick";
+  | "onClick"
+  | "onValueChanged"
+  | "onSubmit";
 
 function call(s: Slot, method: HookName, arg?: unknown): void {
   try {
@@ -619,6 +625,8 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
       const animDone = reader(AnimationFinished);
       const timers = reader(TimerFinished);
       const clicks = reader(UIClick);
+      const changes = reader(UIValueChanged);
+      const submits = reader(UISubmit);
       const dispatchEvents = () => {
         for (const [r, hook] of pairs) {
           for (const { a, b } of r.read()) {
@@ -633,6 +641,8 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
         }
         for (const ev of timers.read()) runtime.dispatch(ev.entity, "onTimer", undefined);
         for (const ev of clicks.read()) runtime.dispatch(ev.entity, "onClick", undefined);
+        for (const ev of changes.read()) runtime.dispatch(ev.entity, "onValueChanged", ev.value);
+        for (const ev of submits.read()) runtime.dispatch(ev.entity, "onSubmit", ev.value);
       };
       app.addSystem("fixedUpdate", {
         name: "behaviours.fixedUpdate",

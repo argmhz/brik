@@ -1,4 +1,16 @@
-import { RigidBody2D, TileMap, Transform2D, blockTerrainRules, findBySceneId, initPhysics } from "@brik/runtime";
+import {
+  Input,
+  RigidBody2D,
+  TileMap,
+  Transform2D,
+  UILayout,
+  UISlider,
+  UITextInput,
+  UIToggle,
+  blockTerrainRules,
+  findBySceneId,
+  initPhysics,
+} from "@brik/runtime";
 import * as esbuild from "esbuild-wasm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Editor, MemoryFS, createBridgeHandlers, createProject } from "../src";
@@ -382,6 +394,72 @@ export class Boom extends Behaviour {
     expect(boom?.text).not.toContain("behaviour.ts");
     const entry = editor.console.entries.find((e) => e.text.includes("bang"));
     expect(entry).toMatchObject({ file: "scripts/Helper.ts", line: 3 });
+  });
+
+  it("sliders, toggles and text fields in a stack: drag, click and type", async () => {
+    const { editor, h } = await setup();
+    await h.write_script({
+      path: "scripts/Spy.ts",
+      content: `import { Behaviour, Name, expose } from "brik";
+export const Log: string[] = [];
+export class Spy extends Behaviour {
+  onValueChanged(v: number | boolean | string) { Log.push(this.get(Name).value + "=" + (typeof v === "number" ? v.toFixed(1) : String(v))); }
+  onSubmit(t: string) { Log.push("submit=" + t); }
+}
+export class Show extends Behaviour {
+  @expose log = "";
+  onUpdate() { this.log = Log.join(","); }
+}`,
+    });
+    const { id: stack } = (await h.create_entity({ kind: "ui-stack" })) as { id: string };
+    await h.attach_script({ id: stack, script: "Show" });
+    const kids: Record<string, string> = {};
+    for (const kind of ["ui-slider", "ui-toggle", "ui-input"]) {
+      kids[kind] = ((await h.create_entity({ kind, parent: stack })) as { id: string }).id;
+      await h.attach_script({ id: kids[kind], script: "Spy" });
+    }
+    const log = async () => ((await h.inspect_entity({ id: stack })) as { scripts: { live: { log: string } }[] }).scripts[0].live.log;
+    await h.play({});
+    await h.step({ frames: 1 });
+
+    // the stack placed them top to bottom, centered (no renderer in tests: lay out as the Game view would)
+    const layout = editor.world.resource(UILayout);
+    layout.update(editor.world, 960, 540);
+    const rect = (id: string) => layout.byEntity.get(findBySceneId(editor.world, id))!.rect;
+    expect(rect(kids["ui-slider"]).y).toBeGreaterThan(rect(kids["ui-toggle"]).y);
+    expect(rect(kids["ui-toggle"]).y).toBeGreaterThan(rect(kids["ui-input"]).y);
+    const center = (r: { x: number; w: number }) => r.x + r.w / 2;
+    expect(center(rect(kids["ui-slider"]))).toBeCloseTo(center(rect(kids["ui-input"])), 0);
+
+    // press on the slider's middle, drag past its right end, let go
+    const s = rect(kids["ui-slider"]);
+    await h.step({ frames: 2, mouse: { entity: kids["ui-slider"] }, hold: ["Mouse0"] });
+    editor.world.resource(Input).injectPointer(s.x + s.w + 40, layout.screenH - (s.y + s.h / 2));
+    await h.step({ frames: 3, hold: ["Mouse0"] });
+    await h.step({ frames: 2 });
+    expect(editor.world.store(UISlider).value[findBySceneId(editor.world, kids["ui-slider"])]).toBe(1);
+
+    // a click turns the toggle on
+    await h.click({ entity: kids["ui-toggle"] });
+    expect(editor.world.store(UIToggle).on[findBySceneId(editor.world, kids["ui-toggle"])]).toBe(1);
+
+    // click the text field, type, press Enter
+    await h.click({ entity: kids["ui-input"] });
+    await h.step({ frames: 2, type: "hej\n" });
+    const field = findBySceneId(editor.world, kids["ui-input"]);
+    expect(editor.world.store(UITextInput).value[field]).toBe("hej");
+    expect(editor.world.store(UITextInput).focused[field]).toBe(0);
+    await expect(async () => h.step({ type: "mere" })).rejects.toThrow(/Click one first/);
+
+    await h.step({ frames: 1 });
+    const events = (await log()).split(",");
+    // pressing the middle didn't change it (it starts at 0.5), so only the drag sent a value
+    expect(events.filter((e) => e.startsWith("Slider")).at(-1)).toBe("Slider=1.0");
+    expect(events).toContain("Slider=1.0");
+    expect(events).toContain("Toggle=true");
+    expect(events).toContain("Tekstfelt=hej");
+    expect(events.at(-1)).toBe("submit=hej");
+    await h.stop({});
   });
 });
 

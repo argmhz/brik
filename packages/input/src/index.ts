@@ -133,18 +133,23 @@ export class Input {
     on(window, "blur", () => {
       for (const code of this.down) this.queue.push({ type: "up", code });
     });
+    // a touch (or a click with no move first) has no pointermove before it, so take the position here too
+    const place = (ev: PointerEvent) => {
+      const r = element.getBoundingClientRect();
+      this.pendingMove.x = ev.clientX - r.left;
+      this.pendingMove.y = ev.clientY - r.top;
+      this.pointer.inside = true;
+    };
     on(element, "pointerdown", (ev) => {
       element.setPointerCapture?.(ev.pointerId);
+      place(ev);
       this.queue.push({ type: "down", code: `Mouse${ev.button}` });
     });
     on(element, "pointerup", (ev) => this.queue.push({ type: "up", code: `Mouse${ev.button}` }));
     on(element, "pointermove", (ev) => {
-      const r = element.getBoundingClientRect();
-      this.pendingMove.x = ev.clientX - r.left;
-      this.pendingMove.y = ev.clientY - r.top;
+      place(ev);
       this.pendingMove.dx += ev.movementX;
       this.pendingMove.dy += ev.movementY;
-      this.pointer.inside = true;
     });
     on(element, "pointerleave", () => {
       this.pointer.inside = false;

@@ -60,6 +60,10 @@ export function Hierarchy(props: { editor: Editor }) {
       <MenuItem onClick={() => editor.createEntity("ui-button", { parentId })}>Knap</MenuItem>
       <MenuItem onClick={() => editor.createEntity("ui-text", { parentId })}>Tekst</MenuItem>
       <MenuItem onClick={() => editor.createEntity("ui-image", { parentId })}>Billede</MenuItem>
+      <MenuItem onClick={() => editor.createEntity("ui-slider", { parentId })}>Slider</MenuItem>
+      <MenuItem onClick={() => editor.createEntity("ui-toggle", { parentId })}>Toggle</MenuItem>
+      <MenuItem onClick={() => editor.createEntity("ui-input", { parentId })}>Tekstfelt</MenuItem>
+      <MenuItem onClick={() => editor.createEntity("ui-stack", { parentId })}>Kolonne (stak)</MenuItem>
     </>
   );
 

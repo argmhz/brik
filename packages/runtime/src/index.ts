@@ -14,7 +14,7 @@ import { AudioPlugin } from "@brik/audio";
 import { App, type AppOptions, CorePlugin, GameplayPlugin } from "@brik/core";
 import { InputPlugin } from "@brik/input";
 import { PhysicsPlugin, type PhysicsOptions } from "@brik/physics";
-import { RenderPlugin, type RendererOptions, SpriteLogicPlugin, UIPlugin } from "@brik/render";
+import { RenderPlugin, type RendererOptions, SpriteLogicPlugin, UIPlugin, UIWidgetsPlugin } from "@brik/render";
 import { PrefabPlugin } from "./prefab";
 
 export interface GameOptions extends AppOptions, RendererOptions {
@@ -35,6 +35,7 @@ export function GamePlugins(options: { input?: HTMLElement; physics?: PhysicsOpt
       .addPlugin(GameplayPlugin)
       .addPlugin(SpriteLogicPlugin)
       .addPlugin(UIPlugin)
+      .addPlugin(UIWidgetsPlugin)
       .addPlugin(PhysicsPlugin(options.physics))
       .addPlugin(AudioPlugin)
       .addPlugin(PrefabPlugin);

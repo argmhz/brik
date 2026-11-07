@@ -9,6 +9,7 @@ export * from "./renderer";
 export * from "./systems";
 export * from "./particles";
 export * from "./ui";
+export * from "./ui-widgets";
 export { TextCache, layoutLines, type TextImage, type TextStyle } from "./text";
 export { SpriteBatcher, packColor } from "./sprite-batcher";
 

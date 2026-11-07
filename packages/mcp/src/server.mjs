@@ -131,7 +131,7 @@ tool(
 
 tool(
   "create_entity",
-  "Creates an entity and selects it. `kind` gives a starting shape: empty, rect, circle, sprite, animated, camera, text, sound, tilemap, particles, ui-canvas, ui-image, ui-text, ui-button. `components` adds or overrides components, e.g. { RigidBody2D: { type: 'dynamic' }, Collider2D: { size: { x: 32, y: 32 } } }.",
+  "Creates an entity and selects it. `kind` gives a starting shape: empty, rect, circle, sprite, animated, camera, text, sound, tilemap, particles, ui-canvas, ui-image, ui-text, ui-button, ui-slider, ui-toggle, ui-input (text field), ui-stack (lays out its children in a column or row). `components` adds or overrides components, e.g. { RigidBody2D: { type: 'dynamic' }, Collider2D: { size: { x: 32, y: 32 } } }.",
   {
     kind: z.string().optional(),
     name: z.string().optional(),
@@ -277,6 +277,7 @@ tool(
       .object({ entity: z.string().optional(), x: z.number().optional(), y: z.number().optional() })
       .optional()
       .describe('Moves the mouse first: { entity: "<id>" } aims at a UI element or an entity, { x, y } at a point in world units. Use with hold/press "Mouse0" to shoot or drag.'),
+    type: z.string().optional().describe('Text typed into the focused text field (click it first); "\n" presses Enter'),
   },
 );
 tool(

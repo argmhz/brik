@@ -197,14 +197,27 @@ lag.
 
 ## 7. UI
 
-Opret "Knap", "Tekst" eller "Billede" i hierarkiet. Der laves automatisk et
-**UI Canvas**. Placering sker med `UIRect`:
+Opret "Knap", "Tekst", "Billede", "Slider", "Toggle", "Tekstfelt" eller
+"Kolonne" i hierarkiet. Der laves automatisk et **UI Canvas**. Placering sker med `UIRect`:
 
 - Er ankrene ens, har elementet en fast størrelse.
 - Er de forskellige, strækkes elementet med skærmen.
 
-UI vises i Spil-fanen og som omrids i scene view. Knapper sender `onClick` til
-scripts på samme entity.
+En **kolonne** (`UIStack`) stiller sine børn under hinanden (eller ved siden af
+hinanden med `direction: horizontal`) i hierarkiets rækkefølge. Børnene beholder
+deres størrelse, og `stretch` får dem til at fylde bredden.
+
+UI vises i Spil-fanen og som omrids i scene view. Scripts på samme entity får:
+
+| Element | Hook |
+|---|---|
+| Knap (`UIButton`) | `onClick()` |
+| Slider (`UISlider`) | `onValueChanged(value: number)` |
+| Toggle (`UIToggle`) | `onValueChanged(on: boolean)` |
+| Tekstfelt (`UITextInput`) | `onValueChanged(text: string)` mens man skriver, og `onSubmit(text)` ved Enter |
+
+Et tekstfelt viser sin tekst gennem sin `UIText`, så skrifttype, størrelse og
+farve sættes der.
 
 ## 8. Prefabs
 

@@ -7,6 +7,7 @@ import {
   GlobalTransform2D,
   Input,
   UIClick,
+  UITextEntry,
   UILayout,
   Name,
   PrefabInstance,
@@ -85,6 +86,10 @@ const ENTITY_KINDS: EntityKind[] = [
   "ui-image",
   "ui-text",
   "ui-button",
+  "ui-slider",
+  "ui-toggle",
+  "ui-input",
+  "ui-stack",
 ];
 
 class BridgeError extends Error {}
@@ -815,7 +820,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { mode: editor.play.mode };
     },
 
-    step: async ({ frames = 1, hold = [], press = [], mouse }) => {
+    step: async ({ frames = 1, hold = [], press = [], mouse, type }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const held = keyList(hold, "hold");
       const tapped = keyList(press, "press");
@@ -825,6 +830,12 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       if (mouse !== undefined) {
         const p = pointerTarget(editor, mouse);
         input!.injectPointer(p.x, p.y);
+      }
+      if (type !== undefined) {
+        const entry = world.tryResource(UITextEntry);
+        if (typeof type !== "string") throw new BridgeError("`type` is the text to type");
+        if (!entry || entry.focused < 0) throw new BridgeError("No text field has focus. Click one first (click with its entity id).");
+        entry.type(type);
       }
       // keys stay down between calls while they are listed in `hold`, so holding isn't a new press
       if (input) {

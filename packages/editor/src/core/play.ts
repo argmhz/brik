@@ -6,6 +6,7 @@ import {
   GamePlugins,
   Input,
   Particles,
+  UITextEntry,
   type Phase,
   Physics,
   type SceneData,
@@ -121,6 +122,7 @@ export class PlayController {
       ["physics", () => world.tryResource(Physics)?.reset()],
       ["tweens", () => world.tryResource(Tweens)?.clear()],
       ["particles", () => world.tryResource(Particles)?.clear()],
+      ["text fields", () => world.tryResource(UITextEntry)?.dispose()],
       ["commands", () => world.commands.flush()],
     ];
     for (const [what, fn] of cleanups) {

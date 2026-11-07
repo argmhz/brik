@@ -1,6 +1,7 @@
 import type { SpriteRef } from "@brik/assets";
 import {
   type App,
+  type ComponentDef,
   type Entity,
   GlobalTransform2D,
   type Rect,
@@ -39,6 +40,27 @@ export const UIRect = defineComponent("UIRect", {
   position: t.vec2(0, 0),
   size: t.vec2(160, 40),
 });
+
+/**
+ * Lays out its children in a column or a row, in hierarchy order, instead of
+ * by their anchors. Each child keeps its UIRect size (with `stretch`, it also
+ * fills the stack across).
+ */
+export const UIStack = defineComponent(
+  "UIStack",
+  {
+    direction: t.enum(["vertical", "horizontal"] as const, "vertical"),
+    /** Space between children. */
+    spacing: withMeta(t.f32(8), { min: 0, step: 1 }),
+    /** Space inside the edges. */
+    padding: withMeta(t.f32(0), { min: 0, step: 1 }),
+    /** Where children sit across the stack. */
+    align: t.enum(["center", "start", "end"] as const, "center"),
+    /** Children fill the stack across (width in a column, height in a row). */
+    stretch: t.bool(false),
+  },
+  { requires: [UIRect] },
+);
 
 /** A colored rectangle or a sprite (9-sliced if the sprite has borders). */
 export const UIImage = defineComponent(
@@ -122,23 +144,33 @@ export class UILayout {
 
   /** The topmost interactable button under a point (CSS pixels, y down), or -1. */
   buttonAt(world: World, x: number, yDown: number): Entity {
+    const e = this.interactiveAt(world, x, yDown);
+    return e >= 0 && world.has(e, UIButton) ? e : -1;
+  }
+
+  /**
+   * The topmost element under a point (CSS pixels, y down) that reacts to the
+   * mouse: a button, slider, toggle or text field. Images and text block
+   * clicks to what is under them.
+   */
+  interactiveAt(world: World, x: number, yDown: number): Entity {
     const y = this.screenH - yDown;
     for (let i = this.elements.length - 1; i >= 0; i--) {
       const el = this.elements[i];
       const r = el.rect;
       if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
-      if (world.has(el.e, UIButton)) return el.e;
-      // images and text block clicks to what is under them
+      if (INTERACTIVE.some((c) => world.has(el.e, c))) return el.e;
       if (world.has(el.e, UIImage)) return -1;
     }
     return -1;
   }
 
-  private visit(world: World, e: Entity, parent: Rect, scale: number): void {
+  /** `fixed`: the rect a UIStack parent gave the element, instead of its anchors. */
+  private visit(world: World, e: Entity, parent: Rect, scale: number, fixed?: Rect): void {
     if (!isActive(world, e)) return;
     let rect = parent;
     if (world.has(e, UIRect)) {
-      rect = layoutRect(world, e, parent);
+      rect = fixed ?? layoutRect(world, e, parent);
       const el: UIElement = {
         e,
         rect: { x: rect.x * scale, y: rect.y * scale, w: rect.w * scale, h: rect.h * scale },
@@ -147,8 +179,50 @@ export class UILayout {
       this.elements.push(el);
       this.byEntity.set(e, el);
     }
-    for (const child of childrenOf(world, e)) this.visit(world, child, rect, scale);
+    const kids = childrenOf(world, e);
+    if (world.has(e, UIStack) && world.has(e, UIRect)) {
+      const rects = stackRects(world, e, rect, kids);
+      kids.forEach((child, i) => this.visit(world, child, rect, scale, rects[i] ?? undefined));
+    } else for (const child of kids) this.visit(world, child, rect, scale);
   }
+}
+
+/** Components that make an element react to the mouse (set by the widgets module too). */
+export const INTERACTIVE: ComponentDef[] = [UIButton];
+
+/** Rects for a UIStack's children (null for children it doesn't place). In UI units, y up. */
+function stackRects(world: World, e: Entity, box: Rect, kids: readonly Entity[]): (Rect | null)[] {
+  const S = world.store(UIStack);
+  const U = world.store(UIRect);
+  const vertical = S.direction[e] === "vertical";
+  const pad = S.padding[e];
+  const gap = S.spacing[e];
+  const align = S.align[e];
+  const stretch = S.stretch[e] !== 0;
+  const inner = { x: box.x + pad, y: box.y + pad, w: Math.max(0, box.w - pad * 2), h: Math.max(0, box.h - pad * 2) };
+  // a column fills from the top down, a row from the left
+  let cursor = vertical ? inner.y + inner.h : inner.x;
+  return kids.map((child) => {
+    if (!world.has(child, UIRect) || !isActive(world, child)) return null;
+    let w = Math.max(0, U.size.x[child]);
+    let h = Math.max(0, U.size.y[child]);
+    if (stretch) {
+      if (vertical) w = inner.w;
+      else h = inner.h;
+    }
+    const across = (space: number, size: number) => (align === "start" ? 0 : align === "end" ? space - size : (space - size) / 2);
+    let r: Rect;
+    if (vertical) {
+      cursor -= h;
+      r = { x: inner.x + across(inner.w, w), y: cursor, w, h };
+      cursor -= gap;
+    } else {
+      // "start" across a row is the top, like reading order
+      r = { x: cursor, y: inner.y + inner.h - h - across(inner.h, h), w, h };
+      cursor += w + gap;
+    }
+    return r;
+  });
 }
 
 function isActive(world: World, e: Entity): boolean {

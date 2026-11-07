@@ -3,6 +3,7 @@ import { type Entity, GlobalTransform2D, type Mat3, TileMap, type Vec2, type Wor
 import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
 import { ParticleEmitter2D, Particles } from "./particles";
 import { UIImage, UILayout, UIText } from "./ui";
+import { UISlider, UIToggle } from "./ui-widgets";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle } from "./text";
 
@@ -209,6 +210,8 @@ export class Renderer {
         }
         this.stats.sprites++;
       }
+      if (world.has(e, UISlider)) this.drawSlider(world, e, x, y, w, h);
+      if (world.has(e, UIToggle)) this.drawToggle(world, e, x, y, w, h);
       if (world.has(e, UIText) && X.text[e]) {
         style.text = X.text[e];
         style.size = X.size[e] * el.scale;
@@ -230,6 +233,39 @@ export class Renderer {
       }
     }
     this.batcher.end();
+  }
+
+  /** Track, filled part and handle of a UISlider, inside its rect. */
+  private drawSlider(world: World, e: Entity, x: number, y: number, w: number, h: number): void {
+    const S = world.store(UISlider);
+    const handle = h * 0.8;
+    const span = S.max[e] - S.min[e];
+    const f = span === 0 ? 0 : Math.min(1, Math.max(0, (S.value[e] - S.min[e]) / span));
+    const th = Math.max(2, h * 0.3);
+    const ty = y + (h - th) / 2;
+    const hx = x + f * Math.max(0, w - handle);
+    const color = (c: typeof S.trackColor) => packColor(c.r[e], c.g[e], c.b[e], c.a[e]);
+    const dim = S.interactable[e] ? 1 : 0.5;
+    // (a, b, c, d, x, y, mode, fill, stroke, strokeWidth, corner radius)
+    this.batcher.pushShape(w, 0, 0, th, x, ty, 1, color(S.trackColor), 0, 0, th / 2);
+    this.batcher.pushShape(hx + handle / 2 - x, 0, 0, th, x, ty, 1, color(S.fillColor), 0, 0, th / 2);
+    const handleColor = packColor(S.handleColor.r[e], S.handleColor.g[e], S.handleColor.b[e], S.handleColor.a[e] * dim);
+    this.batcher.pushShape(handle, 0, 0, handle, hx, y + (h - handle) / 2, 2, handleColor, 0, 0, 0);
+    this.stats.sprites += 3;
+  }
+
+  /** The box (and check when on) of a UIToggle, at the left of its rect. */
+  private drawToggle(world: World, e: Entity, x: number, y: number, w: number, h: number): void {
+    const G = world.store(UIToggle);
+    const size = Math.min(w, h);
+    const by = y + (h - size) / 2;
+    this.batcher.pushShape(size, 0, 0, size, x, by, 1, packColor(G.boxColor.r[e], G.boxColor.g[e], G.boxColor.b[e], G.boxColor.a[e]), 0, 0, size * 0.2);
+    if (G.on[e]) {
+      const c = size * 0.6;
+      const o = (size - c) / 2;
+      this.batcher.pushShape(c, 0, 0, c, x + o, by + o, 1, packColor(G.checkColor.r[e], G.checkColor.g[e], G.checkColor.b[e], G.checkColor.a[e]), 0, 0, c * 0.2);
+    }
+    this.stats.sprites++;
   }
 
   /** Draws a sprite stretched to a rect with fixed-size corners (borders are in source pixels times `scale`). */

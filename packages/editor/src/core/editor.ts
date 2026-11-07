@@ -55,9 +55,13 @@ export type EntityKind =
   | "ui-canvas"
   | "ui-image"
   | "ui-text"
-  | "ui-button";
+  | "ui-button"
+  | "ui-slider"
+  | "ui-toggle"
+  | "ui-input"
+  | "ui-stack";
 
-const UI_KINDS = new Set<EntityKind>(["ui-image", "ui-text", "ui-button"]);
+const UI_KINDS = new Set<EntityKind>(["ui-image", "ui-text", "ui-button", "ui-slider", "ui-toggle", "ui-input", "ui-stack"]);
 export type EditorEvent = "world" | "selection" | "assets" | "scene" | "settings" | "scripts" | "console" | "play";
 
 export interface EditorOptions {
@@ -418,6 +422,10 @@ export class Editor {
       "ui-image": "Billede",
       "ui-text": "UI-tekst",
       "ui-button": "Knap",
+      "ui-slider": "Slider",
+      "ui-toggle": "Toggle",
+      "ui-input": "Tekstfelt",
+      "ui-stack": "Kolonne",
     };
     const components: SceneEntityData["components"] = {
       Name: { value: opts.name ?? names[kind] },
@@ -447,6 +455,25 @@ export class Editor {
       components.UIRect = { size: { x: 180, y: 48 } };
       components.UIImage = { color: { r: 0.3, g: 0.55, b: 1, a: 1 } };
       components.UIButton = {};
+    }
+    if (kind === "ui-slider") {
+      components.UIRect = { size: { x: 220, y: 24 } };
+      components.UISlider = {};
+    }
+    if (kind === "ui-toggle") {
+      components.UIRect = { size: { x: 220, y: 28 } };
+      components.UIToggle = {};
+    }
+    if (kind === "ui-input") {
+      components.UIRect = { size: { x: 260, y: 40 } };
+      components.UIImage = { color: { r: 0.12, g: 0.13, b: 0.17, a: 1 } };
+      components.UIText = { text: "Skriv her…", size: 18, align: "left", wrap: false };
+      components.UITextInput = {};
+    }
+    if (kind === "ui-stack") {
+      components.UIRect = { size: { x: 280, y: 220 } };
+      components.UIImage = { color: { r: 0.2, g: 0.22, b: 0.28, a: 0.9 } };
+      components.UIStack = { padding: 12, spacing: 10 };
     }
     // extra values go on top of the defaults field by field, so { Transform2D: { scale } } keeps x and y
     for (const [name, values] of Object.entries(opts.extra ?? {})) {
@@ -480,6 +507,19 @@ export class Editor {
           Parent: { entity: id },
           UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 0, y: 0 } },
           UIText: { text: "Knap", size: 20 },
+        },
+      });
+    }
+    if (kind === "ui-toggle") {
+      // the label sits to the right of the box
+      data.push({
+        id: newSceneId(),
+        components: {
+          Name: { value: "Tekst" },
+          Transform2D: {},
+          Parent: { entity: id },
+          UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, position: { x: 18, y: 0 }, size: { x: -36, y: 0 } },
+          UIText: { text: "Valg", size: 18, align: "left" },
         },
       });
     }

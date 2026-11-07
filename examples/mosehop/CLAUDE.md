@@ -46,7 +46,8 @@ export class Player extends Behaviour {
 **Hooks:** `onStart`, `onEnable`/`onDisable` (switched on/off), `onUpdate(dt)`, `onFixedUpdate(dt)` (60 Hz), `onDestroy`,
 `onCollisionEnter/Exit(other)`, `onTriggerEnter/Exit(other)`,
 `onAnimationEvent(name)`, `onAnimationFinished(clip)`, `onTimer`, `onClick`
-(the entity's UIButton).
+(the entity's UIButton), `onValueChanged(value)` (UISlider, UIToggle, UITextInput) and
+`onSubmit(text)` (Enter in a UITextInput).
 
 **Helpers on `this`:**
 - Components: `this.transform` (live Transform2D), `this.get(C)`, `this.has(C)`, `this.add(C, values)`, `this.remove(C)`
@@ -78,7 +79,8 @@ Scripts can also define components (`defineComponent`) and systems
   Characters: `RigidBody2D` (kinematic) + `CharacterController2D` + `Collider2D`, moved with `moveCharacter`.
   Triggers: `Collider2D` with `isTrigger: true`. Tiles: `TileMap` + `TileMapCollider`.
 - Angles are radians. Colors are `{ r, g, b, a }` from 0 to 1.
-- UI lives under a `UICanvas` and is placed with `UIRect` anchors (screen space).
+- UI lives under a `UICanvas` and is placed with `UIRect` anchors (screen space), or by a
+  `UIStack` parent that lays its children out in a column or row.
 
 ## Checking your work
 
