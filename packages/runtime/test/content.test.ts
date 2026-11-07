@@ -19,6 +19,7 @@ import {
   ScriptRegistry,
   Scripts,
   ScriptsPlugin,
+  Shape2D,
   Spawner,
   Sprite,
   SpriteAnimator,
@@ -26,8 +27,10 @@ import {
   TriggerEnter,
   UILayout,
   Velocity2D,
+  pathBounds,
   setActive,
   setParent,
+  spriteQuad,
   textResolution,
   frameAt,
   initPhysics,
@@ -538,6 +541,26 @@ describe("text resolution", () => {
     // the camera at zoom 3 on a 2x screen: 6 pixels per world unit
     expect(textResolution(3 * 2)).toBe(6);
     expect(textResolution(500)).toBe(32);
+  });
+});
+
+describe("polygon and line shapes", () => {
+  it("are picked by the bounds of their points, grown by half the stroke", () => {
+    expect(pathBounds([{ x: -10, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 20 }], 4)).toEqual({ x: -13, y: -3, w: 26, h: 26 });
+    expect(pathBounds([], 1)).toBeNull();
+    const app = game();
+    const w = app.world;
+    const e = w.spawn(
+      [Transform2D, { position: { x: 100, y: 50 } }],
+      [Shape2D, { kind: "polygon", points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 0, y: 30 }], strokeWidth: 0 }],
+    );
+    app.update(1 / 60);
+    const q = spriteQuad(w, e)!;
+    // the quad starts 1 unit outside the points (antialiasing margin) and spans them
+    expect(q.tx).toBeCloseTo(99);
+    expect(q.ty).toBeCloseTo(49);
+    expect(q.a).toBeCloseTo(42);
+    expect(q.d).toBeCloseTo(32);
   });
 });
 

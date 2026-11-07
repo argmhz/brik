@@ -78,6 +78,8 @@ const ENTITY_KINDS: EntityKind[] = [
   "camera",
   "rect",
   "circle",
+  "polygon",
+  "line",
   "text",
   "sound",
   "tilemap",

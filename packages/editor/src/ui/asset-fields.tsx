@@ -3,7 +3,7 @@ import { For, Show, createEffect } from "solid-js";
 import { isAudio, isClip, isPrefab } from "../core/asset-db";
 import type { Editor } from "../core/editor";
 import { MenuItem, openPopup } from "./Popup";
-import { SpriteThumb } from "./fields";
+import { NumberBox, SpriteThumb } from "./fields";
 import { DND } from "./hooks";
 
 export type AssetKind = "clip" | "prefab" | "audio" | "texture";
@@ -186,5 +186,45 @@ export function MultilineField(props: { value: () => string; onCommit: (v: strin
       }}
       onBlur={() => el.value !== props.value() && props.onCommit(el.value)}
     />
+  );
+}
+
+/** Points of a polygon or line (Shape2D.points): x and y per row, add and remove rows. */
+export function PointsField(props: { value: () => { x: number; y: number }[]; onCommit: (v: { x: number; y: number }[]) => void }) {
+  const pts = () => props.value() ?? [];
+  const set = (i: number, p: { x: number; y: number }) => props.onCommit(pts().map((q, j) => (j === i ? p : { ...q })));
+  return (
+    <div class="points-field">
+      <For each={pts()}>
+        {(p, i) => (
+          <div class="field-row">
+            <div class="part">
+              <span class="x">X</span>
+              <NumberBox value={() => p.x} onCommit={(x) => set(i(), { x, y: p.y })} />
+            </div>
+            <div class="part">
+              <span class="y">Y</span>
+              <NumberBox value={() => p.y} onCommit={(y) => set(i(), { x: p.x, y })} />
+            </div>
+            <button class="ghost danger" title="Fjern punktet" disabled={pts().length <= 2} onClick={() => props.onCommit(pts().filter((_, j) => j !== i()))}>
+              ✕
+            </button>
+          </div>
+        )}
+      </For>
+      <button
+        class="ghost"
+        title="Nyt punkt efter det sidste"
+        onClick={() => {
+          const list = pts();
+          const last = list.at(-1) ?? { x: 0, y: 0 };
+          const prev = list.at(-2) ?? { x: last.x - 16, y: last.y };
+          // continue in the same direction as the last segment
+          props.onCommit([...list.map((q) => ({ ...q })), { x: last.x + (last.x - prev.x), y: last.y + (last.y - prev.y) }]);
+        }}
+      >
+        + Punkt
+      </button>
+    </div>
   );
 }

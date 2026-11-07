@@ -131,7 +131,7 @@ tool(
 
 tool(
   "create_entity",
-  "Creates an entity and selects it. `kind` gives a starting shape: empty, rect, circle, sprite, animated, camera, text, sound, tilemap, particles, ui-canvas, ui-image, ui-text, ui-button, ui-slider, ui-toggle, ui-input (text field), ui-stack (lays out its children in a column or row). `components` adds or overrides components, e.g. { RigidBody2D: { type: 'dynamic' }, Collider2D: { size: { x: 32, y: 32 } } }.",
+  "Creates an entity and selects it. `kind` gives a starting shape: empty, rect, circle, polygon, line (Shape2D.points in local units), sprite, animated, camera, text, sound, tilemap, particles, ui-canvas, ui-image, ui-text, ui-button, ui-slider, ui-toggle, ui-input (text field), ui-stack (lays out its children in a column or row). `components` adds or overrides components, e.g. { RigidBody2D: { type: 'dynamic' }, Collider2D: { size: { x: 32, y: 32 } } }.",
   {
     kind: z.string().optional(),
     name: z.string().optional(),

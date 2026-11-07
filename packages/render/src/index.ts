@@ -10,6 +10,7 @@ export * from "./systems";
 export * from "./particles";
 export * from "./ui";
 export * from "./ui-widgets";
+export { PathCache, pathBounds, cssColor, type PathImage, type PathStyle } from "./shape-raster";
 export { TextCache, layoutLines, textResolution, type TextImage, type TextStyle } from "./text";
 export { SpriteBatcher, packColor } from "./sprite-batcher";
 

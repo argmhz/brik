@@ -6,14 +6,41 @@ import { UIImage, UILayout, UIText } from "./ui";
 import { UISlider, UIToggle } from "./ui-widgets";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle, textResolution } from "./text";
+import { PathCache, type PathImage, cssColor, pathBounds } from "./shape-raster";
+
+const WHITE = packColor(1, 1, 1, 1);
 
 const KIND_SPRITE = 0;
 const KIND_SHAPE = 1;
 const KIND_TEXT = 2;
 const KIND_TILEMAP = 3;
 const KIND_PARTICLES = 4;
+/** A polygon or line Shape2D, rasterized to a texture. */
+const KIND_PATH = 5;
 
 const renderers = new Set<Renderer>();
+
+/** Rasterized polygon and line Shape2Ds, shared by all renderers. */
+export const pathCache = new PathCache((tex) => {
+  for (const r of renderers) r.releaseTexture(tex);
+});
+
+/** The rasterized polygon or line of a Shape2D, or null for rects, circles and empty shapes. */
+export function pathImage(world: World, e: Entity, pixelsPerUnit = 2): PathImage | null {
+  const H = world.store(Shape2D);
+  const kind = H.kind[e];
+  if (kind !== "polygon" && kind !== "line") return null;
+  const line = kind === "line";
+  return pathCache.get({
+    points: H.points[e] ?? [],
+    closed: !line,
+    fill: cssColor(H.fill.r[e], H.fill.g[e], H.fill.b[e], H.fill.a[e]),
+    stroke: cssColor(H.stroke.r[e], H.stroke.g[e], H.stroke.b[e], H.stroke.a[e]),
+    // a line with no width would be invisible
+    strokeWidth: line ? Math.max(0.5, H.strokeWidth[e]) : H.strokeWidth[e],
+    resolution: textResolution(pixelsPerUnit),
+  });
+}
 
 /** Rasterized Text2D, shared by all renderers (and by picking). */
 export const textCache = new TextCache((tex) => {
@@ -397,6 +424,7 @@ export class Renderer {
     this.itemKind.length = 0;
     this.itemTex.length = 0;
     textCache.sweep();
+    pathCache.sweep();
 
     const slot = (i: number) => (this.resolved[i] ??= {} as ResolvedSprite);
 
@@ -422,6 +450,27 @@ export class Renderer {
 
     for (const e of world.query([Shape2D, GlobalTransform2D])) {
       if (!G.active[e]) continue;
+      if (H.kind[e] === "polygon" || H.kind[e] === "line") {
+        const scale = Math.max(Math.hypot(G.matrix.a[e], G.matrix.b[e]), Math.hypot(G.matrix.c[e], G.matrix.d[e]));
+        const img = pathImage(world, e, pixelsPerUnit * scale);
+        const gpu = img && this.gpuTexture(img.texture);
+        if (!img || !gpu) continue;
+        const r = slot(items.length);
+        r.texture = img.texture;
+        r.u0 = 0;
+        r.u1 = 1;
+        r.v0 = 1;
+        r.v1 = 0;
+        r.width = img.width;
+        r.height = img.height;
+        // the quad sits over the points' bounds: put the entity's origin where local (0, 0) is
+        r.pivotX = -img.x / img.width;
+        r.pivotY = -img.y / img.height;
+        items.push(e);
+        this.itemKind.push(KIND_PATH);
+        this.itemTex.push(gpu);
+        continue;
+      }
       const r = slot(items.length);
       r.width = H.size.x[e];
       r.height = H.size.y[e];
@@ -628,8 +677,9 @@ export class Renderer {
         const mode = H.kind[e] === "circle" ? 2 : 1;
         batcher.pushShape(a, b, c, d, tx, ty, mode, fill, stroke, H.strokeWidth[e], H.radius[e]);
       } else {
+        // a path texture has its colors drawn in, so it isn't tinted
         const C = kind === KIND_TEXT ? X.color : S.color;
-        const rgba = packColor(C.r[e], C.g[e], C.b[e], C.a[e]);
+        const rgba = kind === KIND_PATH ? WHITE : packColor(C.r[e], C.g[e], C.b[e], C.a[e]);
         batcher.push(this.itemTex[i]!.tex, a, b, c, d, tx, ty, r.u0, r.v0, r.u1, r.v1, rgba);
       }
       drawn++;
@@ -823,8 +873,18 @@ export function spriteQuad(world: World, e: Entity): Mat3 | null {
     py = r.pivotY;
   } else if (world.has(e, Shape2D)) {
     const H = world.store(Shape2D);
-    w = H.size.x[e];
-    h = H.size.y[e];
+    const kind = H.kind[e];
+    if (kind === "polygon" || kind === "line") {
+      const b = pathBounds(H.points[e] ?? [], kind === "line" ? Math.max(0.5, H.strokeWidth[e]) : H.strokeWidth[e]);
+      if (!b) return null;
+      w = b.w;
+      h = b.h;
+      px = -b.x / b.w;
+      py = -b.y / b.h;
+    } else {
+      w = H.size.x[e];
+      h = H.size.y[e];
+    }
   } else if (world.has(e, Text2D)) {
     const img = textImage(world, e);
     if (!img) return null;

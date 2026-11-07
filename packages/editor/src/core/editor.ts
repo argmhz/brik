@@ -47,6 +47,8 @@ export type EntityKind =
   | "camera"
   | "rect"
   | "circle"
+  | "polygon"
+  | "line"
   | "text"
   | "animated"
   | "sound"
@@ -413,6 +415,8 @@ export class Editor {
       camera: "Camera",
       rect: "Rektangel",
       circle: "Cirkel",
+      polygon: "Polygon",
+      line: "Linje",
       text: "Tekst",
       animated: "Animation",
       sound: "Lyd",
@@ -435,6 +439,19 @@ export class Editor {
     if (kind === "animated") components.SpriteAnimator = { clip: opts.clip ?? null };
     if (kind === "camera") components.Camera2D = { zoom: 3 };
     if (kind === "rect") components.Shape2D = { kind: "rect", size: { x: 32, y: 32 }, fill: { r: 0.36, g: 0.62, b: 0.95, a: 1 } };
+    if (kind === "polygon") components.Shape2D = { kind: "polygon", fill: { r: 0.45, g: 0.8, b: 0.45, a: 1 } };
+    if (kind === "line") {
+      components.Shape2D = {
+        kind: "line",
+        points: [
+          { x: -32, y: 0 },
+          { x: 0, y: 16 },
+          { x: 32, y: 0 },
+        ],
+        stroke: { r: 1, g: 1, b: 1, a: 1 },
+        strokeWidth: 3,
+      };
+    }
     if (kind === "circle") components.Shape2D = { kind: "circle", size: { x: 32, y: 32 }, fill: { r: 0.95, g: 0.55, b: 0.3, a: 1 } };
     if (kind === "text") components.Text2D = { text: "Tekst", size: 16 };
     if (kind === "tilemap") {

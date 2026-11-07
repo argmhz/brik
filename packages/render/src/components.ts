@@ -1,5 +1,5 @@
 import type { SpriteRef } from "@brik/assets";
-import { Transform2D, defineComponent, t, withMeta } from "@brik/core";
+import { Transform2D, type Vec2, defineComponent, t, withMeta } from "@brik/core";
 
 
 /**
@@ -51,8 +51,18 @@ export const SortingOrder = defineComponent("SortingOrder", {
 export const Shape2D = defineComponent(
   "Shape2D",
   {
-    kind: t.enum(["rect", "circle"] as const, "rect"),
+    /** rect / circle fill `size`; polygon fills `points`; line draws `points` with the stroke. */
+    kind: t.enum(["rect", "circle", "polygon", "line"] as const, "rect"),
     size: t.vec2(32, 32),
+    /** Outline of a polygon, or the points of a line, in local units (y up). */
+    points: withMeta(
+      t.ref<Vec2[]>(() => [
+        { x: -16, y: -14 },
+        { x: 16, y: -14 },
+        { x: 0, y: 16 },
+      ]),
+      { editor: "points" },
+    ),
     fill: t.color(1, 1, 1, 1),
     stroke: t.color(0, 0, 0, 1),
     strokeWidth: withMeta(t.f32(0), { min: 0, step: 0.5 }),
