@@ -1,6 +1,6 @@
 import { type AnimationClip, Assets, frameAt } from "@brik/assets";
-import { type App, type Entity, GlobalTransform2D, Parent, Time, Transform2D, type World, defineEvent } from "@brik/core";
-import { Camera2D, CameraFollow2D, Sprite, SpriteAnimator } from "./components";
+import { type App, type Entity, GlobalTransform2D, Parent, Time, childrenOf, Transform2D, type World, defineEvent } from "@brik/core";
+import { Camera2D, CameraFollow2D, Parallax2D, Sprite, SpriteAnimator } from "./components";
 import { CameraFX, ScreenFade } from "./camera-fx";
 import { UILayout } from "./ui";
 import { ParticlesPlugin } from "./particles";
@@ -140,6 +140,56 @@ export function followCameras(world: World): void {
   }
 }
 
+/** The camera drawn first (lowest priority), or -1. */
+function firstCamera(world: World): Entity {
+  const C = world.store(Camera2D);
+  let best = -1;
+  for (const e of world.query([Camera2D, Transform2D])) {
+    if (best < 0 || C.priority[e] < C.priority[best]) best = e;
+  }
+  return best;
+}
+
+/**
+ * Moves Parallax2D layers by their share of the camera's position. Runs right after the camera
+ * has followed its target, and shifts the layer's children's global transforms by the same
+ * amount, so nothing lags a frame behind the camera.
+ */
+export function applyParallax(world: World): void {
+  const P = world.store(Parallax2D);
+  const T = world.store(Transform2D);
+  const G = world.store(GlobalTransform2D).matrix;
+  let fallback = -2;
+  for (const e of world.query([Parallax2D, Transform2D])) {
+    if (world.has(e, Parent)) continue;
+    let cam = world.deref(P.camera[e]);
+    if (cam < 0) cam = fallback === -2 ? (fallback = firstCamera(world)) : fallback;
+    if (cam < 0) continue;
+    if (!P.ready[e]) {
+      P.baseX[e] = T.position.x[e];
+      P.baseY[e] = T.position.y[e];
+      P.ready[e] = 1;
+    }
+    const x = P.baseX[e] + T.position.x[cam] * (1 - P.factor.x[e]);
+    const y = P.baseY[e] + T.position.y[cam] * (1 - P.factor.y[e]);
+    const dx = x - T.position.x[e];
+    const dy = y - T.position.y[e];
+    if (dx === 0 && dy === 0) continue;
+    T.position.x[e] = x;
+    T.position.y[e] = y;
+    // global transforms were made from last frame's position: move the layer and everything under it
+    const stack = [e];
+    while (stack.length) {
+      const n = stack.pop()!;
+      if (world.has(n, GlobalTransform2D)) {
+        G.tx[n] += dx;
+        G.ty[n] += dy;
+      }
+      for (const c of childrenOf(world, n)) stack.push(c);
+    }
+  }
+}
+
 /**
  * Half the world area a camera shows, from the screen size of the last
  * rendered frame: the box around the view in the world's axes, so a rotated
@@ -170,6 +220,7 @@ export const SpriteLogicPlugin = {
   build(app: App) {
     app.addSystem("update", { name: "sprite.animate", run: animateSprites });
     app.addSystem("postUpdate", { name: "camera.follow", run: followCameras });
+    app.addSystem("postUpdate", { name: "camera.parallax", run: applyParallax });
     const fx = app.world.insertResource(new CameraFX());
     app.world.insertResource(new ScreenFade());
     app.addSystem("postUpdate", { name: "camera.fx", run: (w: World) => fx.update(w) });

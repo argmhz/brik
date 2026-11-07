@@ -144,6 +144,28 @@ export const SpriteAnimator = defineComponent(
 );
 
 /**
+ * Makes an entity (and its children) move at a fraction of the camera's speed, for
+ * layers of background that give depth: far hills slowly, nearer houses faster.
+ * `factor` 1 moves with the world as usual, 0 stays fixed on the screen, and 0.5 moves
+ * at half speed. The entity should be a root; put the layer's sprites under it as
+ * children. Its own position is where the layer sits while the camera is at (0, 0).
+ */
+export const Parallax2D = defineComponent(
+  "Parallax2D",
+  {
+    /** How much of the camera's movement the layer follows, in x and y. */
+    factor: t.vec2(0.5, 1),
+    /** The camera to follow. Empty: the camera that is drawn first. */
+    camera: t.entity(),
+    /** Where the layer was placed (read-only, set when the game starts). */
+    baseX: withMeta(t.f32(0), { hidden: true }),
+    baseY: withMeta(t.f32(0), { hidden: true }),
+    ready: withMeta(t.bool(false), { hidden: true }),
+  },
+  { requires: [Transform2D] },
+);
+
+/**
  * Moves the camera (or any entity) toward a target each frame. The entity
  * following should be a root entity (no parent).
  */

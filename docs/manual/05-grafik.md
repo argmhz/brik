@@ -31,6 +31,16 @@ Fra et script: `this.playAnimation("hero_run")`.
 
 Kameraet bestemmer, hvad Spil-fanen viser. Lad det følge spilleren med `CameraFollow2D`. Slå `useBounds` til og sæt `bounds` til banens kanter, så holder kameraet hele udsnittet inden for banen, uanset hvor stort vinduet er.
 
+### Parallax: lag i baggrunden
+
+`Parallax2D` får en entity og dens børn til at følge kameraet med kun en del af farten, så baggrunden får dybde: fjerne bjerge langsomt, nærmere huse hurtigere. `factor` er den andel af kameraets bevægelse, laget *ikke* flytter sig med: 1 er en almindelig entity, 0 står fast på skærmen (et bagtæppe), 0,5 flytter sig med halv fart. Der er en værdi for x og en for y. Husene i en gade har typisk `(0.65, 1)`: de glider i x, men står stadig på jorden.
+
+1. Lav en tom entity som lag, og sæt `Parallax2D` på den.
+2. Læg lagets sprites som børn under den, og giv dem en lav `layer` i `SortingOrder`, så de tegnes bag banen.
+3. Lagets egen position er, hvor det ligger, mens kameraet står i (0, 0). Lav laget bredt nok til hele banen: et lag med `factor` 0,5 flytter sig kun halvdelen af kameraets vej, så det behøver kun at dække halvdelen af banens bredde plus skærmen.
+
+Laget følger kameraet i samme frame, så der er ingen rystelser. Kameraet er det, der tegnes først, med mindre feltet `camera` peger på et andet. Kun entities øverst i hierarkiet kan være lag.
+
 ### Skærmryst, zoom-stød og hit-stop
 
 Fire kald fra et script giver spillet vægt. De ændrer kun, hvad der tegnes: kameraets entity flyttes ikke, så `CameraFollow2D` og grænserne virker som før, og UI'et ryster ikke.

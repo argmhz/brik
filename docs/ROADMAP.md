@@ -11,7 +11,7 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 | Område | Hvad der er på plads |
 |---|---|
 | Kerne | ECS, scener og prefabs (med overrides pr. instans), scene-skift med fade og data, tweens og timere |
-| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, 2D-lys med farve (punktlys og kegler), skærmryst, zoom-stød, hit-stop og slowmotion |
+| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), skærmryst, zoom-stød, hit-stop og slowmotion |
 | Editor | Hierarki, scene view med gizmos, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse |
 | Tilemaps | Maling i scene view, auto-tiling med terræner, import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
