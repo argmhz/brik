@@ -310,6 +310,30 @@ describe("camera follow", () => {
     expect(T.position.x[cam]).toBeLessThan(300);
   });
 
+  it("a rotated camera keeps its whole (rotated) view inside the bounds", () => {
+    const app = game();
+    const w = app.world;
+    const target = w.spawn([Transform2D, { position: { x: 5000, y: 100 } }]);
+    const cam = w.spawn(
+      [Transform2D, { rotation: Math.PI / 2 }],
+      [Camera2D, { zoom: 2 }],
+      [CameraFollow2D, { target: w.ref(target), smoothing: 0, useBounds: true, bounds: { x: 0, y: 0, w: 1000, h: 400 } }],
+    );
+    const layout = w.tryResource(UILayout) ?? w.insertResource(new UILayout());
+    layout.screenW = 800;
+    layout.screenH = 300;
+    app.update(1 / 60);
+    const T = w.store(Transform2D);
+    // upright, the view is 400 x 150 world units; turned a quarter, it covers 150 wide and 400 tall
+    expect(T.position.x[cam]).toBeCloseTo(1000 - 75);
+    // 400 tall and the bounds are 400 tall: it fits exactly, centered
+    expect(T.position.y[cam]).toBeCloseTo(200);
+    // at 45 degrees the box around the view is larger in both directions
+    T.rotation[cam] = Math.PI / 4;
+    app.update(1 / 60);
+    expect(T.position.x[cam]).toBeCloseTo(1000 - (Math.SQRT1_2 * 200 + Math.SQRT1_2 * 75));
+  });
+
   it("keeps the whole view inside the bounds, whatever the screen size", () => {
     const app = game();
     const w = app.world;

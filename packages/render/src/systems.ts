@@ -92,7 +92,7 @@ export function followCameras(world: World): void {
     x += (wantX - x) * k;
     y += (wantY - y) * k;
     if (F.useBounds[e]) {
-      const half = F.boundsMode[e] === "view" ? viewHalfSize(world, e) : { x: 0, y: 0 };
+      const half = F.boundsMode[e] === "view" ? viewHalfSize(world, e, T.rotation[e]) : { x: 0, y: 0 };
       x = clampInto(x, F.bounds.x[e], F.bounds.w[e], half.x);
       y = clampInto(y, F.bounds.y[e], F.bounds.h[e], half.y);
     }
@@ -107,17 +107,20 @@ export function followCameras(world: World): void {
 
 /**
  * Half the world area a camera shows, from the screen size of the last
- * rendered frame. Zero before anything has been drawn, or without a Camera2D.
+ * rendered frame: the box around the view in the world's axes, so a rotated
+ * camera (`rotation`, radians) needs more room than an upright one. Zero
+ * before anything has been drawn, or without a Camera2D.
  */
-export function viewHalfSize(world: World, camera: Entity): { x: number; y: number } {
+export function viewHalfSize(world: World, camera: Entity, rotation = 0): { x: number; y: number } {
   const layout = world.tryResource(UILayout);
   if (!layout?.screenW || !world.has(camera, Camera2D)) return { x: 0, y: 0 };
   const C = world.store(Camera2D);
   const zoom = C.zoom[camera] || 1;
-  return {
-    x: (layout.screenW * C.viewport.w[camera]) / zoom / 2,
-    y: (layout.screenH * C.viewport.h[camera]) / zoom / 2,
-  };
+  const w = (layout.screenW * C.viewport.w[camera]) / zoom / 2;
+  const h = (layout.screenH * C.viewport.h[camera]) / zoom / 2;
+  const c = Math.abs(Math.cos(rotation));
+  const s = Math.abs(Math.sin(rotation));
+  return { x: c * w + s * h, y: s * w + c * h };
 }
 
 /** Keeps a center `v` with half-size `half` inside [min, min + size]; centered when it doesn't fit. */
