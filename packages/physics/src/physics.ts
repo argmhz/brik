@@ -108,6 +108,11 @@ interface CharacterEntry {
   ref: number;
   controller: RAPIER.KinematicCharacterController;
   sig: string;
+  /**
+   * Movement (in meters) already given since the last physics step. Rapier only moves
+   * the collider when it steps, so a second move before that has to start from here.
+   */
+  pending: { x: number; y: number };
 }
 
 /**
@@ -210,10 +215,26 @@ export class Physics {
     // set borrowed inside Rapier, and the world can then never be freed.
     const flags = rapier!.QueryFilterFlags;
     const c = ch.controller;
+    const body = this.bodies.get(e);
+    if (body) {
+      const pos = this.worldPos(e);
+      if (pos.x !== body.x || pos.y !== body.y) {
+        // moved from outside since the last move (a respawn): the body jumps there now
+        body.body.setTranslation({ x: pos.x / ppm, y: pos.y / ppm }, true);
+        this.rw.propagateModifiedBodyPositionsToColliders();
+        body.x = pos.x;
+        body.y = pos.y;
+        ch.pending = { x: 0, y: 0 };
+      }
+    }
+    // The collider is still where the last physics step left it. Moves made since then
+    // (several frames on a fast screen, or several calls in one frame) are added to this
+    // one, so the query starts from where the character really is.
+    const p = body ? ch.pending : { x: 0, y: 0 };
     // the character's own collision filter decides what it collides with (and lands on)
     const F = world.store(CollisionFilter);
     const groups = world.has(e, CollisionFilter) ? ((((F.group[e] & 0xffff) << 16) | (F.mask[e] & 0xffff)) >>> 0) : undefined;
-    c.computeColliderMovement(col.collider, { x: dx / ppm, y: dy / ppm }, flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS, groups);
+    c.computeColliderMovement(col.collider, { x: p.x + dx / ppm, y: p.y + dy / ppm }, flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS, groups);
     const m = { ...c.computedMovement() };
     let grounded = c.computedGrounded();
     if (m.y < 0) {
@@ -229,15 +250,16 @@ export class Physics {
         grounded ||= c.computedGrounded();
       }
     }
-    const mx = m.x * ppm;
-    const my = m.y * ppm;
+    // m is the whole movement since the last step; this call adds the part beyond what was already given
+    const mx = (m.x - p.x) * ppm;
+    const my = (m.y - p.y) * ppm;
     world.store(CharacterController2D).grounded[e] = grounded ? 1 : 0;
     // Only set the *next* position: the step then gives the body a velocity, so it
     // pushes and carries dynamic bodies instead of teleporting into them.
-    const body = this.bodies.get(e);
     if (body) {
       const bt = body.body.translation();
       body.body.setNextKinematicTranslation({ x: bt.x + m.x, y: bt.y + m.y });
+      ch.pending = { x: m.x, y: m.y };
     } else {
       const cur = col.collider.translation();
       col.collider.setTranslation({ x: cur.x + m.x, y: cur.y + m.y });
@@ -294,6 +316,8 @@ export class Physics {
     rw.timestep = dt;
     rw.gravity = { x: this.gravity.x / this.pixelsPerMeter, y: this.gravity.y / this.pixelsPerMeter };
     rw.step(this.events!);
+    // the bodies are where the characters were sent: later moves start from there
+    for (const ch of this.characters.values()) ch.pending = { x: 0, y: 0 };
     this.writeBack();
     this.emitEvents();
   }
@@ -407,7 +431,7 @@ export class Physics {
       c.setMinSlopeSlideAngle(CC.slopeLimit[e]);
       if (CC.stepHeight[e] > 0) c.enableAutostep(CC.stepHeight[e] / ppm, 0.1, false);
       if (CC.snapToGround[e] > 0) c.enableSnapToGround(CC.snapToGround[e] / ppm);
-      this.characters.set(e, { ref: world.ref(e), controller: c, sig });
+      this.characters.set(e, { ref: world.ref(e), controller: c, sig, pending: { x: 0, y: 0 } });
     }
 
     // inactive entities (setActive false, or a parent switched off) leave the simulation
