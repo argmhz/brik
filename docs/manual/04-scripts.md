@@ -44,7 +44,7 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 | Hjælper | Hvad den gør |
 |---|---|
 | `this.transform`, `this.get(Komponent)`, `this.add(...)`, `this.has(...)` | Læser og ændrer komponenter |
-| `this.input.axis("horizontal")`, `this.input.action("jump").pressed`, `this.input.key("Mouse0").down` | Input fra tastatur, mus og gamepad (se [Input](#input)) |
+| `this.input.axis("horizontal")`, `this.input.action("jump").pressed`, `this.input.key("Mouse0").down` | Input fra tastatur, mus og gamepad (se [Input](input.md)) |
 | `this.save.set("level", 3)`, `this.save.get("level", 1)` | Gem og indlæs, også når spillet lukkes (se [Gem og indlæs](#gem-og-indlaes)) |
 | `this.dropThrough()` | Fald ned igennem den envejsplatform, figuren står på |
 | `this.pointerWorld()` | Musens position i verden |
@@ -62,18 +62,7 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 
 ## Input
 
-Spillet læser tastatur, mus og gamepad gennem navngivne handlinger og akser, så det samme script virker med alle tre:
-
-| Navn | Tastatur og mus | Gamepad |
-|---|---|---|
-| akse `horizontal` | A/D, pil venstre/højre | venstre stick, d-pad |
-| akse `vertical` | S/W, pil ned/op | venstre stick, d-pad |
-| handling `jump` | Mellemrum | A |
-| handling `fire` | Venstre museknap | X, højre trigger |
-
-Akserne går fra -1 til 1, og med en stick også alt derimellem, så en figur kan gå langsomt. Egne bindinger laves med `this.input.bindAction("dash", "ShiftLeft", "PadB")` og `this.input.bindAxis("sigte", ["KeyJ"], ["KeyL"], "right-x")`. Gamepad-knapperne hedder efter en Xbox-controller: `PadA`, `PadB`, `PadX`, `PadY`, `PadLB`, `PadRB`, `PadLT`, `PadRT`, `PadSelect`, `PadStart`, `PadL3`, `PadR3`, `PadUp`, `PadDown`, `PadLeft`, `PadRight` og `PadHome`. Sticks kan også læses direkte i `this.input.stick.left` og `.right` (y op), og `this.input.gamepadConnected` fortæller, om der er en controller.
-
-En controller skal som regel have en knap trykket, før browseren viser den til spillet.
+`this.input.axis("horizontal")` og `this.input.action("jump").pressed` virker med tastatur, mus og gamepad. Standardbindinger, egne bindinger, musen, sticks og UI med tastatur står i [Input](input.md).
 
 ## Gem og indlæs
 
