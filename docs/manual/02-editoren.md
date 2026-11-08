@@ -7,7 +7,7 @@
 | Område | Brug |
 |---|---|
 | Hierarki (venstre) | Entities i scenen. "+" eller højreklik opretter. Træk for at ændre forælder. |
-| Scene (midten) | Flyt (W), rotér (E), skalér (R). Højreklik-træk panorerer, hjulet zoomer, F fokuserer. |
+| Scene (midten) | Flyt (W), rotér (E), skalér (R). Højreklik-træk panorerer, hjulet zoomer (Shift + hjul: sidelæns, Ctrl + hjul: op og ned), F fokuserer. |
 | Spil | Spillet set gennem kameraet, inklusive UI. Ctrl+P er Play/Stop. |
 | Kode | Scripts med autocomplete. Ctrl+S gemmer og genindlæser. |
 | Inspector (højre) | Komponenter på den valgte entity, eller indstillinger for det valgte asset |
@@ -29,6 +29,7 @@ Under Play viser Spil-fanen spillet set gennem kameraet, med UI'et:
 | Ctrl+S | Gem |
 | Ctrl+Z | Fortryd |
 | Højreklik-træk, hjul | Panorér og zoom i scene view |
+| Shift + hjul, Ctrl + hjul | Panorér sidelæns, og op og ned (Cmd + hjul på Mac). Vandret rulning på en touchpad panorerer også sidelæns |
 
 ## Fortryd
 

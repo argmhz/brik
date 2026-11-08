@@ -1,3 +1,4 @@
+import { wheelAction } from "./wheel";
 import {
   Camera2D,
   Collider2D,
@@ -1024,10 +1025,18 @@ export class SceneController {
 
   private onWheel(ev: WheelEvent): void {
     ev.preventDefault();
+    const v = this.editor.view;
+    const action = wheelAction(ev, this.height);
+    if (action.kind === "pan") {
+      // wheel down moves the view down / to the right, like scrolling a page (world y points up)
+      v.x += action.dx / v.zoom;
+      v.y -= action.dy / v.zoom;
+      this.onInfo?.();
+      return;
+    }
     const p = this.local(ev);
     const before = this.screenToWorld(p.x, p.y);
-    const v = this.editor.view;
-    v.zoom = Math.min(64, Math.max(0.05, v.zoom * Math.exp(-ev.deltaY * 0.0015)));
+    v.zoom = Math.min(64, Math.max(0.05, v.zoom * action.factor));
     const after = this.screenToWorld(p.x, p.y);
     v.x += before.x - after.x;
     v.y += before.y - after.y;
