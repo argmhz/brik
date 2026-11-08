@@ -8,6 +8,7 @@ export * from "./behaviour";
 export * from "./prefab";
 export * from "./scenes";
 export * from "./manifest";
+export * from "./save";
 
 import { AssetsPlugin } from "@brik/assets";
 import { AudioPlugin } from "@brik/audio";
@@ -16,18 +17,22 @@ import { InputPlugin } from "@brik/input";
 import { PhysicsPlugin, type PhysicsOptions } from "@brik/physics";
 import { RenderPlugin, type RendererOptions, SpriteLogicPlugin, UIPlugin, UIWidgetsPlugin } from "@brik/render";
 import { PrefabPlugin } from "./prefab";
+import { SaveData, saveKey } from "./save";
 
 export interface GameOptions extends AppOptions, RendererOptions {
   canvas: HTMLCanvasElement;
   physics?: PhysicsOptions;
+  /** The game's name, so its saved data (`this.save`) is kept apart from other games'. */
+  name?: string;
 }
 
 /**
  * Everything a game needs except drawing: core, assets, input, gameplay helpers,
  * animation, physics, audio and prefabs. The editor's play mode uses this.
  */
-export function GamePlugins(options: { input?: HTMLElement; physics?: PhysicsOptions } = {}) {
+export function GamePlugins(options: { input?: HTMLElement; physics?: PhysicsOptions; name?: string } = {}) {
   return (app: App) => {
+    if (!app.world.hasResource(SaveData)) app.world.insertResource(new SaveData(saveKey(options.name ?? "game")));
     app
       .addPlugin(CorePlugin)
       .addPlugin(AssetsPlugin)
@@ -45,7 +50,7 @@ export function GamePlugins(options: { input?: HTMLElement; physics?: PhysicsOpt
 /** GamePlugins plus rendering, wired to one canvas. */
 export function DefaultPlugins(options: GameOptions) {
   return (app: App) => {
-    app.addPlugin(GamePlugins({ input: options.canvas, physics: options.physics })).addPlugin(RenderPlugin(options));
+    app.addPlugin(GamePlugins({ input: options.canvas, physics: options.physics, name: options.name })).addPlugin(RenderPlugin(options));
   };
 }
 

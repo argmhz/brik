@@ -62,6 +62,9 @@ export class Player extends Behaviour {
 - Time: \`this.tween(Transform2D, "position.y", 100, 0.5)\`, \`this.after(1, fn)\`, \`this.every(0.5, fn)\`
 - Scenes: \`this.loadScene("level2")\` (file name in \`scenes/\` without extension); \`this.loadScene("level2", { fade: 0.4, data: { score } })\` fades and carries values, read with \`this.sceneData.score\`
 - Game feel: \`this.shakeCamera(8, 0.3)\`, \`this.punchCamera(0.08)\`, \`this.hitStop(0.06)\`, \`this.slowMotion(0.3, 1)\`
+- Saving: \`this.save.set("level", 3)\`, \`this.save.get("level", 1)\` (kept in localStorage when the game closes; \`this.save.clear()\` for a new game)
+- Input works with keyboard and gamepad: axes \`horizontal\`/\`vertical\` also follow the left stick (values between -1 and 1), \`jump\` is also pad A, \`fire\` pad X; pad buttons are named \`PadA\`, \`PadB\`, \`PadLB\`, \`PadStart\`, ...
+- One-way platforms (a tile sprite with collision "one-way"): \`this.dropThrough()\` falls through the one the character stands on
 
 An entity switched off with \`setActive(false)\` (or whose parent is off) is
 hidden, its scripts and timers pause, and its colliders leave the physics world.

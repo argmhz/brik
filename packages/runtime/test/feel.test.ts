@@ -83,6 +83,23 @@ describe("camera effects", () => {
     expect(time.timeScale).toBe(1);
   });
 
+  it("reduced motion leaves out shakes and punches, but not hit-stop", () => {
+    const app = game();
+    const fx = app.world.resource(CameraFX);
+    const time = app.world.resource(Time);
+    fx.reduceMotion = true;
+    fx.shake(10, 0.5);
+    fx.punch(0.2, 0.2);
+    fx.hitStop(0.1, app.world);
+    app.update(1 / 60);
+    expect(fx.offsetX).toBe(0);
+    expect(fx.zoomFactor).toBe(1);
+    expect(time.timeScale).toBe(0);
+    // without a browser there is no system setting: "auto" means motion is on
+    fx.reduceMotion = "auto";
+    expect(fx.motionReduced).toBe(false);
+  });
+
   it("stop() ends everything at once", () => {
     const app = game();
     const time = app.world.resource(Time);

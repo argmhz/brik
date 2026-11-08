@@ -56,7 +56,7 @@ export async function startGame(opts: StartOptions): Promise<App> {
     step("fysik");
   }
 
-  const app = createGame({ canvas: opts.canvas, physics: manifest.physics });
+  const app = createGame({ canvas: opts.canvas, physics: manifest.physics, name: manifest.title });
   const world = app.world;
   const assets = world.resource(Assets);
 

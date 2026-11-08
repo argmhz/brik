@@ -41,7 +41,19 @@ export function initPhysics(): Promise<void> {
   // a separate chunk in exported games (Rapier embeds its WASM, ~1.5 MB), fetched only when needed
   loading ??= import("@dimforge/rapier2d-compat").then(async (mod) => {
     const R = (mod.default ?? mod) as R;
-    await R.init();
+    // Rapier 0.19's own init() hands its embedded WASM to wasm-bindgen in the old way, which
+    // makes wasm-bindgen warn on every start. Nothing we pass can avoid it, so that one line
+    // is left out while Rapier starts; other warnings get through.
+    const warn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      if (typeof args[0] === "string" && args[0].startsWith("using deprecated parameters for the initialization function")) return;
+      warn.apply(console, args);
+    };
+    try {
+      await R.init();
+    } finally {
+      console.warn = warn;
+    }
     return (rapier = R);
   });
   loading.catch(() => (loading = null));
@@ -138,6 +150,8 @@ interface CharacterEntry {
    * the collider when it steps, so a second move before that has to start from here.
    */
   pending: { x: number; y: number };
+  /** Game time (Time.elapsed) until which one-way platforms are passed through (dropThrough). */
+  dropUntil: number;
 }
 
 /**
@@ -278,7 +292,7 @@ export class Physics {
         grounded ||= c.computedGrounded();
       }
     }
-    if (m.y < p.y) {
+    if (m.y < p.y && world.resource(Time).elapsed >= ch.dropUntil) {
       // moving down: land on a one-way platform that was below the feet
       const land = this.oneWayLanding(e, (m.x - p.x) * ppm, (m.y - p.y) * ppm);
       if (land !== null) {
@@ -306,6 +320,16 @@ export class Physics {
       body.y = this.worldPos(e).y;
     }
     return { x: mx, y: my };
+  }
+
+  /**
+   * Lets a character fall through one-way platforms for `seconds` of game time, e.g. when
+   * the player presses down and jump on one. Solid ground still holds it.
+   */
+  dropThrough(e: Entity, seconds = 0.25): void {
+    if (!this.characters.has(e)) this.sync();
+    const ch = this.characters.get(e);
+    if (ch) ch.dropUntil = this.world.resource(Time).elapsed + seconds;
   }
 
   /**
@@ -499,7 +523,7 @@ export class Physics {
       c.setMinSlopeSlideAngle(CC.slopeLimit[e] + 0.02);
       if (CC.stepHeight[e] > 0) c.enableAutostep(CC.stepHeight[e] / ppm, 0.1, false);
       if (CC.snapToGround[e] > 0) c.enableSnapToGround(CC.snapToGround[e] / ppm);
-      this.characters.set(e, { ref: world.ref(e), controller: c, sig, pending: { x: 0, y: 0 } });
+      this.characters.set(e, { ref: world.ref(e), controller: c, sig, pending: { x: 0, y: 0 }, dropUntil: existing?.dropUntil ?? 0 });
     }
 
     // inactive entities (setActive false, or a parent switched off) leave the simulation

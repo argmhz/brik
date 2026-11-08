@@ -11,14 +11,34 @@ export interface ButtonState {
 }
 
 /**
- * Binding names are `KeyboardEvent.code` values (`"KeyW"`, `"Space"`, `"ArrowLeft"`)
- * or mouse buttons (`"Mouse0"` left, `"Mouse1"` middle, `"Mouse2"` right).
+ * Binding names are `KeyboardEvent.code` values (`"KeyW"`, `"Space"`, `"ArrowLeft"`),
+ * mouse buttons (`"Mouse0"` left, `"Mouse1"` middle, `"Mouse2"` right) or gamepad
+ * buttons (`"PadA"`, `"PadB"`, `"PadX"`, `"PadY"`, `"PadLB"`, `"PadRB"`, `"PadLT"`, `"PadRT"`,
+ * `"PadSelect"`, `"PadStart"`, `"PadL3"`, `"PadR3"`, `"PadUp"`, `"PadDown"`, `"PadLeft"`,
+ * `"PadRight"`, `"PadHome"`), named after an Xbox controller's layout.
  */
 export type Binding = string;
+
+/** A gamepad stick direction an axis can follow: the left or right stick, x or y (y up). */
+export type StickAxis = "left-x" | "left-y" | "right-x" | "right-y";
 
 interface AxisBinding {
   negative: Binding[];
   positive: Binding[];
+  stick?: StickAxis;
+}
+
+/** The buttons of a "standard" gamepad, in the browser's order. */
+const PAD_BUTTONS = [
+  "PadA", "PadB", "PadX", "PadY", "PadLB", "PadRB", "PadLT", "PadRT",
+  "PadSelect", "PadStart", "PadL3", "PadR3", "PadUp", "PadDown", "PadLeft", "PadRight", "PadHome",
+] as const;
+
+/** The parts of the browser's Gamepad object that input reads. */
+export interface GamepadLike {
+  connected: boolean;
+  buttons: readonly { pressed: boolean; value: number }[];
+  axes: readonly number[];
 }
 
 type RawEvent = { type: "down" | "up"; code: Binding };
@@ -53,11 +73,25 @@ export class Input {
   private pendingWheel = 0;
   private pendingMove = { x: 0, y: 0, dx: 0, dy: 0 };
 
+  /**
+   * Gamepad sticks this frame, -1..1 with y up, after the dead zone. All connected
+   * gamepads count; the one pushed furthest wins.
+   */
+  readonly stick = { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
+  /** True while a gamepad is connected. */
+  gamepadConnected = false;
+  /** Stick movement smaller than this counts as none (worn sticks don't rest at exactly 0). */
+  deadZone = 0.2;
+  /** Where gamepads are read from. The browser's by default; tests can put their own here. */
+  gamepads: () => readonly (GamepadLike | null)[] = () =>
+    typeof navigator !== "undefined" && typeof navigator.getGamepads === "function" ? navigator.getGamepads() : [];
+  private padDown = new Set<Binding>();
+
   constructor() {
-    this.bindAxis("horizontal", ["KeyA", "ArrowLeft"], ["KeyD", "ArrowRight"]);
-    this.bindAxis("vertical", ["KeyS", "ArrowDown"], ["KeyW", "ArrowUp"]);
-    this.bindAction("jump", "Space");
-    this.bindAction("fire", "Mouse0");
+    this.bindAxis("horizontal", ["KeyA", "ArrowLeft", "PadLeft"], ["KeyD", "ArrowRight", "PadRight"], "left-x");
+    this.bindAxis("vertical", ["KeyS", "ArrowDown", "PadDown"], ["KeyW", "ArrowUp", "PadUp"], "left-y");
+    this.bindAction("jump", "Space", "PadA");
+    this.bindAction("fire", "Mouse0", "PadX", "PadRT");
   }
 
   // ------------------------------------------------------------ bindings
@@ -68,8 +102,9 @@ export class Input {
     return this;
   }
 
-  bindAxis(name: string, negative: Binding[], positive: Binding[]): this {
-    this.axes.set(name, { negative, positive });
+  /** An axis from two sets of keys or buttons, and optionally a gamepad stick direction. */
+  bindAxis(name: string, negative: Binding[], positive: Binding[], stick?: StickAxis): this {
+    this.axes.set(name, { negative, positive, stick });
     this.rebuildBound();
     return this;
   }
@@ -98,14 +133,21 @@ export class Input {
     return { down, pressed, released };
   }
 
-  /** -1..1. Opposite keys held together cancel out. */
+  /**
+   * -1..1. Opposite keys held together cancel out. A stick gives values in between,
+   * so a character can walk slowly when the stick is pushed a little.
+   */
   axis(name: string): number {
     const a = this.axes.get(name);
     if (!a) throw new Error(`Brik: unknown input axis "${name}"`);
     let v = 0;
     if (a.negative.some((b) => this.down.has(b))) v -= 1;
     if (a.positive.some((b) => this.down.has(b))) v += 1;
-    return v;
+    if (a.stick) {
+      const st = a.stick.startsWith("left") ? this.stick.left : this.stick.right;
+      v += a.stick.endsWith("x") ? st.x : st.y;
+    }
+    return Math.max(-1, Math.min(1, v));
   }
 
   // --------------------------------------------------------- DOM wiring
@@ -206,6 +248,53 @@ export class Input {
     this.pendingMove.dy = 0;
     this.wheel = this.pendingWheel;
     this.pendingWheel = 0;
+    this.readGamepads();
+  }
+
+  /** Gamepad buttons become bindings that go down and up like keys; the sticks are read too. */
+  private readGamepads(): void {
+    let pads: readonly (GamepadLike | null)[] = [];
+    try {
+      pads = this.gamepads() ?? [];
+    } catch {
+      // some browsers refuse outside a secure context
+    }
+    const now = new Set<Binding>();
+    const left = { x: 0, y: 0 };
+    const right = { x: 0, y: 0 };
+    let connected = false;
+    for (const pad of pads) {
+      if (!pad?.connected) continue;
+      connected = true;
+      pad.buttons.forEach((b, i) => {
+        // triggers are analog: past half way counts as pressed
+        if (i < PAD_BUTTONS.length && (b.pressed || b.value > 0.5)) now.add(PAD_BUTTONS[i]);
+      });
+      const take = (out: { x: number; y: number }, x = 0, y = 0) => {
+        // the stick reports y down; axes here have y up
+        const len = Math.hypot(x, y);
+        if (len < this.deadZone || len <= Math.hypot(out.x, out.y)) return;
+        // rescale so the edge of the dead zone is 0 and full tilt is 1
+        const k = Math.min(1, (len - this.deadZone) / (1 - this.deadZone)) / len;
+        out.x = x * k;
+        out.y = -y * k;
+      };
+      take(left, pad.axes[0], pad.axes[1]);
+      take(right, pad.axes[2], pad.axes[3]);
+    }
+    for (const code of now) {
+      if (!this.padDown.has(code) && !this.down.has(code)) this.pressedSet.add(code);
+      this.down.add(code);
+    }
+    for (const code of this.padDown) {
+      if (!now.has(code) && this.down.delete(code)) this.releasedSet.add(code);
+    }
+    this.padDown = now;
+    this.stick.left.x = left.x;
+    this.stick.left.y = left.y;
+    this.stick.right.x = right.x;
+    this.stick.right.y = right.y;
+    this.gamepadConnected = connected;
   }
 
   private rebuildBound(): void {

@@ -44,7 +44,9 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 | Hjælper | Hvad den gør |
 |---|---|
 | `this.transform`, `this.get(Komponent)`, `this.add(...)`, `this.has(...)` | Læser og ændrer komponenter |
-| `this.input.axis("horizontal")`, `this.input.action("jump").pressed`, `this.input.key("Mouse0").down` | Input |
+| `this.input.axis("horizontal")`, `this.input.action("jump").pressed`, `this.input.key("Mouse0").down` | Input fra tastatur, mus og gamepad (se [Input](#input)) |
+| `this.save.set("level", 3)`, `this.save.get("level", 1)` | Gem og indlæs, også når spillet lukkes (se [Gem og indlæs](#gem-og-indlaes)) |
+| `this.dropThrough()` | Fald ned igennem den envejsplatform, figuren står på |
 | `this.pointerWorld()` | Musens position i verden |
 | `this.moveCharacter(dx, dy)` | Bevæger en `CharacterController2D` med kollisioner |
 | `this.playAnimation("hero_run")`, `this.playSound("coin")` | Animation og lyd |
@@ -57,6 +59,37 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 | `this.behaviourOf(Andet, e)` | Taler med et andet script |
 
 > **Pas på** Giv ikke dine egne metoder samme navn som Behaviours egne (fx `setActive` eller `find`), for så skygger de for dem.
+
+## Input
+
+Spillet læser tastatur, mus og gamepad gennem navngivne handlinger og akser, så det samme script virker med alle tre:
+
+| Navn | Tastatur og mus | Gamepad |
+|---|---|---|
+| akse `horizontal` | A/D, pil venstre/højre | venstre stick, d-pad |
+| akse `vertical` | S/W, pil ned/op | venstre stick, d-pad |
+| handling `jump` | Mellemrum | A |
+| handling `fire` | Venstre museknap | X, højre trigger |
+
+Akserne går fra -1 til 1, og med en stick også alt derimellem, så en figur kan gå langsomt. Egne bindinger laves med `this.input.bindAction("dash", "ShiftLeft", "PadB")` og `this.input.bindAxis("sigte", ["KeyJ"], ["KeyL"], "right-x")`. Gamepad-knapperne hedder efter en Xbox-controller: `PadA`, `PadB`, `PadX`, `PadY`, `PadLB`, `PadRB`, `PadLT`, `PadRT`, `PadSelect`, `PadStart`, `PadL3`, `PadR3`, `PadUp`, `PadDown`, `PadLeft`, `PadRight` og `PadHome`. Sticks kan også læses direkte i `this.input.stick.left` og `.right` (y op), og `this.input.gamepadConnected` fortæller, om der er en controller.
+
+En controller skal som regel have en knap trykket, før browseren viser den til spillet.
+
+## Gem og indlæs
+
+`this.save` gemmer værdier, der overlever, at spillet lukkes: point, den bane man er nået til, indstillinger.
+
+```ts
+this.save.set("level", 3);
+const level = this.save.get("level", 1); // 1, hvis intet er gemt endnu
+this.save.set("best", { score: 120, time: 83.5 });
+this.save.delete("best");
+this.save.clear(); // "nyt spil"
+```
+
+Værdierne gemmes med det samme i browserens `localStorage` under spillets navn, så to spil ikke blander deres data. De skal kunne skrives som JSON: tal, tekst, ja/nej, lister og almindelige objekter. `get` giver en kopi, så kald `set` igen, når du har ændret noget. Under Play i editoren gemmes der også, så husk `this.save.clear()` eller en nulstil-knap, når du vil prøve forfra. Er `localStorage` ikke til rådighed (fx et privat vindue, der blokerer den), holdes data i hukommelsen, til spillet lukkes.
+
+Skal noget kun med til næste scene og ikke gemmes, så brug `sceneData` (se [Prefabs og scener](prefabs.md)).
 
 ## Felter, der peger på andet
 

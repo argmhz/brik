@@ -13,6 +13,18 @@ export class CameraFX {
   offsetY = 0;
   /** Factor multiplied onto every camera's zoom this frame (1 is no change). */
   zoomFactor = 1;
+  /**
+   * Leaves out screen shake and zoom punches for players who get dizzy from them.
+   * "auto" follows the system setting (prefers-reduced-motion); true or false decides,
+   * e.g. from a settings menu. Hit-stop and slow motion are not affected.
+   */
+  reduceMotion: "auto" | boolean = "auto";
+
+  /** True when shakes and punches are left out right now. */
+  get motionReduced(): boolean {
+    if (this.reduceMotion !== "auto") return this.reduceMotion;
+    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  }
 
   private shakes: { strength: number; duration: number; left: number; frequency: number; seed: number }[] = [];
   private punches: { amount: number; duration: number; left: number }[] = [];
@@ -20,18 +32,18 @@ export class CameraFX {
   private seeds = 1;
 
   /**
-   * Shakes the screen. `strength` is the biggest offset in world units (pixels
+   * Shakes the screen (unless motion is reduced, see `reduceMotion`). `strength` is the biggest offset in world units (pixels
    * at zoom 1) and fades out over `duration` seconds. Several shakes at once
    * add up. `frequency` is how many times per second the shake changes direction.
    */
   shake(strength = 8, duration = 0.3, frequency = 30): void {
-    if (strength <= 0 || duration <= 0) return;
+    if (strength <= 0 || duration <= 0 || this.motionReduced) return;
     this.shakes.push({ strength, duration, left: duration, frequency, seed: this.seeds++ * 17.31 });
   }
 
   /** A quick zoom-in that settles back: `amount` 0.1 is 10% closer, over `duration` seconds. Negative zooms out. */
   punch(amount = 0.1, duration = 0.2): void {
-    if (amount === 0 || duration <= 0) return;
+    if (amount === 0 || duration <= 0 || this.motionReduced) return;
     this.punches.push({ amount, duration, left: duration });
   }
 

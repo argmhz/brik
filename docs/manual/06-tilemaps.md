@@ -29,7 +29,11 @@ Reglerne prøves oppefra, og den første, der passer, vinder.
 
 Ændrer du formen, bygges tilemappets collidere om med det samme, også mens spillet kører. Gennem MCP sættes den med `edit_sprites` (`collision`), og `read_tiles` viser, hvilke tiles der ikke er hele blokke.
 
-Envejsplatforme virker kun på tilemaps, der ikke er roteret. Man kan endnu ikke hoppe ned igennem en envejsplatform.
+Envejsplatforme virker kun på tilemaps, der ikke er roteret. For at hoppe ned igennem en envejsplatform kalder figurens script `this.dropThrough()`, fx når spilleren trykker pil ned og hop:
+
+```ts
+if (ground && this.input.axis("vertical") < 0 && this.input.action("jump").pressed) this.dropThrough();
+```
 
 Se [Fysik](fysik.md).
 

@@ -35,6 +35,7 @@ import { AnimationEvent, AnimationFinished, Camera2D, CameraFX, Particles, UICli
 import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
+import { SaveData } from "./save";
 import { type LoadSceneOptions, Scenes } from "./scenes";
 
 // ------------------------------------------------------------------ exposed fields
@@ -291,6 +292,14 @@ export abstract class Behaviour {
     scenes.load(name, options);
   }
 
+  /**
+   * Saved game data that survives closing the game: `this.save.set("level", 3)`,
+   * `this.save.get("level", 1)`. See SaveData.
+   */
+  get save(): SaveData {
+    return this.world.tryResource(SaveData) ?? this.world.insertResource(new SaveData("brik-save:game"));
+  }
+
   /** Values carried between scenes with `loadScene(name, { data })`. Also writable: `this.sceneData.lives = 3`. */
   get sceneData(): Record<string, unknown> {
     const scenes = this.world.tryResource(Scenes);
@@ -316,6 +325,11 @@ export abstract class Behaviour {
   /** Slow motion at `scale` (0.3 is slow) for `duration` real seconds, then back to normal speed. */
   slowMotion(scale: number, duration: number): void {
     this.world.resource(CameraFX).slowMotion(scale, duration, this.world);
+  }
+
+  /** Lets this character fall through the one-way platform it stands on (for `seconds`, default 0.25). */
+  dropThrough(seconds?: number): void {
+    this.physics.dropThrough(this.entity, seconds);
   }
 
   /** Moves this entity's CharacterController2D, sliding along walls. Returns the actual movement. */

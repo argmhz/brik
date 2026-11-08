@@ -160,4 +160,17 @@ describe("one-way platforms", () => {
     for (let i = 0; i < 120; i++) app.update(1 / 60);
     expect(w.store(Transform2D).position.y[crate]).toBeCloseTo(69, 0);
   });
+
+  it("dropThrough lets a character fall through the platform it stands on, but not through the floor", () => {
+    const { app, w, physics, T } = withPlatform();
+    const a = hero(w, 40, 120);
+    run(app, physics, a, 60);
+    expect(T.position.y[a]).toBeCloseTo(72.5, 1);
+    physics.dropThrough(a);
+    run(app, physics, a, 90);
+    expect(T.position.y[a]).toBeCloseTo(8.5, 1); // on the floor below
+    // and it lands on the platform again later
+    run(app, physics, a, 120, { jumpAt: 5, jump: 360 });
+    expect(T.position.y[a]).toBeCloseTo(72.5, 1);
+  });
 });

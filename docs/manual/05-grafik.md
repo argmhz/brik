@@ -54,6 +54,8 @@ Fire kald fra et script giver spillet vægt. De ændrer kun, hvad der tegnes: ka
 | `this.hitStop(0.06)` | Fryser spillet i 0,06 sekunder, fx når et slag rammer. Animation, fysik og scripts står stille |
 | `this.slowMotion(0.3, 1)` | Kører spillet med 30 % hastighed i 1 sekund og vender så tilbage |
 
+Skærmryst og zoom-stød springes over, når spilleren har bedt styresystemet om mindre bevægelse (indstillingen "reducer bevægelse"). Spillet kan også selv bestemme det, fx fra en indstillingsmenu: `this.world.resource(CameraFX).reduceMotion = true` (eller `false`, eller `"auto"` for at følge styresystemet). Hit-stop og slowmotion påvirkes ikke.
+
 Tiderne er rigtige sekunder, så et hit-stop varer lige længe, også i slowmotion. Et ryst ser ens ud hver gang, så et spil kan afspilles ens igen. Uden for scripts: `world.resource(CameraFX)` har de samme metoder plus `stop()`.
 
 ```ts

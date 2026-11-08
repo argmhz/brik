@@ -77,6 +77,7 @@ export class PlayController {
         GamePlugins({
           input: this.element ?? (typeof document !== "undefined" ? document.body : undefined),
           physics: editor.settings.physics,
+          name: editor.settings.name,
         }),
       )
       .addPlugin(ScriptsPlugin(registry))

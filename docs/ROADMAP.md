@@ -2,7 +2,7 @@
 
 Her står, hvad Brik kan i dag, hvad der arbejdes på, og hvad der kommer. Siden opdateres, hver gang en større del er færdig eller planen ændres. Den detaljerede arbejdsplan med alle delopgaver ligger i `PLAN.md` i repoet.
 
-**Sidst opdateret:** 7. november 2026
+**Sidst opdateret:** 8. november 2026
 
 ## Færdigt: 2D
 
@@ -11,13 +11,15 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 | Område | Hvad der er på plads |
 |---|---|
 | Kerne | ECS, scener og prefabs (med overrides pr. instans), scene-skift med fade og data, tweens og timere |
-| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), skærmryst, zoom-stød, hit-stop og slowmotion |
+| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), skærmryst og zoom-stød (der følger "reducer bevægelse"), hit-stop og slowmotion |
 | Editor | Hierarki, scene view med gizmos og forhåndsvisning af parallax-lag, panorering med hjulet, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse, visning af collidere under Play |
 | Tilemaps | Maling i scene view, auto-tiling med terræner, kollisionsform pr. tile (hel, pynt, envejs, halv, skråninger), import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
-| Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring (også på skærme over 60 Hz), envejsplatforme, led og opslag |
+| Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring (også på skærme over 60 Hz), envejsplatforme (som man kan hoppe ned igennem), led og opslag |
+| Input | Tastatur, mus og gamepad (knapper, sticks og d-pad) gennem samme handlinger og akser |
+| Gem | `this.save` gemmer point, bane og indstillinger i browseren, så de overlever, at spillet lukkes |
 | UI | Knapper, tekst, billeder, slider, toggle, tekstfelt og kolonner, med tastaturstyring (Tab, Enter, piletaster) og synlig fokusramme |
-| Lyd | Lydkilder, kanaler og rumlig lyd |
+| Lyd | Lydkilder, kanaler med hver sin lydstyrke (musik, effekter, UI, master) og rumlig lyd |
 | Udgivelse | Eksport til `.zip` eller mappe, offline og installerbar som app (PWA) |
 | AI | MCP-server, så en AI-klient kan bygge og teste spil i editoren eller uden den (headless), med undo/redo og styring af gendannelse af ugemte ændringer |
 | Desktop | Tauri-app med adgang til filsystemet |
@@ -29,15 +31,12 @@ Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved 
 
 **Først, fordi spillere mærker det med det samme**
 
-- [ ] **Gem og indlæs spil:** et `Save`-API til point, bane og inventar, oven på `localStorage` i browseren og filer i desktop-appen
-- [ ] **Gamepad:** støtte i `Input`, så action-mapping kan binde knapper og akser
 - [ ] **Touch og mobil:** virtuelle knapper og joystick, så et eksporteret spil kan spilles på en telefon
 
 **Giver spil et bedre udseende**
 
 - [ ] **Post-processing og egne materialer:** fuldskærmseffekter på kameraet (bloom, CRT, farvekorrektion) og et eget materiale pr. sprite (fx hvid blink ved skade). `Lighting2D` viser, at pipelinen kan det
 - [ ] **Bitmap-fonte** til pixel-art-tekst
-- [ ] **Lydmixer** med master- og musikvolumen, så et spil kan have en indstillingsmenu
 
 **Gør det lettere at bygge spil**
 
@@ -45,7 +44,7 @@ Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved 
 - [ ] **Profiler** med frame-tid, draw calls og antal entities, så man kan finde ud af, hvorfor et spil hakker
 - [ ] **Lokalisering:** tekst på flere sprog
 - [ ] **Fuldskærm og skalering** ved udgivelse, med en klar aftale om pixel-perfekt skalering af selve spillet
-- [ ] **Tilgængelighed:** omkonfigurering af taster og hensyn til "reducer bevægelse" (skærmryst og blink bør kunne slås fra)
+- [ ] **Tilgængelighed:** en indbygget menu til at omkonfigurere taster (skærmryst følger allerede "reducer bevægelse")
 
 Isometriske og sekskantede tilemaps er fravalgt indtil videre.
 
@@ -61,7 +60,6 @@ Isometriske og sekskantede tilemaps er fravalgt indtil videre.
 - [ ] **Fjernvisning af scenetræet:** se og ret værdier i den kørende verden i inspectoren under Play
 - [ ] **Scripts, der kører i editoren:** fx et script, der lægger huse ud eller viser en forhåndsvisning (Godots `@tool`)
 - [ ] **Debugger med breakpoints** (sammen med profileren ovenfor)
-- [ ] **Hop ned igennem envejsplatforme** (fx pil ned + hop)
 - [ ] **Store tiles over flere celler:** en tile kan fylde fx 3×6 celler og beholde sin form, så hele huse, træer eller skilte kan males med tilemap-penslen i stedet for at blive strakt til én celle (Godots TileSet kan det)
 
 ## Derefter: 3D (fase 6)
@@ -89,7 +87,6 @@ Det, der skal gøre Brik anderledes. Rækkefølgen er ikke fastlagt.
 - **Entity-felter i scripts er rå indekser.** Et `@expose({ type: "entity" })`-felt kan pege på en ny entity, når et indeks genbruges efter en sletning. Manualen forklarer, hvordan man bruger `world.ref` og `world.deref`. En egentlig rettelse ændrer script-API'et og er endnu ikke besluttet.
 - Detaljeret lydinspektion gennem MCP (status pr. klip og pr. afspilning). Hørbar lyd kan ikke kontrolleres automatisk.
 - Tekstfelter har ingen caret-styring eller markering (tekst skrives altid til sidst). Er fravalgt.
-- Rapier skriver ved opstart advarslen "using deprecated parameters for the initialization function". Fysikken virker; årsagen er ikke undersøgt.
 
 ## Ikke afprøvet endnu
 
