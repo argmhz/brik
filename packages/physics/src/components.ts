@@ -54,7 +54,9 @@ export const CollisionFilter = defineComponent("CollisionFilter", {
 
 /**
  * Moves a kinematic body with collisions, slopes and steps, for platformers
- * and top-down games. Move it with `physics.moveCharacter(e, dx, dy)`.
+ * and top-down games. Move it with `physics.moveCharacter(e, dx, dy)` (in a script:
+ * `this.moveCharacter(dx, dy)`). The body is kinematic whatever RigidBody2D says, so
+ * the physics' gravity doesn't pull it: the script adds gravity to its own speed.
  */
 export const CharacterController2D = defineComponent(
   "CharacterController2D",
