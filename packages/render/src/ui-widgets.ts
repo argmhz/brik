@@ -1,4 +1,4 @@
-import { type App, type Entity, Time, type World, defineComponent, defineEvent, t, withMeta } from "@brik/core";
+import { type App, type Entity, Time, type World, defineComponent, defineEvent, isActive, t, withMeta } from "@brik/core";
 import { Input } from "@brik/input";
 import { INTERACTIVE, UIButton, UIClick, UIFocus, UILayout, UIRect, UIText } from "./ui";
 
@@ -237,9 +237,12 @@ export function focusable(world: World): Entity[] {
     (world.has(e, UISlider) && S.interactable[e] !== 0) ||
     (world.has(e, UIToggle) && G.interactable[e] !== 0) ||
     (world.has(e, UITextInput) && T.interactable[e] !== 0);
-  // before the first draw there is no layout (headless, tests): fall back to creation order
-  const all = layout.elements.length > 0 ? layout.elements.map((el) => el.e) : [...world.query([UIRect])].sort((a, b) => a - b);
-  return all.filter(ok);
+  // in drawing order as of the last frame; elements that weren't drawn then (switched on since,
+  // or nothing drawn yet: headless, tests, stepping by hand) follow in creation order
+  const drawn = layout.elements.map((el) => el.e);
+  const seen = new Set(drawn);
+  const rest = [...world.query([UIRect])].filter((e) => !seen.has(e)).sort((a, b) => a - b);
+  return [...drawn, ...rest].filter((e) => ok(e) && isActive(world, e));
 }
 
 /** Moves the keyboard focus from `from` to the next (1) or previous (-1) element, wrapping around. With `typeInTextFields`, a text field starts typing at once. */
@@ -287,11 +290,18 @@ export function updateFocus(world: World): void {
   }
   const f = focus.entity;
   if (f < 0) return;
-  if (input.key("Escape").pressed) {
+  if (input.key("Escape").pressed || input.key("PadB").pressed) {
     focus.entity = -1;
     return;
   }
-  const activate = input.key("Enter").pressed || input.key("Space").pressed;
+  // up/down (arrows or the gamepad's d-pad) move between elements once something has focus,
+  // e.g. a menu that focuses its first button; in a game they don't steal focus from nothing
+  const step = (input.key("ArrowDown").pressed || input.key("PadDown").pressed ? 1 : 0) - (input.key("ArrowUp").pressed || input.key("PadUp").pressed ? 1 : 0);
+  if (step !== 0) {
+    moveFocus(world, f, step > 0 ? 1 : -1);
+    return;
+  }
+  const activate = input.key("Enter").pressed || input.key("Space").pressed || input.key("PadA").pressed;
   if (world.has(f, UIButton) && activate) world.emit(UIClick, { entity: f });
   if (world.has(f, UIToggle) && activate) {
     const G = world.store(UIToggle);
@@ -300,7 +310,7 @@ export function updateFocus(world: World): void {
   }
   if (world.has(f, UITextInput) && input.key("Enter").pressed) entry.focus(world, f);
   if (world.has(f, UISlider)) {
-    const dir = (input.key("ArrowRight").pressed ? 1 : 0) - (input.key("ArrowLeft").pressed ? 1 : 0);
+    const dir = (input.key("ArrowRight").pressed || input.key("PadRight").pressed ? 1 : 0) - (input.key("ArrowLeft").pressed || input.key("PadLeft").pressed ? 1 : 0);
     if (dir !== 0) {
       const S = world.store(UISlider);
       const span = S.max[f] - S.min[f];

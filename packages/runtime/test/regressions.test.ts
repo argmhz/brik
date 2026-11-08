@@ -262,6 +262,41 @@ describe("keyboard on the UI", () => {
     expect(focus()).toBe(slider);
   });
 
+  it("arrows and the gamepad's d-pad move focus once something has it, and pad A presses, pad B lets go", () => {
+    const { w, button, toggle, slider, press, focus } = setup();
+    press("ArrowDown", "PadDown"); // nothing focused yet: up/down don't grab focus in a game
+    expect(focus()).toBe(-1);
+    w.resource(UIFocus).entity = button; // a menu focuses its first button
+    press("ArrowDown");
+    expect(focus()).toBe(toggle);
+    press("PadDown");
+    expect(focus()).toBe(slider);
+    press("PadRight");
+    expect(w.store(UISlider).value[slider]).toBe(6);
+    press("ArrowUp");
+    press("PadUp");
+    expect(focus()).toBe(button);
+    const clicks = w.events(UIClick).reader();
+    press("PadA");
+    expect(clicks.read().map((c) => c.entity)).toEqual([button]);
+    press("PadB");
+    expect(focus()).toBe(-1);
+  });
+
+  it("switched-off elements are skipped, and come back when switched on", () => {
+    const { app, w, button, toggle, slider, press, focus } = setup();
+    setActive(w, toggle, false);
+    app.update(1 / 60);
+    press("Tab");
+    expect(focus()).toBe(button);
+    press("Tab");
+    expect(focus()).toBe(slider);
+    setActive(w, toggle, true);
+    app.update(1 / 60);
+    press("Tab", "ShiftLeft");
+    expect(focus()).toBe(toggle);
+  });
+
   it("Enter or Space presses a button and flips a toggle", () => {
     const { w, button, toggle, press } = setup();
     const clicks = w.events(UIClick).reader();
