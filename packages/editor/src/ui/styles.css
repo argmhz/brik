@@ -232,6 +232,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .tree-row input {
   height: 18px;
 }
+/* switched off (Active), or under a parent that is */
+.tree-row.inactive .label,
+.tree-row.inactive .icon {
+  opacity: 0.45;
+}
+.tree-row.inactive .label {
+  font-style: italic;
+}
 .tree-empty {
   min-height: 40px;
   flex: 1;

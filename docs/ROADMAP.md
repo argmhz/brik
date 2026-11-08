@@ -62,6 +62,7 @@ Isometriske og sekskantede tilemaps er fravalgt indtil videre.
 - [ ] **Scripts, der kører i editoren:** fx et script, der lægger huse ud eller viser en forhåndsvisning (Godots `@tool`)
 - [ ] **Debugger med breakpoints** (sammen med profileren ovenfor)
 - [ ] **Hop ned igennem envejsplatforme** (fx pil ned + hop)
+- [ ] **Store tiles over flere celler:** en tile kan fylde fx 3×6 celler og beholde sin form, så hele huse, træer eller skilte kan males med tilemap-penslen i stedet for at blive strakt til én celle (Godots TileSet kan det)
 
 ## Derefter: 3D (fase 6)
 

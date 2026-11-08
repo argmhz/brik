@@ -1,4 +1,5 @@
 import {
+  Active,
   Camera2D,
   type Entity,
   Name,
@@ -159,6 +160,16 @@ export function Hierarchy(props: { editor: Editor }) {
       if (world.has(p.e, Sprite)) return "◧";
       return "○";
     };
+    /** "self": switched off itself, "parent": a parent is switched off, null: on. */
+    const off = () => {
+      version();
+      const A = world.store(Active);
+      if (world.has(p.e, Active) && !A.self[p.e]) return "self";
+      for (let n = parentOf(world, p.e); n >= 0; n = parentOf(world, n)) {
+        if (world.has(n, Active) && !A.self[n]) return "parent";
+      }
+      return null;
+    };
     const dropClass = () => {
       const d = drop();
       return d && d.id === id() ? `drop-${d.zone}` : "";
@@ -168,7 +179,8 @@ export function Hierarchy(props: { editor: Editor }) {
       <>
         <div
           class={`tree-row ${dropClass()}`}
-          classList={{ selected: selected() }}
+          classList={{ selected: selected(), inactive: off() !== null }}
+          title={off() === "self" ? "Slukket (Active er slået fra)" : off() === "parent" ? "Slukket, fordi en forælder er slukket" : undefined}
           style={{ "padding-left": `${p.depth * 14 + 4}px` }}
           draggable={renaming() !== id()}
           onClick={(ev) => {
