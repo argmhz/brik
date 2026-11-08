@@ -178,15 +178,36 @@ export function applyParallax(world: World): void {
     T.position.x[e] = x;
     T.position.y[e] = y;
     // global transforms were made from last frame's position: move the layer and everything under it
-    const stack = [e];
-    while (stack.length) {
-      const n = stack.pop()!;
-      if (world.has(n, GlobalTransform2D)) {
-        G.tx[n] += dx;
-        G.ty[n] += dy;
-      }
-      for (const c of childrenOf(world, n)) stack.push(c);
+    shiftTree(world, e, dx, dy, G);
+  }
+}
+
+/** Moves the global transforms of an entity and everything under it. */
+function shiftTree(world: World, e: Entity, dx: number, dy: number, G = world.store(GlobalTransform2D).matrix): void {
+  const stack = [e];
+  while (stack.length) {
+    const n = stack.pop()!;
+    if (world.has(n, GlobalTransform2D)) {
+      G.tx[n] += dx;
+      G.ty[n] += dy;
     }
+    for (const c of childrenOf(world, n)) stack.push(c);
+  }
+}
+
+/**
+ * For an editor: shows the Parallax2D layers as they will look in the game with the camera
+ * at (`cameraX`, `cameraY`). Only the global transforms change (call it after transforms are
+ * propagated); the layers' own positions, which are what is saved, stay as they are.
+ */
+export function previewParallax(world: World, cameraX: number, cameraY: number): void {
+  const P = world.store(Parallax2D);
+  const G = world.store(GlobalTransform2D).matrix;
+  for (const e of world.query([Parallax2D, Transform2D])) {
+    if (world.has(e, Parent)) continue;
+    const dx = cameraX * (1 - P.factor.x[e]);
+    const dy = cameraY * (1 - P.factor.y[e]);
+    if (dx !== 0 || dy !== 0) shiftTree(world, e, dx, dy, G);
   }
 }
 

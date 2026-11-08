@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { App, Camera2D, CameraFollow2D, GamePlugins, GlobalTransform2D, Parallax2D, Transform2D, initPhysics, setParent } from "../src/index";
+import { App, Camera2D, CameraFollow2D, GamePlugins, GlobalTransform2D, Parallax2D, Transform2D, initPhysics, previewParallax, propagateTransforms, setParent } from "../src/index";
 
 beforeAll(async () => {
   await initPhysics();
@@ -61,5 +61,25 @@ describe("Parallax2D", () => {
     moveTarget(700);
     app.update(1 / 60);
     expect(w.store(Transform2D).position.x[root]).toBe(100);
+  });
+
+  it("the editor preview shows a layer where the game will have it, without changing what is saved", () => {
+    const { app, w, cam, layer, moveTarget } = setup();
+    const { root, child } = layer({ x: 0.65, y: 1 });
+    const T = w.store(Transform2D);
+    const G = w.store(GlobalTransform2D).matrix;
+    // the game, with the camera at x 400
+    moveTarget(400);
+    app.update(1 / 60);
+    const inGame = { x: G.tx[child], y: G.ty[child] };
+    expect(T.position.x[cam]).toBeCloseTo(400);
+    // the editor: the layer is back at its saved place, the view is centered on x 400
+    T.position.x[root] = 100;
+    T.position.y[root] = 20;
+    propagateTransforms.run(w);
+    previewParallax(w, 400, T.position.y[cam]);
+    expect(G.tx[child]).toBeCloseTo(inGame.x);
+    expect(G.ty[child]).toBeCloseTo(inGame.y);
+    expect(T.position.x[root]).toBe(100); // saved value untouched
   });
 });

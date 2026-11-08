@@ -39,6 +39,8 @@ Kameraet bestemmer, hvad Spil-fanen viser. Lad det følge spilleren med `CameraF
 2. Læg lagets sprites som børn under den, og giv dem en lav `layer` i `SortingOrder`, så de tegnes bag banen.
 3. Lagets egen position er, hvor det ligger, mens kameraet står i (0, 0). Lav laget bredt nok til hele banen: et lag med `factor` 0,5 flytter sig kun halvdelen af kameraets vej, så det behøver kun at dække halvdelen af banens bredde plus skærmen.
 
+**I editoren:** så længe knappen **Parallax** i Scene-fanens værktøjslinje er slået til, viser Scene-fanen lagene, som spillets kamera vil se dem, når det står midt i det udsnit, du kigger på. Placér en baggrundsbygning bag kassen i Scene-fanen, så står den bag kassen, når kameraet kommer dertil i spillet. Når du panorerer, glider lagene, ligesom de gør i spillet, og du kan vælge og trække ting dér, hvor du ser dem. Det er kun visningen, der ændres: tallene i inspectoren er stadig lagets position, når kameraet står i (0, 0). Zoomer du langt ud, passer lagene kun midt i billedet. Slå knappen fra for at se alt stå stille. Knappen vises kun, når scenen har et parallax-lag.
+
 Laget følger kameraet i samme frame, så der er ingen rystelser. Kameraet er det, der tegnes først, med mindre feltet `camera` peger på et andet. Kun entities øverst i hierarkiet kan være lag.
 
 ### Skærmryst, zoom-stød og hit-stop

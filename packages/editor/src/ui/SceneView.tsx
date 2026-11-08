@@ -1,5 +1,6 @@
-import { For, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { captures } from "./captures";
+import { Parallax2D } from "@brik/runtime";
 import type { Editor, Tool } from "../core/editor";
 import { useVersion } from "./hooks";
 import { SceneController } from "./scene-controller";
@@ -13,6 +14,8 @@ const TOOLS: { tool: Tool; label: string; key: string }[] = [
 export function SceneView(props: { editor: Editor; onController?: (c: SceneController | null) => void }) {
   const editor = props.editor;
   const settings = useVersion(editor, "settings");
+  const worldVersion = useVersion(editor, "world", "scene");
+  const hasParallax = () => (worldVersion(), editor.world.query([Parallax2D]).toArray().length > 0);
   const [info, setInfo] = createSignal("");
   let container!: HTMLDivElement;
   let canvas!: HTMLCanvasElement;
@@ -79,6 +82,15 @@ export function SceneView(props: { editor: Editor; onController?: (c: SceneContr
         <button classList={{ active: (settings(), editor.showGrid) }} onClick={() => editor.setShowGrid(!editor.showGrid)}>
           Grid
         </button>
+        <Show when={hasParallax()}>
+          <button
+            classList={{ active: (settings(), editor.showParallax) }}
+            title="Vis parallax-lagene, som spillets kamera ser dem fra midten af visningen. Slå fra for at se lagene, hvor de står, når kameraet er i (0, 0)."
+            onClick={() => editor.setShowParallax(!editor.showParallax)}
+          >
+            Parallax
+          </button>
+        </Show>
         <button title="Fokusér på valgte (F)" onClick={() => controller?.frameSelection()}>
           Fokusér
         </button>

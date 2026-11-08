@@ -28,6 +28,7 @@ import {
   type Vec2,
   mat3,
   parentOf,
+  previewParallax,
   propagateTransforms,
   spriteQuad,
 } from "@brik/runtime";
@@ -149,6 +150,7 @@ export class SceneController {
     const world = this.editor.world;
     if (!this.editor.play.active) {
       propagateTransforms.run(world);
+      this.previewLayers();
       this.previewParticles();
     }
     this.renderer.renderView(world, this.editor.view);
@@ -167,6 +169,15 @@ export class SceneController {
     ctx.drawImage(this.canvas, 0, 0);
     ctx.drawImage(this.overlay, 0, 0, out.width, out.height);
     return out.toDataURL("image/png");
+  }
+
+  /**
+   * Shows the parallax layers as the game camera would see them from the middle of the view.
+   * Only global transforms move, so drawing, picking and the gizmos all agree, and nothing
+   * that is saved changes. Runs after every propagation in edit mode.
+   */
+  private previewLayers(): void {
+    if (this.editor.showParallax) previewParallax(this.editor.world, this.editor.view.x, this.editor.view.y);
   }
 
   private lastFrame = 0;
@@ -1079,6 +1090,7 @@ export class SceneController {
   frameSelection(): void {
     const world = this.editor.world;
     propagateTransforms.run(world);
+    if (!this.editor.play.active) this.previewLayers();
     let ents = this.editor.selectedEntities();
     if (ents.length === 0) ents = [...world.query([Transform2D])];
     if (ents.length === 0) return;

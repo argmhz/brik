@@ -102,6 +102,8 @@ export class Editor {
   snap = false;
   gridSize = 16;
   showGrid = true;
+  /** Scene view: show Parallax2D layers as the game camera would see them from the view's center. */
+  showParallax = true;
   /** Tile painting: the active tool (null = normal selection) and the sprite id to paint. */
   tileTool: TileTool | null = null;
   tileSprite: string | null = null;
@@ -301,6 +303,11 @@ export class Editor {
 
   setShowGrid(show: boolean): void {
     this.showGrid = show;
+    this.emit("settings");
+  }
+
+  setShowParallax(show: boolean): void {
+    this.showParallax = show;
     this.emit("settings");
   }
 
