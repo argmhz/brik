@@ -11,6 +11,7 @@ import {
   destroyRecursive,
   findBySceneId,
   instantiate,
+  newGuid,
   newSceneId,
   parentOf,
   serializeEntities,
@@ -560,6 +561,21 @@ export async function createPrefab(editor: Editor, id: string, dir = "prefabs"):
   editor.execute(replaceSubtree(world, id, before, after, "Lav prefab"));
   editor.emit("assets");
   return path;
+}
+
+/**
+ * Copies a prefab file to "<name> 2.prefab.json" (next to it) with a new guid,
+ * so the copy is a prefab of its own. Returns the new path.
+ */
+export async function duplicatePrefab(editor: Editor, path: string): Promise<string> {
+  const entry = editor.db.prefabs.get(path);
+  const data = entry ? editor.assets.prefabs.get(entry.guid)?.data : undefined;
+  if (!entry || !data) throw new Error(`Prefabben ${path} findes ikke`);
+  const dir = path.split("/").slice(0, -1).join("/");
+  const copy = uniquePath(editor, dir, entry.name);
+  await editor.db.savePrefab(copy, clone(data), newGuid());
+  editor.emit("assets");
+  return copy;
 }
 
 /** Places a prefab instance in the scene and selects it. */

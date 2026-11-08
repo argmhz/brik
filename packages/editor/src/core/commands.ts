@@ -202,10 +202,36 @@ export function remapIds(data: SceneEntityData[], idFor: (old: string) => string
   });
 }
 
+/**
+ * New ids for copies of `ids`. Prefab instance children have ids derived from
+ * their instance root ("<root>/<rel>"); their copies get the same derivation
+ * from the copied root, so the copy is still a proper instance of its prefab.
+ */
+function copyIdFor(ids: string[]): (old: string) => string {
+  const copied = new Set(ids);
+  const fresh = new Map<string, string>();
+  const idOf = (old: string): string => {
+    let id = fresh.get(old);
+    if (id) return id;
+    // the shortest copied prefix decides; everything else gets a random id
+    id = newSceneId();
+    for (let i = old.indexOf("/"); i > 0; i = old.indexOf("/", i + 1)) {
+      const prefix = old.slice(0, i);
+      if (copied.has(prefix)) {
+        id = `${idOf(prefix)}${old.slice(i)}`;
+        break;
+      }
+    }
+    fresh.set(old, id);
+    return id;
+  };
+  return idOf;
+}
+
 export function duplicateEntities(world: World, ids: string[]): { cmd: EditCommand; newIds: string[] } {
   const tops = topLevel(world, ids);
   const original = serializeEntities(world, tops);
-  const data = remapIds(original);
+  const data = remapIds(original, copyIdFor(original.map((d) => d.id)));
   // the copies of the top-level entities are the ones to select afterwards
   const topIds = new Set(tops.map((e) => sceneIdOf(world, e)));
   const newIds = data.filter((_, i) => topIds.has(original[i].id)).map((d) => d.id);

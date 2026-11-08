@@ -7,6 +7,7 @@ import { defaultScene, sceneToJson } from "../core/project";
 import { isScriptFile, scriptTemplate, toClassName } from "../core/scripts";
 import { openFile, setToolWindow } from "./ui-state";
 import { openSceneSafely } from "./AssetInspector";
+import { duplicatePrefab } from "../core/prefabs";
 import { MenuItem, openPopup } from "./Popup";
 import { SpriteThumb } from "./fields";
 import { assetKindOf, clipThumb } from "./asset-fields";
@@ -107,6 +108,15 @@ export function AssetBrowser(props: { editor: Editor }) {
     }
   };
 
+  const duplicate = async (path: string) => {
+    try {
+      editor.selectAsset(await duplicatePrefab(editor, path));
+      refetch();
+    } catch (err) {
+      reportError(err, "Kunne ikke duplikere prefabben");
+    }
+  };
+
   const contextMenu = (ev: MouseEvent, entry: FsEntry | null) => {
     ev.preventDefault();
     ev.stopPropagation();
@@ -118,6 +128,9 @@ export function AssetBrowser(props: { editor: Editor }) {
         <MenuItem onClick={newScript}>Nyt script</MenuItem>
         <Show when={entry}>
           <div class="sep" />
+          <Show when={editor.db.prefabs.has(entry!.path)}>
+            <MenuItem onClick={() => duplicate(entry!.path)}>Dupliker (Ctrl+D)</MenuItem>
+          </Show>
           <MenuItem onClick={() => remove(entry!)}>Slet</MenuItem>
         </Show>
       </>

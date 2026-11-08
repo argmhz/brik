@@ -94,6 +94,29 @@ describe("prefabs in the editor", () => {
     expect(saved.entities.some((d) => d.components.PrefabInstance?.prefab === guid)).toBe(true);
   });
 
+  it("duplicating an instance (Ctrl+D) keeps the copy linked to its prefab", async () => {
+    const { editor } = await newEditor();
+    const w = editor.world;
+    const coin = editor.createEntity("circle", { name: "Coin" });
+    editor.createEntity("text", { name: "Label", parentId: coin });
+    await createPrefab(editor, coin);
+    editor.select([coin]);
+    editor.duplicateSelection();
+    const copy = editor.selection[0];
+    expect(copy).not.toBe(coin);
+    const e = findBySceneId(w, copy);
+    expect(w.store(PrefabInstance).overrides[e]).toEqual([]);
+    const kids = childrenOf(w, e).map((k) => sceneIdOf(w, k));
+    expect(kids).toHaveLength(1);
+    expect(kids[0].startsWith(`${copy}/`)).toBe(true);
+
+    // a change applied from the original reaches the copy's child too
+    const label = childrenOf(w, findBySceneId(w, coin))[0];
+    editor.execute(addComponent(w, sceneIdOf(w, label), Collider2D));
+    await applyToPrefab(editor, coin);
+    expect(w.has(childrenOf(w, findBySceneId(w, copy))[0], Collider2D)).toBe(true);
+  });
+
   it("updates instances when the prefab file changes on disk", async () => {
     const { fs, editor } = await newEditor();
     const w = editor.world;

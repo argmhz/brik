@@ -4,6 +4,7 @@ import type { Editor, TileTool } from "../core/editor";
 import { TileMap } from "@brik/runtime";
 import { basename, joinPath } from "../core/fs";
 import { exportZip } from "../core/zip";
+import { duplicatePrefab } from "../core/prefabs";
 import { saveBytes } from "../core/tauri-fs";
 import { AssetBrowser } from "./AssetBrowser";
 import { ConsolePanel } from "./Console";
@@ -160,7 +161,15 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
       editor.redo();
     } else if (mod && key === "d") {
       ev.preventDefault();
-      editor.duplicateSelection();
+      const asset = editor.selectedAsset;
+      if (asset && editor.db.prefabs.has(asset)) {
+        duplicatePrefab(editor, asset)
+          .then((path) => {
+            editor.selectAsset(path);
+            toast(`Prefab kopieret til ${path}`);
+          })
+          .catch((err) => reportError(err, "Kunne ikke duplikere prefabben"));
+      } else editor.duplicateSelection();
     } else if (mod || editor.play.mode === "play") {
       // while the game runs, plain keys belong to the game
       return;

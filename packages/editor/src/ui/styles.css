@@ -1329,3 +1329,62 @@ textarea:focus {
   margin-top: 14px;
 }
 
+
+/* Tilføj komponent */
+.popup:has(.component-picker) {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.component-picker {
+  width: 340px;
+  max-width: calc(100vw - 16px);
+  display: flex;
+  flex-direction: column;
+}
+.component-picker .picker-search {
+  margin: 6px 6px 4px;
+}
+.component-picker .picker-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 6px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.component-picker .picker-cats button {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+.component-picker .picker-cats button.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.component-picker .picker-list {
+  max-height: 320px;
+  overflow: auto;
+  padding: 4px;
+}
+.component-picker .item {
+  justify-content: space-between;
+}
+.component-picker .item.active {
+  background: var(--accent-soft);
+}
+.component-picker .picker-text {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+.component-picker .picker-empty,
+.component-picker .picker-hint {
+  color: var(--muted);
+  font-size: 11px;
+  padding: 6px 8px;
+}
+.component-picker .picker-hint {
+  border-top: 1px solid var(--border);
+}

@@ -13,6 +13,7 @@ import {
   scriptDisplayName,
   findBySceneId,
   parentOf,
+  UICanvas,
 } from "@brik/runtime";
 import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js";
 import { addComponent, addScript, removeComponent, setEntityRef, setValues } from "../core/commands";
@@ -22,7 +23,8 @@ import type { Editor } from "../core/editor";
 import { AssetInspector } from "./AssetInspector";
 import { ScriptsSection } from "./ScriptsSection";
 import { TilePalette } from "./TilePalette";
-import { MenuItem, openPopup } from "./Popup";
+import { ComponentPicker } from "./ComponentPicker";
+import { openPopup } from "./Popup";
 import { Checkbox, Part, SpriteField, TextBox, fromHex, toHex } from "./fields";
 import { reportError, toast, useVersion } from "./hooks";
 
@@ -108,23 +110,17 @@ function EntityInspector(props: { editor: Editor; id: string; e: Entity }) {
       .filter((c) => !c.options.hidden && !present.has(c) && c !== Name && c !== Active && c !== Scripts && c !== PrefabInstance)
       .sort((a, b) => a.name.localeCompare(b.name));
     const scripts = [...editor.scripts.registry.behaviours.keys()].sort();
+    let underCanvas = false;
+    for (let e = props.e; e >= 0 && !underCanvas; e = parentOf(world, e)) underCanvas = world.has(e, UICanvas);
     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
     openPopup(r.left, r.bottom + 2, () => (
-      <>
-        <div class="group">Scripts</div>
-        <For each={scripts} fallback={<div class="item" style={{ color: "var(--muted)" }}>Ingen scripts endnu</div>}>
-          {(id) => (
-            <MenuItem onClick={() => editor.execute(addScript(world, props.id, id))}>
-              {scriptDisplayName(id)}
-              <span class="readonly">{id.split("#")[0]}</span>
-            </MenuItem>
-          )}
-        </For>
-        <div class="group">Komponenter</div>
-        <For each={available} fallback={<div class="item" style={{ color: "var(--muted)" }}>Ingen flere komponenter</div>}>
-          {(c) => <MenuItem onClick={() => editor.execute(addComponent(world, props.id, c))}>{c.name}</MenuItem>}
-        </For>
-      </>
+      <ComponentPicker
+        components={available}
+        scripts={scripts}
+        initial={underCanvas ? "UI" : null}
+        onComponent={(c) => editor.execute(addComponent(world, props.id, c))}
+        onScript={(id) => editor.execute(addScript(world, props.id, id))}
+      />
     ));
   };
 
