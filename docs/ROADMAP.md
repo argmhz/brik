@@ -12,10 +12,10 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 |---|---|
 | Kerne | ECS, scener og prefabs (med overrides pr. instans), scene-skift med fade og data, tweens og timere |
 | Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), skærmryst, zoom-stød, hit-stop og slowmotion |
-| Editor | Hierarki, scene view med gizmos, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse |
-| Tilemaps | Maling i scene view, auto-tiling med terræner, import fra Tiled (`.tmj`, `.tmx`) |
+| Editor | Hierarki, scene view med gizmos og forhåndsvisning af parallax-lag, panorering med hjulet, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse, visning af collidere under Play |
+| Tilemaps | Maling i scene view, auto-tiling med terræner, kollisionsform pr. tile (hel, pynt, envejs, halv, skråninger), import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
-| Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring, led og opslag |
+| Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring (også på skærme over 60 Hz), envejsplatforme, led og opslag |
 | UI | Knapper, tekst, billeder, slider, toggle, tekstfelt og kolonner, med tastaturstyring (Tab, Enter, piletaster) og synlig fokusramme |
 | Lyd | Lydkilder, kanaler og rumlig lyd |
 | Udgivelse | Eksport til `.zip` eller mappe, offline og installerbar som app (PWA) |
@@ -48,6 +48,20 @@ Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved 
 - [ ] **Tilgængelighed:** omkonfigurering af taster og hensyn til "reducer bevægelse" (skærmryst og blink bør kunne slås fra)
 
 Isometriske og sekskantede tilemaps er fravalgt indtil videre.
+
+**Inspireret af Godot**
+
+- [ ] **Stier og bevægelige platforme:** tegn en kurve i editoren, og lad noget følge den (Godots `Path2D`). Figurer skal kunne stå på en platform, der bevæger sig, og blive båret med
+- [ ] **Animér enhver værdi:** en tidslinje for alle felter (position, farve, en dør der åbner, UI der glider ind), som også kan kalde funktioner undervejs (Godots `AnimationPlayer`)
+- [ ] **Autoloads:** scripts, der lever på tværs af scener, fx en GameManager eller musik, der spiller videre
+- [ ] **Signaler forbundet i editoren:** kobl fx "knap trykket" til "dør åbner" uden kode
+- [ ] **Tilstandsmaskine til animationer:** idle, løb, hop og fald som en graf med overgange (Godots `AnimationTree`)
+- [ ] **Egne data-filer:** fx en fil pr. fjendetype eller våben, redigeret i inspectoren og delt mellem prefabs (Godots `Resource`)
+- [ ] **Synlig på skærm:** hooks som `onScreenEnter`/`onScreenExit`, til at vække fjender og spare ydelse
+- [ ] **Fjernvisning af scenetræet:** se og ret værdier i den kørende verden i inspectoren under Play
+- [ ] **Scripts, der kører i editoren:** fx et script, der lægger huse ud eller viser en forhåndsvisning (Godots `@tool`)
+- [ ] **Debugger med breakpoints** (sammen med profileren ovenfor)
+- [ ] **Hop ned igennem envejsplatforme** (fx pil ned + hop)
 
 ## Derefter: 3D (fase 6)
 

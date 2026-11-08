@@ -1,5 +1,5 @@
 import type { Terrain, Vec2 } from "@brik/core";
-import type { SpriteDef, TextureSettings } from "./index";
+import { type SpriteDef, TILE_COLLISIONS, type TileCollision, type TextureSettings } from "./index";
 
 export type Slicing =
   | { mode: "single" }
@@ -37,6 +37,8 @@ interface TextureMetaJson {
     pivot: [number, number];
     /** left, bottom, right, top */
     border?: [number, number, number, number];
+    /** left out when "full" */
+    collision?: TileCollision;
   }[];
   terrains?: Terrain[];
 }
@@ -65,6 +67,7 @@ export function textureMetaToJson(meta: TextureMeta): string {
       rect: [s.rect.x, s.rect.y, s.rect.w, s.rect.h],
       pivot: [s.pivot.x, s.pivot.y],
       ...(s.border ? { border: [s.border.l, s.border.b, s.border.r, s.border.t] as [number, number, number, number] } : {}),
+      ...(s.collision && s.collision !== "full" ? { collision: s.collision } : {}),
     })),
     ...(meta.terrains?.length ? { terrains: meta.terrains } : {}),
   };
@@ -85,6 +88,7 @@ export function parseTextureMeta(text: string): TextureMeta {
       rect: { x: s.rect[0], y: s.rect[1], w: s.rect[2], h: s.rect[3] },
       pivot: { x: s.pivot?.[0] ?? 0.5, y: s.pivot?.[1] ?? 0.5 },
       ...(s.border ? { border: { l: s.border[0], b: s.border[1], r: s.border[2], t: s.border[3] } } : {}),
+      ...(s.collision && s.collision !== "full" && TILE_COLLISIONS.includes(s.collision) ? { collision: s.collision } : {}),
     })),
     ...(j.terrains?.length ? { terrains: j.terrains } : {}),
   };
@@ -123,6 +127,7 @@ export function sliceSprites(
       // pivot comes from the grid settings; 9-slice borders set by hand are kept
       pivot: { ...pivot },
       ...(oldById.get(id)?.border ? { border: { ...oldById.get(id)!.border! } } : {}),
+      ...(oldById.get(id)?.collision ? { collision: oldById.get(id)!.collision } : {}),
     });
   }
   return out;

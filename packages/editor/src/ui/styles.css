@@ -687,6 +687,19 @@ input[type="color"] {
 .game-view {
   outline: none;
 }
+.game-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  font-size: 11px;
+  padding: 2px 8px;
+  opacity: 0.75;
+}
+.game-toggle:hover,
+.game-toggle.active {
+  opacity: 1;
+}
 .game-note {
   position: absolute;
   inset: auto 0 16px 0;

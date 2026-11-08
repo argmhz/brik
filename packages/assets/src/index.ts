@@ -33,7 +33,20 @@ export interface SpriteDef {
   pivot: Vec2;
   /** 9-slice borders in pixels (left, bottom, right, top). Missing means no 9-slice. */
   border?: SpriteBorder;
+  /** How the sprite collides when it is a tile in a TileMap with a TileMapCollider. Missing means "full". */
+  collision?: TileCollision;
 }
+
+/**
+ * The collision shape of a tile:
+ * - "full": the whole cell is solid (the default)
+ * - "none": decoration, nothing collides
+ * - "one-way": a platform you can jump up through and land on (characters only; loose bodies see it as solid)
+ * - "half-bottom": the lower half of the cell is solid
+ * - "slope-up": a ramp rising to the right; "slope-down": falling to the right
+ */
+export type TileCollision = "full" | "none" | "one-way" | "half-bottom" | "slope-up" | "slope-down";
+export const TILE_COLLISIONS: readonly TileCollision[] = ["full", "none", "one-way", "half-bottom", "slope-up", "slope-down"];
 
 export interface SpriteBorder {
   l: number;
@@ -185,7 +198,7 @@ export class Assets {
 
   defineSprite(
     texture: TextureAsset,
-    def: { name: string; rect: Rect; pivot?: Vec2; id?: string; border?: SpriteBorder },
+    def: { name: string; rect: Rect; pivot?: Vec2; id?: string; border?: SpriteBorder; collision?: TileCollision },
   ): SpriteRef {
     const sprite: SpriteDef = {
       id: def.id ?? newGuid(),
@@ -193,6 +206,7 @@ export class Assets {
       rect: { ...def.rect },
       pivot: def.pivot ? { ...def.pivot } : { x: 0.5, y: 0.5 },
       ...(def.border ? { border: { ...def.border } } : {}),
+      ...(def.collision && def.collision !== "full" ? { collision: def.collision } : {}),
     };
     texture.sprites.set(sprite.id, sprite);
     const ref = { texture: texture.guid, id: sprite.id };

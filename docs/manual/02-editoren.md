@@ -8,7 +8,7 @@
 |---|---|
 | Hierarki (venstre) | Entities i scenen. "+" eller højreklik opretter. Træk for at ændre forælder. |
 | Scene (midten) | Flyt (W), rotér (E), skalér (R). Højreklik-træk panorerer, hjulet zoomer (Shift + hjul: sidelæns, Ctrl + hjul: op og ned), F fokuserer. |
-| Spil | Spillet set gennem kameraet, inklusive UI. Ctrl+P er Play/Stop. |
+| Spil | Spillet set gennem kameraet, inklusive UI. Ctrl+P er Play/Stop. Knappen **Collidere** i hjørnet viser fysikkens former under Play. |
 | Kode | Scripts med autocomplete. Ctrl+S gemmer og genindlæser. |
 | Inspector (højre) | Komponenter på den valgte entity, eller indstillinger for det valgte asset |
 | Assets (bund) | Projektets filer. Træk billeder, animationer, prefabs og lyde ind i scenen. |

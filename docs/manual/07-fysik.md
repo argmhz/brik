@@ -10,7 +10,11 @@ Fysikken kører på Rapier. Tyngdekraft og skala sættes i `brik.project.json` u
 | Ting der falder og skubbes | `RigidBody2D` (dynamic) sammen med `Collider2D`. Hastigheden læses og skrives gennem `Velocity2D`. |
 | Spilfigurer | `RigidBody2D` (kinematic), `CharacterController2D` og `Collider2D`. Flyt figuren med `this.moveCharacter(dx, dy)`. |
 | Områder, der kun melder overlap | `isTrigger` på en collider |
-| Faste tiles | `TileMapCollider` på et tilemap |
+| Faste tiles | `TileMapCollider` på et tilemap. Hver tile kan være hel, pynt, envejs, halv eller en skråning: se [Tilemaps](tilemaps.md#kollision) |
+
+## Se collidere
+
+Knappen **Collidere** i Spil-fanens øverste højre hjørne tegner fysikkens egne former oven på spillet, mens det kører: cyan for collidere og orange for envejsplatformes overkant. Det er det, fysikken faktisk bruger, så det er det rigtige sted at kigge, når en figur står forkert i forhold til en kasse eller svæver over jorden. Med knappen slået til kommer stregerne også med på skærmbilleder taget gennem MCP.
 
 ## Opslag
 

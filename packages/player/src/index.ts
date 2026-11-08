@@ -82,6 +82,7 @@ export async function startGame(opts: StartOptions): Promise<App> {
         rect: { x: s.rect[0], y: s.rect[1], w: s.rect[2], h: s.rect[3] },
         pivot: { x: s.pivot[0], y: s.pivot[1] },
         border: s.border ? { l: s.border[0], b: s.border[1], r: s.border[2], t: s.border[3] } : undefined,
+        collision: s.collision,
       });
     }
   }

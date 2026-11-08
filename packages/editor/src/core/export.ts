@@ -312,6 +312,7 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
             : [s.rect.x + pl.x, s.rect.y + pl.y, s.rect.w, s.rect.h],
           pivot: [s.pivot.x, s.pivot.y],
           ...(s.border ? { border: [s.border.l, s.border.b, s.border.r, s.border.t] as [number, number, number, number] } : {}),
+          ...(s.collision && s.collision !== "full" ? { collision: s.collision } : {}),
         })),
       });
     }

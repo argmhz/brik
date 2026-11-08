@@ -104,6 +104,8 @@ export class Editor {
   showGrid = true;
   /** Scene view: show Parallax2D layers as the game camera would see them from the view's center. */
   showParallax = true;
+  /** Game view: draw the colliders the physics has, on top of the running game. */
+  showColliders = false;
   /** Tile painting: the active tool (null = normal selection) and the sprite id to paint. */
   tileTool: TileTool | null = null;
   tileSprite: string | null = null;
@@ -303,6 +305,11 @@ export class Editor {
 
   setShowGrid(show: boolean): void {
     this.showGrid = show;
+    this.emit("settings");
+  }
+
+  setShowColliders(show: boolean): void {
+    this.showColliders = show;
     this.emit("settings");
   }
 

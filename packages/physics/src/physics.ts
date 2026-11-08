@@ -1,4 +1,5 @@
 import type RAPIER from "@dimforge/rapier2d-compat";
+import { Assets, type TileCollision } from "@brik/assets";
 import {
   type App,
   type Entity,
@@ -10,6 +11,8 @@ import {
   NULL_REF,
   isActive,
   mergeTileRects,
+  parseTileKey,
+  type TileData,
   Transform2D,
   type Vec2,
   type World,
@@ -85,6 +88,28 @@ interface TileMapEntry {
   body: RAPIER.RigidBody;
   colliders: RAPIER.Collider[];
   sig: string;
+  /** Tops of one-way tiles in world units, for characters to land on. */
+  oneWay: { x0: number; x1: number; top: number }[];
+}
+
+/**
+ * Collision group bit of one-way tiles. Characters leave these colliders out of their
+ * moves and land on them by hand (only from above); loose bodies see them as solid.
+ */
+const ONE_WAY_BIT = 0x8000;
+
+/** Runs of filled cells per row (not stacked), as cell rects one high. */
+function rowRects(tiles: TileData): { x: number; y: number; w: number; h: number }[] {
+  const rows = new Map<number, TileData>();
+  for (const key in tiles) {
+    const y = parseTileKey(key)[1];
+    let r = rows.get(y);
+    if (!r) rows.set(y, (r = {}));
+    r[key] = tiles[key];
+  }
+  const out: { x: number; y: number; w: number; h: number }[] = [];
+  for (const r of rows.values()) out.push(...mergeTileRects(r));
+  return out;
 }
 
 const objectIds = new WeakMap<object, number>();
@@ -233,7 +258,10 @@ export class Physics {
     const p = body ? ch.pending : { x: 0, y: 0 };
     // the character's own collision filter decides what it collides with (and lands on)
     const F = world.store(CollisionFilter);
-    const groups = world.has(e, CollisionFilter) ? ((((F.group[e] & 0xffff) << 16) | (F.mask[e] & 0xffff)) >>> 0) : undefined;
+    // one-way tiles are left out of the move; characters land on them below, only from above
+    const groups = world.has(e, CollisionFilter)
+      ? ((((F.group[e] & 0xffff) << 16) | (F.mask[e] & 0xffff & ~ONE_WAY_BIT)) >>> 0)
+      : ((0xffff << 16) | (0xffff & ~ONE_WAY_BIT)) >>> 0;
     c.computeColliderMovement(col.collider, { x: p.x + dx / ppm, y: p.y + dy / ppm }, flags.EXCLUDE_DYNAMIC | flags.EXCLUDE_SENSORS, groups);
     const m = { ...c.computedMovement() };
     let grounded = c.computedGrounded();
@@ -248,6 +276,14 @@ export class Physics {
         // a loose body is underneath: stop on it
         m.y = down;
         grounded ||= c.computedGrounded();
+      }
+    }
+    if (m.y < p.y) {
+      // moving down: land on a one-way platform that was below the feet
+      const land = this.oneWayLanding(e, (m.x - p.x) * ppm, (m.y - p.y) * ppm);
+      if (land !== null) {
+        m.y = p.y + land / ppm;
+        grounded = true;
       }
     }
     // m is the whole movement since the last step; this call adds the part beyond what was already given
@@ -270,6 +306,37 @@ export class Physics {
       body.y = this.worldPos(e).y;
     }
     return { x: mx, y: my };
+  }
+
+  /**
+   * The vertical move (world units) that puts a character's feet on the highest one-way
+   * platform it would pass through while moving by (dx, dy), or null. Only platforms whose
+   * top was at or below the feet count, so jumping up through one doesn't stop on it.
+   */
+  private oneWayLanding(e: Entity, dx: number, dy: number): number | null {
+    if (this.tilemaps.size === 0) return null;
+    const world = this.world;
+    const C = world.store(Collider2D);
+    const scale = this.worldScale(e);
+    const halfW = Math.abs(C.size.x[e] * scale.x) / 2;
+    const halfH = C.shape[e] === "circle" ? halfW : Math.abs(C.size.y[e] * scale.y) / 2;
+    const pos = this.worldPos(e);
+    const cx = pos.x + C.offset.x[e] * scale.x + dx;
+    const bottom = pos.y + C.offset.y[e] * scale.y - halfH;
+    const skin = world.store(CharacterController2D).skin[e];
+    let best: number | null = null;
+    for (const t of this.tilemaps.values()) {
+      if (!t.body.isEnabled()) continue;
+      for (const seg of t.oneWay) {
+        if (cx + halfW <= seg.x0 || cx - halfW >= seg.x1) continue;
+        if (bottom < seg.top - 0.01) continue; // was below the top: passing up through, or inside
+        const target = seg.top + skin;
+        if (bottom + dy >= target) continue; // stays above it
+        const move = target - bottom;
+        if (best === null || move > best) best = move;
+      }
+    }
+    return best;
   }
 
   /** Applies an impulse (world units × mass per second) to a dynamic body. */
@@ -427,8 +494,9 @@ export class Physics {
       const c = rw.createCharacterController(CC.skin[e] / ppm);
       c.setUp({ x: 0, y: 1 });
       c.setSlideEnabled(true);
-      c.setMaxSlopeClimbAngle(CC.slopeLimit[e]);
-      c.setMinSlopeSlideAngle(CC.slopeLimit[e]);
+      // a little tolerance, so a 45° slope (a whole slope tile) can be walked with the default 45° limit
+      c.setMaxSlopeClimbAngle(CC.slopeLimit[e] + 0.02);
+      c.setMinSlopeSlideAngle(CC.slopeLimit[e] + 0.02);
       if (CC.stepHeight[e] > 0) c.enableAutostep(CC.stepHeight[e] / ppm, 0.1, false);
       if (CC.snapToGround[e] > 0) c.enableSnapToGround(CC.snapToGround[e] / ppm);
       this.characters.set(e, { ref: world.ref(e), controller: c, sig, pending: { x: 0, y: 0 } });
@@ -462,10 +530,13 @@ export class Physics {
     const M = world.store(TileMap);
     const TC = world.store(TileMapCollider);
     const ppm = this.pixelsPerMeter;
+    const assets = world.tryResource(Assets);
     for (const e of world.query([TileMapCollider, TileMap])) {
       const pos = this.worldPos(e);
       const rot = this.worldRotation(e);
       const scale = this.worldScale(e);
+      // each tile's collision shape comes from its sprite in the tileset
+      const tex = assets?.textures.get(M.tileset[e] as string);
       const sig = [
         objectId(M.tiles[e]),
         M.revision[e],
@@ -478,6 +549,7 @@ export class Physics {
         scale.y,
         TC.friction[e],
         TC.isTrigger[e],
+        tex ? `${tex.guid}:${tex.version}:${tex.sprites.size}` : "-",
       ].join("|");
       const old = this.tilemaps.get(e);
       if (old?.sig === sig) continue;
@@ -485,19 +557,46 @@ export class Physics {
       const body = rw.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(pos.x / ppm, pos.y / ppm).setRotation(rot));
       const tw = (M.tileSize.x[e] * scale.x) / ppm;
       const th = (M.tileSize.y[e] * scale.y) / ppm;
+      const byKind: Record<TileCollision, TileData> = { full: {}, none: {}, "one-way": {}, "half-bottom": {}, "slope-up": {}, "slope-down": {} };
+      const tiles = M.tiles[e];
+      for (const key in tiles) byKind[tex?.sprites.get(tiles[key])?.collision ?? "full"][key] = tiles[key];
       const colliders: RAPIER.Collider[] = [];
-      for (const r of mergeTileRects(M.tiles[e])) {
-        const desc = R.ColliderDesc.cuboid((r.w * tw) / 2, (r.h * th) / 2)
-          .setTranslation((r.x + r.w / 2) * tw, (r.y + r.h / 2) * th)
+      const add = (desc: RAPIER.ColliderDesc, oneWay = false) => {
+        desc
           .setFriction(TC.friction[e])
           .setSensor(TC.isTrigger[e] !== 0)
           .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS)
           .setActiveCollisionTypes(R.ActiveCollisionTypes.DEFAULT | R.ActiveCollisionTypes.KINEMATIC_FIXED);
+        if (oneWay) desc.setCollisionGroups(((ONE_WAY_BIT << 16) | 0xffff) >>> 0);
         const c = rw.createCollider(desc, body);
         this.byHandle.set(c.handle, e);
         colliders.push(c);
+      };
+      const box = (x: number, y: number, w: number, h: number) => R.ColliderDesc.cuboid(w / 2, h / 2).setTranslation(x + w / 2, y + h / 2);
+      for (const r of mergeTileRects(byKind.full)) add(box(r.x * tw, r.y * th, r.w * tw, r.h * th));
+      for (const r of rowRects(byKind["half-bottom"])) add(box(r.x * tw, r.y * th, r.w * tw, th / 2));
+      const oneWay: TileMapEntry["oneWay"] = [];
+      for (const r of rowRects(byKind["one-way"])) {
+        add(box(r.x * tw, r.y * th, r.w * tw, th), true);
+        // characters land on the top edge (only for maps that aren't rotated)
+        if (rot === 0) {
+          const x0 = pos.x + r.x * tw * ppm;
+          const x1 = pos.x + (r.x + r.w) * tw * ppm;
+          oneWay.push({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), top: pos.y + (th > 0 ? (r.y + 1) * th : r.y * th) * ppm });
+        }
       }
-      this.tilemaps.set(e, { ref: world.ref(e), body, colliders, sig });
+      for (const kind of ["slope-up", "slope-down"] as const) {
+        for (const key in byKind[kind]) {
+          const [cx, cy] = parseTileKey(key);
+          const x = cx * tw;
+          const y = cy * th;
+          // rising to the right: high corner on the right; falling: high corner on the left
+          const pts = kind === "slope-up" ? [x, y, x + tw, y, x + tw, y + th] : [x, y, x + tw, y, x, y + th];
+          const desc = R.ColliderDesc.convexHull(new Float32Array(pts));
+          if (desc) add(desc);
+        }
+      }
+      this.tilemaps.set(e, { ref: world.ref(e), body, colliders, sig, oneWay });
     }
   }
 
@@ -614,6 +713,26 @@ export class Physics {
     for (const c of t.colliders) this.byHandle.delete(c.handle);
     this.rw?.removeRigidBody(t.body);
     this.tilemaps.delete(e);
+  }
+
+  /**
+   * Every collider as the physics sees it, as line segments (x0, y0, x1, y1, ...) in world
+   * units, for drawing on top of the game. Null before the physics has started.
+   */
+  debugLines(): Float32Array | null {
+    if (!this.rw) return null;
+    const { vertices } = this.rw.debugRender();
+    const ppm = this.pixelsPerMeter;
+    const out = new Float32Array(vertices.length);
+    for (let i = 0; i < vertices.length; i++) out[i] = vertices[i] * ppm;
+    return out;
+  }
+
+  /** The tops of one-way tiles that characters can land on, in world units. */
+  oneWayEdges(): { x0: number; x1: number; y: number }[] {
+    const out: { x0: number; x1: number; y: number }[] = [];
+    for (const t of this.tilemaps.values()) for (const s of t.oneWay) out.push({ x0: s.x0, x1: s.x1, y: s.top });
+    return out;
   }
 
   /** Number of boxes making up a tile map's colliders. */

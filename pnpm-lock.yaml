@@ -132,6 +132,9 @@ importers:
 
   packages/physics:
     dependencies:
+      '@brik/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@brik/core':
         specifier: workspace:*
         version: link:../core

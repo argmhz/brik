@@ -45,6 +45,8 @@ import {
   rootEntities,
   scriptDisplayName,
   serializeEntities,
+  TILE_COLLISIONS,
+  type TileCollision,
 } from "@brik/runtime";
 import { SCENE_EXTENSION, isAudio, isImage, isScene, metaPath, textureName } from "./asset-db";
 import {
@@ -761,7 +763,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       const entry = editor.db.textures.get(p);
       if (!entry) throw new BridgeError(`${p} is not an imported image. Use list_assets with kind "textures".`);
       if (!Array.isArray(sprites) || sprites.length === 0) throw new BridgeError("`sprites` is a list like [{ sprite: \"hero_0\", name: \"idle\", pivot: { x: 0.5, y: 0 } }]");
-      const edits = sprites as { sprite?: string; id?: string; name?: string; pivot?: { x: number; y: number }; border?: { l: number; b: number; r: number; t: number } | null; rect?: { x: number; y: number; w: number; h: number } }[];
+      const edits = sprites as { sprite?: string; id?: string; name?: string; pivot?: { x: number; y: number }; border?: { l: number; b: number; r: number; t: number } | null; rect?: { x: number; y: number; w: number; h: number }; collision?: string }[];
       let meta = structuredClone(entry.meta);
       const notes: string[] = [];
       // a grid owns every sprite's pivot and rect, so a per-sprite pivot or rect turns it into hand-made sprites (keeping them as they are)
@@ -790,6 +792,11 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         }
         if (e.border === null) delete s.border;
         else if (e.border) s.border = { l: e.border.l, b: e.border.b, r: e.border.r, t: e.border.t };
+        if (e.collision !== undefined) {
+          if (!TILE_COLLISIONS.includes(e.collision as TileCollision)) throw new BridgeError(`collision is one of: ${TILE_COLLISIONS.join(", ")}`);
+          if (e.collision === "full") delete s.collision;
+          else s.collision = e.collision as TileCollision;
+        }
         if (e.rect) {
           const r = e.rect;
           if ([r.x, r.y, r.w, r.h].some((n) => typeof n !== "number") || r.w < 1 || r.h < 1) throw new BridgeError("`rect` is { x, y, w, h } in pixels (y down from the top)");
@@ -799,7 +806,11 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       await editor.db.saveMeta(p, meta);
       editor.emit("assets");
       editor.emit("world");
-      return { path: p, notes, sprites: meta.sprites.map((s) => ({ id: s.id, name: s.name, rect: [s.rect.x, s.rect.y, s.rect.w, s.rect.h], pivot: [s.pivot.x, s.pivot.y] })) };
+      return {
+        path: p,
+        notes,
+        sprites: meta.sprites.map((s) => ({ id: s.id, name: s.name, rect: [s.rect.x, s.rect.y, s.rect.w, s.rect.h], pivot: [s.pivot.x, s.pivot.y], ...(s.collision ? { collision: s.collision } : {}) })),
+      };
     },
 
     create_animation: async ({ path, texture, frames, fps = 8, mode = "loop", events = [] }) => {
@@ -855,9 +866,13 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         for (let x = b.minX; x <= b.maxX; x++) row += charOf.get(tiles[tileKey(x, y)]) ?? ".";
         rows.push(row);
       }
+      // tiles that don't collide as full blocks (decoration, one-way platforms, slopes)
+      const shapes: Record<string, string> = {};
+      for (const sp of tex?.meta.sprites ?? []) if (sp.collision && sp.collision !== "full") shapes[sp.name] = sp.collision;
       return {
         tileset: tex?.path ?? null,
         tileNames: [...names.values()],
+        ...(Object.keys(shapes).length ? { collision: shapes } : {}),
         ...withTerrains,
         tileSize: world.read(e, TileMap).tileSize,
         topLeft: { x: b.minX, y: b.maxY },

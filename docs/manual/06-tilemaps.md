@@ -17,7 +17,21 @@ Reglerne prøves oppefra, og den første, der passer, vinder.
 
 ## Kollision
 
-`TileMapCollider` gør tiles faste. Se [Fysik](fysik.md).
+`TileMapCollider` gør tiles faste. Som udgangspunkt er hver tile en hel blok, men hver sprite i tilesettet kan have sin egen kollisionsform. Vælg den i sprite-editoren under **Kollision**:
+
+| Form | Bruges til |
+|---|---|
+| Hel blok | Gulv, vægge og kasser (standard) |
+| Ingen (pynt) | Græs, vinduer, skilte: tegnes, men intet støder mod dem |
+| Envejs | Platforme man hopper op igennem nedefra og lander oven på. Kun figurer med `CharacterController2D` går igennem dem. Løse ting som kasser ser dem som faste |
+| Halv | Den nederste halvdel af cellen er fast, fx en lav mur |
+| Skråning op mod højre / ned mod højre | Ramper. En hel tile er 45°, og det kan en figur gå op ad med standard-`slopeLimit` |
+
+Ændrer du formen, bygges tilemappets collidere om med det samme, også mens spillet kører. Gennem MCP sættes den med `edit_sprites` (`collision`), og `read_tiles` viser, hvilke tiles der ikke er hele blokke.
+
+Envejsplatforme virker kun på tilemaps, der ikke er roteret. Man kan endnu ikke hoppe ned igennem en envejsplatform.
+
+Se [Fysik](fysik.md).
 
 ## Fra Tiled
 

@@ -1,4 +1,4 @@
-import { type Slicing, type SpriteDef, type TextureMeta, autoSliceRects, cellForCount, gridCount, newGuid, sliceSprites } from "@brik/runtime";
+import { type Slicing, type SpriteDef, type TextureMeta, type TileCollision, autoSliceRects, cellForCount, gridCount, newGuid, sliceSprites } from "@brik/runtime";
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { textureName } from "../core/asset-db";
 import type { Editor } from "../core/editor";
@@ -6,6 +6,16 @@ import { PIVOTS } from "./AssetInspector";
 import { NumberBox, TextBox } from "./fields";
 import { startGrid, texturePixels } from "./image-grid";
 import { reportError, toast, typingInField } from "./hooks";
+
+/** Collision shapes for tiles, in the order shown. */
+const COLLISIONS: { value: TileCollision; label: string }[] = [
+  { value: "full", label: "Hel blok" },
+  { value: "none", label: "Ingen (pynt)" },
+  { value: "one-way", label: "Envejs (hop op igennem)" },
+  { value: "half-bottom", label: "Halv (nederste halvdel)" },
+  { value: "slope-up", label: "Skråning op mod højre" },
+  { value: "slope-down", label: "Skråning ned mod højre" },
+];
 
 type GridSlicing = Extract<Slicing, { mode: "grid" }>;
 type Rect = { x: number; y: number; w: number; h: number };
@@ -557,6 +567,7 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
                   <span class="readonly">
                     {s.rect.w}×{s.rect.h}
                     {s.border ? " · 9" : ""}
+                    {s.collision ? ` · ${COLLISIONS.find((c) => c.value === s.collision)?.label.split(" ")[0].toLowerCase()}` : ""}
                   </span>
                 </div>
               )}
@@ -600,6 +611,18 @@ export function SpriteEditor(props: { editor: Editor; path: string; onClose: () 
                         Egen ({s().pivot.x.toFixed(2)}, {s().pivot.y.toFixed(2)})
                       </option>
                     </Show>
+                  </select>
+                  <span class="field-label" title="Hvordan spriten kolliderer, når den bruges som tile i en TileMap med TileMapCollider">
+                    Kollision
+                  </span>
+                  <select
+                    value={s().collision ?? "full"}
+                    onChange={(ev) => {
+                      const v = ev.currentTarget.value as TileCollision;
+                      updateSprite(s().id, { collision: v === "full" ? undefined : v });
+                    }}
+                  >
+                    <For each={COLLISIONS}>{(c) => <option value={c.value}>{c.label}</option>}</For>
                   </select>
                   <span class="field-label" title="Kanter der ikke strækkes, når spriten skaleres (UI-paneler, knapper)">
                     9-slice

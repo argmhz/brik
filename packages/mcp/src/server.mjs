@@ -210,7 +210,7 @@ tool(
 
 tool(
   "edit_sprites",
-  "Renames sprites and sets their pivot, 9-slice border or rect on an imported image. `sprites` is a list like [{ sprite: 'hero_0', name: 'idle', pivot: { x: 0.5, y: 0 } }]; `sprite` is a name or id. A per-sprite pivot or rect turns a grid into hand-made sprites (they stay as they are). border: { l, b, r, t } in pixels, or null to remove it.",
+  "Renames sprites and sets their pivot, 9-slice border, rect or tile collision on an imported image. `sprites` is a list like [{ sprite: 'hero_0', name: 'idle', pivot: { x: 0.5, y: 0 } }]; `sprite` is a name or id. A per-sprite pivot or rect turns a grid into hand-made sprites (they stay as they are). border: { l, b, r, t } in pixels, or null to remove it. collision: how the sprite collides as a tile in a TileMap with a TileMapCollider: full (default), none (decoration), one-way (characters jump up through it and land on top), half-bottom, slope-up (rising to the right) or slope-down.",
   {
     path: z.string(),
     sprites: z.array(
@@ -220,6 +220,7 @@ tool(
         pivot: z.object({ x: z.number(), y: z.number() }).optional(),
         border: z.object({ l: z.number(), b: z.number(), r: z.number(), t: z.number() }).nullable().optional(),
         rect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+        collision: z.enum(["full", "none", "one-way", "half-bottom", "slope-up", "slope-down"]).optional(),
       }),
     ),
   },

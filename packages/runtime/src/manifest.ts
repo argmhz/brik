@@ -1,3 +1,4 @@
+import type { TileCollision } from "@brik/assets";
 import type { AnimationClip } from "@brik/assets";
 import { type SceneData, defineComponent } from "@brik/core";
 import type { PhysicsOptions } from "@brik/physics";
@@ -29,7 +30,7 @@ export interface GameManifest {
     page: number;
     region: Box;
     pixelsPerUnit: number;
-    sprites: { id: string; name: string; rect: Box; pivot: [number, number]; border?: Box }[];
+    sprites: { id: string; name: string; rect: Box; pivot: [number, number]; border?: Box; collision?: TileCollision }[];
   }[];
   clips: AnimationClip[];
   prefabs: { guid: string; name: string; entities: SceneData["entities"] }[];
