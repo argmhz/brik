@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "id": "59558208e011b9df",
+      "components": {
+        "Name": {
+          "value": "Main Camera"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Camera2D": {
+          "zoom": 1,
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1
+          },
+          "clearColor": {
+            "r": 0.015,
+            "g": 0.025,
+            "b": 0.065,
+            "a": 1
+          },
+          "clear": true,
+          "priority": 0
+        }
+      }
+    },
+    {
+      "id": "9af1d45be22e10a1",
+      "components": {
+        "Name": {
+          "value": "Preview"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Text2D": {
+          "text": "SPACE INVADERS\n\nTryk Play\n\n← →  flyt     MELLEMRUM  skyd",
+          "size": 24,
+          "color": {
+            "r": 0.25,
+            "g": 0.95,
+            "b": 1,
+            "a": 1
+          },
+          "font": "monospace",
+          "align": "center",
+          "bold": false,
+          "maxWidth": 0,
+          "lineHeight": 1.2
+        }
+      }
+    },
+    {
+      "id": "195ab5f69c6ea72d",
+      "components": {
+        "Name": {
+          "value": "Game"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Invaders.ts#Invaders",
+              "props": {
+                "texture": "b4dfdeba-7ccc-41b1-96f5-b6472101453c"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

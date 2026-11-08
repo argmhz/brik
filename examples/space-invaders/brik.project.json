@@ -1,0 +1,5 @@
+{
+  "name": "Space Invaders",
+  "version": 1,
+  "startScene": "scenes/main.scene.json"
+}

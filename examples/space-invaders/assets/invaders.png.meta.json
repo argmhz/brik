@@ -1,0 +1,56 @@
+{
+  "guid": "b4dfdeba-7ccc-41b1-96f5-b6472101453c",
+  "importer": "texture",
+  "settings": {
+    "filter": "nearest",
+    "wrap": "clamp",
+    "pixelsPerUnit": 1
+  },
+  "slicing": {
+    "mode": "manual"
+  },
+  "sprites": [
+    {
+      "id": "ship",
+      "name": "ship",
+      "rect": [
+        0,
+        0,
+        32,
+        24
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "alienA",
+      "name": "alienA",
+      "rect": [
+        32,
+        0,
+        32,
+        24
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "id": "alienB",
+      "name": "alienB",
+      "rect": [
+        64,
+        0,
+        32,
+        24
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ]
+    }
+  ]
+}
