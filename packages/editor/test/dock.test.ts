@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { defaultLayout, isShown, layout, movePanel, normalizeLayout, resetLayout, showPanel, zoneOf } from "../src/ui/dock-state";
+import {
+  defaultLayout,
+  dockHome,
+  floatPanel,
+  isShown,
+  layout,
+  movePanel,
+  normalizeLayout,
+  placeFloating,
+  resetLayout,
+  setSplit,
+  showPanel,
+  zoneOf,
+} from "../src/ui/dock-state";
 
 describe("dock layout", () => {
   it("repairs stored layouts so every panel is in exactly one zone", () => {
@@ -32,5 +45,32 @@ describe("dock layout", () => {
     expect(layout().active.right).toBeNull();
     resetLayout();
     expect(layout()).toEqual(defaultLayout());
+  });
+
+  it("floats panels in windows and docks them again", () => {
+    resetLayout();
+    floatPanel("console");
+    floatPanel("inspector", { x: 10, y: 20 });
+    expect(zoneOf("console")).toBe("float");
+    expect(isShown("console")).toBe(true);
+    expect(layout().zones.bottom).toEqual(["assets"]);
+    expect(layout().zones.right).toEqual([]);
+    expect(layout().floating.map((f) => f.panel)).toEqual(["console", "inspector"]);
+    showPanel("console"); // to the top
+    expect(layout().floating.map((f) => f.panel)).toEqual(["inspector", "console"]);
+    placeFloating("console", { w: 300 });
+    expect(layout().floating.find((f) => f.panel === "console")?.w).toBe(300);
+    // a stored layout keeps the windows; a panel can't be both docked and floating
+    const stored = normalizeLayout(JSON.parse(JSON.stringify(layout())));
+    expect(stored.floating).toHaveLength(2);
+    expect(normalizeLayout({ ...layout(), zones: { ...layout().zones, left: ["hierarchy", "console"] } }).floating.map((f) => f.panel)).toEqual(["inspector"]);
+    movePanel("console", "leftLower");
+    expect(layout().zones.leftLower).toEqual(["console"]);
+    expect(layout().floating.map((f) => f.panel)).toEqual(["inspector"]);
+    dockHome("inspector");
+    expect(zoneOf("inspector")).toBe("right");
+    setSplit("left", 2);
+    expect(layout().split.left).toBe(0.85);
+    resetLayout();
   });
 });

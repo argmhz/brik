@@ -9,6 +9,7 @@ import type { EsbuildLike } from "../core/scripts";
 import { EditorRoot } from "./EditorRoot";
 import { PopupHost } from "./Popup";
 import { RecoveryDialog, offerRecovery } from "./RecoveryDialog";
+import { AskDialog } from "./AskDialog";
 import { StartScreen } from "./StartScreen";
 import { reportError, toastState } from "./hooks";
 import { resetUiState } from "./ui-state";
@@ -95,6 +96,7 @@ function Root() {
       </Show>
       <PopupHost />
       <RecoveryDialog />
+      <AskDialog />
       <Show when={toastState()}>{(t) => <div class="toast" classList={{ error: t().error }}>{t().text}</div>}</Show>
     </>
   );

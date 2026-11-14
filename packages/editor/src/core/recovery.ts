@@ -101,3 +101,36 @@ export class Autosave {
     this.onDisk = true;
   }
 }
+
+// ------------------------------------------------------------------ scripts
+
+/** Where unsaved code from the code editor is kept. */
+export const SCRIPT_RECOVERY_PATH = ".brik/recovery-scripts.json";
+
+export interface ScriptRecovery {
+  version: 1;
+  savedAt: number;
+  /** Unsaved text by file path. */
+  files: Record<string, string>;
+}
+
+export async function readScriptRecovery(fs: ProjectFS): Promise<ScriptRecovery | null> {
+  try {
+    if (!(await fs.exists(SCRIPT_RECOVERY_PATH))) return null;
+    const data = JSON.parse(await fs.readText(SCRIPT_RECOVERY_PATH)) as ScriptRecovery;
+    return data?.version === 1 && data.files && typeof data.files === "object" ? data : null;
+  } catch (err) {
+    console.warn("[brik] could not read the script recovery file", err);
+    return null;
+  }
+}
+
+/** Writes the unsaved files, or removes the file when there are none. */
+export async function writeScriptRecovery(fs: ProjectFS, files: Record<string, string>): Promise<void> {
+  if (Object.keys(files).length === 0) {
+    if (await fs.exists(SCRIPT_RECOVERY_PATH)) await fs.remove(SCRIPT_RECOVERY_PATH);
+    return;
+  }
+  const data: ScriptRecovery = { version: 1, savedAt: Date.now(), files };
+  await fs.writeFile(SCRIPT_RECOVERY_PATH, JSON.stringify(data));
+}

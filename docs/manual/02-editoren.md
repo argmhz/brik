@@ -13,7 +13,9 @@
 | Inspector (højre) | Komponenter på den valgte entity, eller indstillinger for det valgte asset |
 | Assets (bund) | Projektets filer. Træk billeder, animationer, prefabs og lyde ind i scenen. |
 
-Panelerne kan flyttes: træk en fane hen på et andet område, eller højreklik fanen og vælg "Flyt til …". Fx kan Scene og Spil ligge ved siden af hinanden. Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
+Panelerne kan flyttes: træk en fane hen på et andet område, eller højreklik fanen og vælg "Flyt til …". Fx kan Scene og Spil ligge ved siden af hinanden. Venstre og højre kolonne kan deles i en øvre og en nedre del, fx Hierarki over Assets. Træk en fane til den nederste kant af kolonnen, og træk i skillelinjen for at ændre fordelingen.
+
+Dobbeltklik en fane (eller vælg "Flydende vindue" i højreklik-menuen) for at give panelet sit eget vindue oven på editoren. Træk vinduet i titellinjen, og ændr størrelsen i nederste højre hjørne. Slip vinduet over et område for at dokke det igen, eller dobbeltklik titellinjen for at sende det tilbage, hvor det hørte til. Knappen ⊞ i menulinjen sætter panelerne tilbage, hvor de var fra start.
 
 Under Play viser Spil-fanen spillet set gennem kameraet, med UI'et:
 
@@ -28,8 +30,18 @@ Under Play viser Spil-fanen spillet set gennem kameraet, med UI'et:
 | Ctrl+P | Play / Stop |
 | Ctrl+S | Gem |
 | Ctrl+Z | Fortryd |
+| Ctrl+C / Ctrl+X / Ctrl+V | Kopiér, klip og indsæt entities (også til en anden scene eller et andet projekt) |
+| Ctrl+D | Dupliker de valgte entities, eller den valgte prefab i Assets |
 | Højreklik-træk, hjul | Panorér og zoom i scene view |
 | Shift + hjul, Ctrl + hjul | Panorér sidelæns, og op og ned (Cmd + hjul på Mac). Vandret rulning på en touchpad panorerer også sidelæns |
+
+## Kopiér og indsæt
+
+Kopierede entities kommer med deres børn og bliver sat ind ved siden af den valgte entity (eller øverst i hierarkiet, når intet er valgt), samme sted i verden. UI-elementer havner under en UI Canvas. Kopien lægges også på systemets udklipsholder, så den kan sættes ind i et andet projekt. Prefab-instanser forbliver koblet til deres prefab, hvis projektet har den. Ellers bliver de almindelige entities.
+
+## UI i scene view
+
+Et valgt UI-element har håndtag i hjørner og på kanter. Træk i dem for at ændre størrelsen; den modsatte kant bliver stående. Snap (eller Ctrl under træk) runder størrelsen til gitteret.
 
 ## Fortryd
 
@@ -40,6 +52,10 @@ Alt kan fortrydes med Ctrl+Z. Ændringer under Play forsvinder, når du stopper.
 ## Gem og gendan
 
 Ændringer, der ikke er gemt, lægges løbende i `.brik/recovery.json`. Lukkes editoren, eller genindlæses siden, før du har gemt, spørger Brik næste gang projektet åbnes, om ændringerne skal gendannes. Selve scenefilen røres først, når du gemmer.
+
+Kode, der ikke er gemt i Kode-panelet, lægges på samme måde i `.brik/recovery-scripts.json`. Næste gang åbnes filerne igen med ændringerne, markeret som ikke gemt, så du kan gemme dem med Ctrl+S eller lukke dem.
+
+Åbner du en anden scene, laver en ny eller lukker projektet, mens scenen har ændringer, spørger Brik, om de skal gemmes først: **Gem**, **Kassér** eller **Annullér**.
 
 ## Console
 

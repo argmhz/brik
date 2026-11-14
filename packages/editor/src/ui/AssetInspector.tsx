@@ -2,6 +2,7 @@ import { type Slicing, type TextureMeta, type TextureSettings, cellForCount, gri
 import { For, Match, Show, Switch, createEffect, createSignal, on } from "solid-js";
 import { isAudio, isClip, isImage, isPrefab, isScene, textureName } from "../core/asset-db";
 import { ClipInspector, MakeAnimation, PrefabInspector, SoundInspector } from "./asset-panels";
+import { leaveScene } from "./AskDialog";
 import type { Editor } from "../core/editor";
 import { isScriptFile } from "../core/scripts";
 import { openFile, setToolWindow } from "./ui-state";
@@ -71,7 +72,7 @@ export function AssetInspector(props: { editor: Editor; path: string }) {
 }
 
 export async function openSceneSafely(editor: Editor, path: string): Promise<void> {
-  if (editor.dirty && !confirm("Scenen har ændringer, der ikke er gemt. Åbn en anden scene alligevel?")) return;
+  if (!(await leaveScene(editor, "åbner en anden scene"))) return;
   try {
     await editor.openScene(path);
   } catch (err) {

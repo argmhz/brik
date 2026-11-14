@@ -11,7 +11,7 @@ import {
   rootEntities,
 } from "@brik/runtime";
 import { For, Show, createSignal } from "solid-js";
-import { addComponent, composite, reparent, setValues } from "../core/commands";
+import { type EntityClipboard, addComponent, composite, reparent, setValues } from "../core/commands";
 import type { Editor } from "../core/editor";
 import { MenuItem, openPopup } from "./Popup";
 import { createPrefab, revertToPrefab } from "../core/prefabs";
@@ -71,6 +71,11 @@ export function Hierarchy(props: { editor: Editor }) {
     </>
   );
 
+  /** Also puts menu copies on the system clipboard, so they can be pasted in another project. */
+  const toClipboard = (clip: EntityClipboard | null) => {
+    if (clip) navigator.clipboard?.writeText(JSON.stringify(clip)).catch(() => {});
+  };
+
   const contextMenu = (ev: MouseEvent, id: string | null) => {
     ev.preventDefault();
     ev.stopPropagation();
@@ -79,9 +84,22 @@ export function Hierarchy(props: { editor: Editor }) {
       <>
         <div class="group">{id ? "Opret som barn" : "Opret"}</div>
         {createMenu(id)}
+        <div class="sep" />
+        <MenuItem
+          disabled={!editor.clipboard}
+          onClick={() => {
+            // on empty space: paste at the root
+            if (!id) editor.select([]);
+            editor.paste();
+          }}
+        >
+          Indsæt (Ctrl+V)
+        </MenuItem>
         <Show when={id}>
           <div class="sep" />
           <MenuItem onClick={() => setRenaming(id)}>Omdøb</MenuItem>
+          <MenuItem onClick={() => toClipboard(editor.copySelection())}>Kopiér (Ctrl+C)</MenuItem>
+          <MenuItem onClick={() => toClipboard(editor.cutSelection())}>Klip (Ctrl+X)</MenuItem>
           <MenuItem onClick={() => editor.duplicateSelection()}>Dupliker (Ctrl+D)</MenuItem>
           <MenuItem onClick={() => editor.deleteSelection()}>Slet (Delete)</MenuItem>
           <div class="sep" />

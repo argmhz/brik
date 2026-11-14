@@ -1388,3 +1388,39 @@ textarea:focus {
 .component-picker .picker-hint {
   border-top: 1px solid var(--border);
 }
+
+/* Floating panels */
+.workspace {
+  position: relative;
+}
+.floating-panel {
+  position: absolute;
+  border: 1px solid #454956;
+  border-radius: 6px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  resize: both;
+  min-width: 200px;
+  min-height: 120px;
+}
+.floating-panel.docking {
+  opacity: 0.6;
+}
+.floating-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  cursor: move;
+  user-select: none;
+  font-size: 12px;
+}
+.floating-title .spacer {
+  flex: 1;
+}
+.floating-title button {
+  padding: 0 6px;
+}

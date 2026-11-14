@@ -1,12 +1,13 @@
 import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
-import { For, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { For, createEffect, createSignal, on, onCleanup, onMount } from "solid-js";
 import type { Editor } from "../core/editor";
+import { readScriptRecovery, writeScriptRecovery } from "../core/recovery";
 import { readScripts } from "../core/scripts";
 import types from "../generated/brik-types.json";
 import { reportError, toast, useVersion } from "./hooks";
-import { activeFile, closeFile, codeActions, openFiles, revealAt, setActiveFile, setRevealAt } from "./ui-state";
+import { activeFile, closeFile, codeActions, openFile, openFiles, revealAt, setActiveFile, setRevealAt } from "./ui-state";
 
 let configured = false;
 
@@ -134,6 +135,41 @@ export default function CodePanel(props: { editor: Editor }) {
     closeFile(path);
   };
 
+  // ---- unsaved code survives a crash or reload: kept in .brik/recovery-scripts.json
+  let recoveryReady = false;
+  let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
+  let recoveryWrite: Promise<void> = Promise.resolve();
+  const writeRecovery = () => {
+    const files: Record<string, string> = {};
+    for (const [path, d] of docs) if (isDirty(path)) files[path] = d.model.getValue();
+    recoveryWrite = recoveryWrite
+      .then(() => writeScriptRecovery(editor.fs, files))
+      .catch((err) => console.warn("[brik] script autosave failed", err));
+  };
+  createEffect(
+    on(dirtyTick, () => {
+      if (!recoveryReady) return;
+      clearTimeout(recoveryTimer);
+      recoveryTimer = setTimeout(writeRecovery, 1500);
+    }),
+  );
+  /** Puts unsaved code from last time back as unsaved edits, and opens those files. */
+  const restoreRecovery = async () => {
+    const rec = await readScriptRecovery(editor.fs);
+    let n = 0;
+    for (const [path, text] of Object.entries(rec?.files ?? {})) {
+      const disk = await editor.fs.readText(path).catch(() => "");
+      if (disk === text) continue;
+      const d = docs.get(path) ?? ensureDoc(path, disk);
+      d.model.setValue(text);
+      openFile(path);
+      n++;
+    }
+    if (n > 0) toast(`Gendannede ændringer, der ikke var gemt, i ${n} fil${n === 1 ? "" : "er"}. Gem dem med Ctrl+S.`);
+    recoveryReady = true;
+    setDirtyTick((x) => x + 1);
+  };
+
   onMount(async () => {
     code = monaco.editor.create(host, {
       theme: "vs-dark",
@@ -148,11 +184,14 @@ export default function CodePanel(props: { editor: Editor }) {
     codeActions.save = () => save();
     codeActions.dirty = () => [...docs.keys()].some(isDirty);
     await syncFromDisk();
+    await restoreRecovery();
     show(activeFile());
     setLoaded((n) => n + 1);
   });
 
   onCleanup(() => {
+    clearTimeout(recoveryTimer);
+    if (recoveryReady) writeRecovery();
     codeActions.save = null;
     codeActions.dirty = null;
     code?.dispose();

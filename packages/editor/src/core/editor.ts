@@ -8,6 +8,8 @@ import {
   CorePlugin,
   type Entity,
   Name,
+  Parent,
+  PrefabInstance,
   type SceneData,
   type SceneEntityData,
   SceneId,
@@ -26,7 +28,14 @@ import {
 import { refreshOverrides, refreshSceneData, syncAllInstances } from "./prefabs";
 import { joinPath } from "./fs";
 import { AssetDatabase, type Decoder, SCENE_EXTENSION } from "./asset-db";
-import { createEntities, deleteEntities, duplicateEntities } from "./commands";
+import {
+  type EntityClipboard,
+  copyEntities,
+  createEntities,
+  deleteEntities,
+  duplicateEntities,
+  pasteEntities,
+} from "./commands";
 import { type LogLevel, LogStore, formatArgs } from "./console-log";
 import { mapStack } from "./source-map";
 import type { ProjectFS } from "./fs";
@@ -590,6 +599,59 @@ export class Editor {
     const { cmd, newIds } = duplicateEntities(this.world, this.selection);
     this.execute(cmd);
     this.select(newIds);
+  }
+
+  /** The last copied entities. Kept when another scene is opened, so they can be pasted there. */
+  clipboard: EntityClipboard | null = null;
+
+  /** Copies the selection to `clipboard` and returns it (null when nothing is selected). */
+  copySelection(): EntityClipboard | null {
+    const clip = copyEntities(this.world, this.selection);
+    if (clip) this.clipboard = clip;
+    return clip;
+  }
+
+  cutSelection(): EntityClipboard | null {
+    const clip = this.copySelection();
+    if (clip) this.deleteSelection();
+    return clip;
+  }
+
+  /**
+   * Pastes entities next to the selected entity (or at the root) and selects
+   * them. UI elements go under a canvas. Links to prefabs this project doesn't
+   * have are dropped, so the entities become plain entities.
+   */
+  paste(clip: EntityClipboard | null = this.clipboard): string[] {
+    if (!clip || clip.entities.length === 0) return [];
+    const entities = clip.entities.map((d) => {
+      const guid = d.components[PrefabInstance.name]?.prefab;
+      if (typeof guid !== "string" || this.assets.prefabs.has(guid)) return d;
+      const components = { ...d.components };
+      delete components[PrefabInstance.name];
+      return { ...d, components };
+    });
+    const last = this.selection.at(-1);
+    const e = last ? findBySceneId(this.world, last) : -1;
+    const p = e >= 0 ? parentOf(this.world, e) : -1;
+    let parentId: string | null = p >= 0 ? this.idOf(p) : null;
+    const ids = new Set(entities.map((d) => d.id));
+    const hasUI = entities.some((d) => {
+      const par = d.components[Parent.name]?.entity;
+      return d.components.UIRect && (typeof par !== "string" || !ids.has(par));
+    });
+    if (hasUI && !this.underCanvas(parentId)) {
+      const canvas = this.world.query([UICanvas]).first();
+      if (canvas < 0) {
+        this.log("warn", "UI-elementer skal ligge under en UI Canvas. Opret en først.");
+        return [];
+      }
+      parentId = this.idOf(canvas);
+    }
+    const { cmd, newIds } = pasteEntities(this.world, { ...clip, entities }, parentId);
+    this.execute(cmd);
+    this.select(newIds);
+    return newIds;
   }
 
   /**

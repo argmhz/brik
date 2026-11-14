@@ -72,6 +72,19 @@ type Drag =
       erase: boolean;
     }
   | {
+      kind: "ui-resize";
+      id: string;
+      e: Entity;
+      /** Which edges move: -1 left/bottom, 1 right/top, 0 neither. */
+      hx: number;
+      hy: number;
+      startWorld: Vec2;
+      start: { position: Vec2; size: Vec2 };
+      /** Laid-out size at the start, in UI units. */
+      shown: Vec2;
+      moved: boolean;
+    }
+  | {
       kind: "ui-move";
       startWorld: Vec2;
       items: { id: string; e: Entity; start: Vec2 }[];
@@ -214,6 +227,7 @@ export class SceneController {
     this.drawJoints(ctx);
     this.drawLights(ctx);
     this.drawUI(ctx);
+    this.drawUIHandles(ctx);
     this.drawIcons(ctx);
     this.drawSelection(ctx);
     if (this.paintTarget() >= 0) this.drawTilePaint(ctx);
@@ -554,6 +568,105 @@ export class SceneController {
 
   private uiLayout = new UILayout();
 
+  /**
+   * Resize handles of the selected UI element (corners and edge middles) in
+   * screen pixels, or [] when the active selection isn't laid-out UI.
+   */
+  private uiHandles(): { hx: number; hy: number; p: Vec2 }[] {
+    const world = this.editor.world;
+    const e = this.editor.selectedEntities().at(-1);
+    if (e === undefined || !world.has(e, UIRect) || this.editor.selection.length !== 1) return [];
+    const cam = this.uiCamera();
+    if (cam < 0) return [];
+    this.uiLayout.update(world, GAME_REFERENCE.w, GAME_REFERENCE.h);
+    const el = this.uiLayout.byEntity.get(e);
+    if (!el) return [];
+    const g = this.globalOf(cam);
+    const z = world.store(Camera2D).zoom[cam];
+    const r = el.rect;
+    const out: { hx: number; hy: number; p: Vec2 }[] = [];
+    for (const hx of [-1, 0, 1]) {
+      for (const hy of [-1, 0, 1]) {
+        if (hx === 0 && hy === 0) continue;
+        const x = (r.x + (r.w * (hx + 1)) / 2 - GAME_REFERENCE.w / 2) / z;
+        const y = (r.y + (r.h * (hy + 1)) / 2 - GAME_REFERENCE.h / 2) / z;
+        const w = mat3.transformPoint(g, { x, y });
+        out.push({ hx, hy, p: this.worldToScreen(w.x, w.y) });
+      }
+    }
+    return out;
+  }
+
+  private hitUIHandle(sx: number, sy: number): { hx: number; hy: number } | null {
+    for (const h of this.uiHandles()) if (Math.abs(h.p.x - sx) <= 6 && Math.abs(h.p.y - sy) <= 6) return h;
+    return null;
+  }
+
+  private drawUIHandles(ctx: CanvasRenderingContext2D): void {
+    const active = this.drag?.kind === "ui-resize" ? this.drag : null;
+    ctx.save();
+    for (const h of this.uiHandles()) {
+      const on = active && active.hx === h.hx && active.hy === h.hy;
+      ctx.fillStyle = on ? "#ffcc00" : "#ffffff";
+      ctx.strokeStyle = "#4c8dff";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(h.p.x - 4, h.p.y - 4, 8, 8);
+      ctx.strokeRect(h.p.x - 4, h.p.y - 4, 8, 8);
+    }
+    ctx.restore();
+  }
+
+  private beginUIResize(h: { hx: number; hy: number }, p: Vec2): void {
+    const world = this.editor.world;
+    const e = this.editor.selectedEntities().at(-1)!;
+    const u = world.read(e, UIRect);
+    const el = this.uiLayout.byEntity.get(e);
+    const sc = el?.scale || 1;
+    this.drag = {
+      kind: "ui-resize",
+      id: this.editor.idOf(e),
+      e,
+      hx: h.hx,
+      hy: h.hy,
+      startWorld: this.screenToWorld(p.x, p.y),
+      start: { position: { ...u.position }, size: { ...u.size } },
+      shown: { x: (el?.rect.w ?? 0) / sc, y: (el?.rect.h ?? 0) / sc },
+      moved: false,
+    };
+  }
+
+  /**
+   * Moves the dragged edges and keeps the opposite ones still: the size grows by
+   * the drag and the pivot moves along with its share of it.
+   */
+  private applyUIResize(drag: Extract<Drag, { kind: "ui-resize" }>, cur: Vec2, invertSnap: boolean): void {
+    const world = this.editor.world;
+    const U = world.store(UIRect);
+    const e = drag.e;
+    const cam = this.uiCamera();
+    const inv = cam >= 0 ? mat3.invert(this.globalOf(cam)) : null;
+    const d = { x: cur.x - drag.startWorld.x, y: cur.y - drag.startWorld.y };
+    const local = inv ? mat3.transformVector(inv, d) : d;
+    const k = this.uiUnitsPerWorld(e);
+    const snap = this.editor.snap !== invertSnap;
+    const g = this.editor.gridSize;
+    const axis = (h: number, delta: number, size: number, pos: number, pivot: number, shown: number) => {
+      if (h === 0) return { size, pos };
+      let grow = h * delta;
+      if (snap) grow = Math.round((size + grow) / g) * g - size;
+      // never smaller than 1 unit
+      grow = Math.max(grow, 1 - shown);
+      const pivotShare = h > 0 ? pivot : 1 - pivot;
+      return { size: size + grow, pos: pos + h * grow * pivotShare };
+    };
+    const x = axis(drag.hx, local.x * k, drag.start.size.x, drag.start.position.x, U.pivot.x[e], drag.shown.x);
+    const y = axis(drag.hy, local.y * k, drag.start.size.y, drag.start.position.y, U.pivot.y[e], drag.shown.y);
+    U.size.x[e] = x.size;
+    U.size.y[e] = y.size;
+    U.position.x[e] = x.pos;
+    U.position.y[e] = y.pos;
+  }
+
   /** The camera the UI outlines are drawn in (the first by priority), or -1. */
   private uiCamera(): Entity {
     const world = this.editor.world;
@@ -829,6 +942,11 @@ export class SceneController {
       this.beginPaint(p, ev.shiftKey);
       return;
     }
+    const uiHandle = this.hitUIHandle(p.x, p.y);
+    if (uiHandle) {
+      this.beginUIResize(uiHandle, p);
+      return;
+    }
     const handle = this.hitGizmo(p.x, p.y);
     if (handle) {
       this.beginTransform(handle, p);
@@ -903,7 +1021,9 @@ export class SceneController {
     if (!drag) {
       const painting = this.paintTarget() >= 0;
       const hover = !painting && this.hitGizmo(p.x, p.y);
-      this.container.style.cursor = this.spaceDown ? "grab" : painting ? "crosshair" : hover ? "pointer" : "";
+      const ui = !painting && this.hitUIHandle(p.x, p.y);
+      const resize = ui ? (ui.hx === 0 ? "ns-resize" : ui.hy === 0 ? "ew-resize" : ui.hx === ui.hy ? "nesw-resize" : "nwse-resize") : "";
+      this.container.style.cursor = this.spaceDown ? "grab" : painting ? "crosshair" : resize || (hover ? "pointer" : "");
       return;
     }
     if (drag.kind === "paint") {
@@ -916,6 +1036,14 @@ export class SceneController {
       v.y += (ev.clientY - drag.lastY) / v.zoom;
       drag.lastX = ev.clientX;
       drag.lastY = ev.clientY;
+      return;
+    }
+    if (drag.kind === "ui-resize") {
+      const cur = this.screenToWorld(p.x, p.y);
+      if (!drag.moved && Math.hypot(cur.x - drag.startWorld.x, cur.y - drag.startWorld.y) * this.editor.view.zoom < 2) return;
+      drag.moved = true;
+      this.applyUIResize(drag, cur, ev.ctrlKey || ev.metaKey);
+      this.editor.emit("world");
       return;
     }
     if (drag.kind === "ui-move") {
@@ -1014,6 +1142,14 @@ export class SceneController {
     if (this.container.hasPointerCapture(ev.pointerId)) this.container.releasePointerCapture(ev.pointerId);
     if (drag?.kind === "paint") {
       this.endPaint(drag);
+      return;
+    }
+    if (drag?.kind === "ui-resize") {
+      const world = this.editor.world;
+      if (!drag.moved || !world.isAlive(drag.e)) return;
+      const u = world.read(drag.e, UIRect);
+      const change: FieldChange = { id: drag.id, component: "UIRect", before: { ...drag.start }, after: { position: u.position, size: u.size } };
+      this.editor.push(setValues(world, "Skalér UI", [change]));
       return;
     }
     if (drag?.kind === "ui-move") {

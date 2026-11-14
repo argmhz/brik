@@ -7,6 +7,7 @@ import {
   Transform2D,
   childrenOf,
   findBySceneId,
+  parentOf,
   initPhysics,
   serializeScene,
   Scripts,
@@ -23,6 +24,7 @@ import {
   createProject,
   deleteEntities,
   overridesFor,
+  parseClipboard,
   placePrefab,
   revertOverride,
   revertToPrefab,
@@ -115,6 +117,48 @@ describe("prefabs in the editor", () => {
     editor.execute(addComponent(w, sceneIdOf(w, label), Collider2D));
     await applyToPrefab(editor, coin);
     expect(w.has(childrenOf(w, findBySceneId(w, copy))[0], Collider2D)).toBe(true);
+  });
+
+  it("copies and pastes entities, also under another parent and in another scene", async () => {
+    const { editor } = await newEditor();
+    const w = editor.world;
+    const T = w.store(Transform2D);
+    const holder = editor.createEntity("empty", { name: "Holder", x: 100, y: 0 });
+    const coin = editor.createEntity("circle", { name: "Coin", x: 10, y: 20, parentId: holder });
+    editor.createEntity("text", { name: "Label", parentId: coin });
+    await createPrefab(editor, coin);
+    const other = editor.createEntity("empty", { name: "Other", x: -50, y: 0 });
+
+    // copy, then paste next to "Other" (at the root): same place in the world, still a linked instance
+    editor.select([coin]);
+    const clip = editor.copySelection()!;
+    expect(parseClipboard(JSON.stringify(clip))).not.toBeNull();
+    expect(parseClipboard("hello")).toBeNull();
+    editor.select([other]);
+    const [pasted] = editor.paste();
+    const p = findBySceneId(w, pasted);
+    expect(parentOf(w, p)).toBe(-1);
+    const wx = (e: number) => T.position.x[e] + (parentOf(w, e) >= 0 ? T.position.x[parentOf(w, e)] : 0);
+    expect(wx(p)).toBeCloseTo(wx(findBySceneId(w, coin)));
+    expect(childrenOf(w, p)).toHaveLength(1);
+    expect(w.store(PrefabInstance).overrides[p]).toEqual([]);
+    editor.undo();
+    expect(findBySceneId(w, pasted)).toBe(-1);
+
+    // cut removes, paste brings it back (with a new id)
+    editor.select([other]);
+    editor.cutSelection();
+    expect(findBySceneId(w, other)).toBe(-1);
+    expect(editor.paste()).toHaveLength(1);
+
+    // the clipboard survives opening another scene; a prefab this project doesn't know becomes plain
+    editor.newScene();
+    const foreign = { ...clip, entities: clip.entities.map((d) => ({ ...d, components: { ...d.components } })) };
+    foreign.entities[0].components.PrefabInstance = { prefab: "unknown-guid", overrides: [] };
+    const [plain] = editor.paste(foreign);
+    expect(w.has(findBySceneId(w, plain), PrefabInstance)).toBe(false);
+    const [again] = editor.paste();
+    expect(w.store(Name).value[findBySceneId(w, again)]).toBe("Other");
   });
 
   it("updates instances when the prefab file changes on disk", async () => {

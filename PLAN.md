@@ -433,7 +433,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 
 **Kendte begrænsninger i 4b**
 - UI er kun i skærm-koordinater (ingen world-space canvas). ~~Ingen layout, slider, toggle eller tekstfelt.~~ (fase 5.9)
-- ~~UI-elementer kan ikke vælges eller trækkes i scene view.~~ (fase 5.9; størrelsen ændres stadig i inspectoren)
+- ~~UI-elementer kan ikke vælges eller trækkes i scene view.~~ (fase 5.9; ~~størrelsen ændres stadig i inspectoren~~ editor-runden: håndtag i scene view)
 - Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener. ~~Der er ingen auto-tiling.~~ (fase 5.9)
 - Partikler har ingen kollision. ~~De simulerer kun i world space.~~ (gruppe 3: `space: "local"` lader dem følge emitteren)
 - ~~`Sprite` har ikke 9-slice i verdenen.~~ (fase 5.9)
@@ -472,7 +472,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 
 **Kendte begrænsninger i 5.5**
 - ~~Script-felter tæller som ét override (`Scripts.list`).~~ (fase 5.9)
-- Docking har fire faste zoner. Zoner kan ikke deles yderligere, og paneler kan ikke flyde i egne vinduer.
+- ~~Docking har fire faste zoner. Zoner kan ikke deles yderligere, og paneler kan ikke flyde i egne vinduer.~~ (editor-runden: sidekolonnerne kan deles, og paneler kan flyde i vinduer inde i editoren. Rigtige OS-vinduer er fravalgt, fordi canvas og kode-editoren ikke kan flyttes mellem browservinduer.)
 - `changed` ser ikke ændringer inde i `ref`-felter (fx arrays), som ændres på stedet.
 
 ### Fase 5.6 — AI via MCP
@@ -520,7 +520,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - [x] `CLAUDE.md` i alle nye projekter (og i Mosehop) med filer, script-API, hooks og tommelfingerregler, så AI-klienter kender Brik uden MCP-serveren.
 
 **Kendte begrænsninger i 5.8**
-- Autosave dækker kun den åbne scene.
+- ~~Autosave dækker kun den åbne scene.~~ (editor-runden: kun én scene kan have ændringer ad gangen, så det, der manglede, var kode, der ikke var gemt, og et "Gem først" ved sceneskift. Begge er lavet.)
 - ~~Gendannelsesspørgsmålet bruger browserens `confirm()`-dialog.~~ (gruppe 3: en egen dialog med scenens navn, tidspunkt og antal entities)
 - ~~Eksisterende projekter får ikke `CLAUDE.md`.~~ (gruppe 3: de får den, når de åbnes, hvis den mangler. En markør i `.brik/` sørger for, at en slettet fil ikke kommer tilbage, og en eksisterende røres aldrig.)
 - Headless har ingen renderer, så der er ingen skærmbilleder, og byg/eksport kan ikke køres derfra. Er projektet åbent i både editoren og headless, ser de ikke hinandens ændringer.
@@ -554,6 +554,18 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 
 **Rettet efter gennemgang af 2D**
 - [x] Verdens-partikler i en entitys allerførste frame startede ved (0, 0), fordi den globale transform først udregnes bagefter. Partikler og spawnere bruger nu `computeWorldMatrix`, som regner fra transform-kæden.
+
+### Editor-runden (november 2026)
+- [x] Ctrl+D på en prefab-instans beholder koblingen til prefab'ens børn (børnenes id'er afledes af den nye rod), og prefab-filer kan duplikeres i Assets (Ctrl+D eller højreklik) med et nyt guid.
+- [x] "Tilføj komponent": søgning på navn og på hvad komponenten gør, kategorier (Tab skifter), en kort beskrivelse pr. komponent, senest brugte øverst og tastaturstyring. Under en UI Canvas starter den på UI.
+- [x] Kopiér, klip og indsæt entities (Ctrl+C/X/V og højreklik i Hierarki). Indsættes ved siden af den valgte entity, samme sted i verden, og UI havner under en canvas. Kopien ligger også på systemets udklipsholder som JSON, så den kan sættes ind i en anden scene eller et andet projekt. Prefab-links, som projektet ikke kender, fjernes.
+- [x] UI-elementer har håndtag i scene view, så størrelsen kan trækkes. Den modsatte kant bliver stående (pivot tages med), og snap runder til gitteret.
+- [x] Docking: venstre og højre kolonne kan deles i en øvre og nedre zone med en skillelinje, og paneler kan flyde i egne vinduer inde i editoren (dobbeltklik på fanen). Et vindue dokkes ved at slippe det over en zone.
+- [x] Kode, der ikke er gemt, gemmes løbende i `.brik/recovery-scripts.json` og kommer tilbage som ikke-gemte ændringer, når projektet åbnes igen. Sceneskift, ny scene og Luk projekt spørger Gem / Kassér / Annullér i en egen dialog i stedet for `confirm()`.
+
+**Kendte begrænsninger i editor-runden**
+- Håndtagene til UI-størrelse er kun testet i enhedstests, ikke i en browser med WebGL.
+- Et flydende vindue kan ikke rumme flere paneler som faner.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

@@ -2,9 +2,12 @@ import { For, Show, createEffect, createSignal, lazy, on, onCleanup, onMount, Su
 import { SCENE_EXTENSION } from "../core/asset-db";
 import type { Editor, TileTool } from "../core/editor";
 import { TileMap } from "@brik/runtime";
-import { basename, joinPath } from "../core/fs";
+import { basename } from "../core/fs";
 import { exportZip } from "../core/zip";
 import { duplicatePrefab } from "../core/prefabs";
+import { parseClipboard } from "../core/commands";
+import { leaveScene, saveScene } from "./AskDialog";
+import { readScriptRecovery } from "../core/recovery";
 import { saveBytes } from "../core/tauri-fs";
 import { AssetBrowser } from "./AssetBrowser";
 import { ConsolePanel } from "./Console";
@@ -14,9 +17,9 @@ import { Inspector } from "./Inspector";
 import { SceneView } from "./SceneView";
 import { reportError, toast, typingInField, useVersion } from "./hooks";
 import type { SceneController } from "./scene-controller";
-import { codeActions, openFiles, setToolWindow, toolWindow } from "./ui-state";
-import { type PanelId, draggingPanel, isShown, layout, resetLayout, showPanel } from "./dock-state";
-import { DockZone, DropStrip } from "./Dock";
+import { codeActions, openFile, openFiles, setToolWindow, toolWindow } from "./ui-state";
+import { PANELS, type PanelId, type Side, type Zone, draggingPanel, isShown, layout, resetLayout, setSplit, showPanel } from "./dock-state";
+import { DockZone, DropStrip, FloatingWindow } from "./Dock";
 import { AI_PORT, aiActivity, aiState, startAiConnection } from "./ai-connection";
 import { SpriteEditor } from "./SpriteEditor";
 import { AnimationEditor } from "./AnimationEditor";
@@ -81,23 +84,11 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
   const mode = () => (play(), editor.play.mode);
 
   const save = async (saveAs = false) => {
-    let path = editor.scenePath;
-    if (!path || saveAs) {
-      const suggestion = path ? basename(path).replace(SCENE_EXTENSION, "") : "main";
-      const name = prompt("Gem scene som:", suggestion);
-      if (!name) return;
-      path = name.includes("/") ? name : joinPath("scenes", name);
-    }
-    try {
-      const saved = await editor.saveScene(path);
-      toast(`Gemt ${saved}`);
-    } catch (err) {
-      reportError(err, "Kunne ikke gemme");
-    }
+    await saveScene(editor, saveAs);
   };
 
-  const newScene = () => {
-    if (editor.dirty && !confirm("Scenen har ændringer, der ikke er gemt. Fortsæt?")) return;
+  const newScene = async () => {
+    if (!(await leaveScene(editor, "laver en ny scene"))) return;
     editor.newScene();
   };
 
@@ -109,8 +100,8 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     }
   };
 
-  const close = () => {
-    if (editor.dirty && !confirm("Scenen har ændringer, der ikke er gemt. Luk alligevel?")) return;
+  const close = async () => {
+    if (!(await leaveScene(editor, "lukker projektet"))) return;
     props.onClose();
   };
 
@@ -152,6 +143,14 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
       return;
     }
     if (typingInField()) return;
+    if (mod && !ev.shiftKey && key === "v" && editor.play.mode !== "play") {
+      // the paste event normally does it (it can read the system clipboard); this is the fallback
+      pasteHandled = false;
+      setTimeout(() => {
+        if (!pasteHandled && entityClipboardTarget()) editor.paste();
+      });
+      return;
+    }
     if (mod && key === "z") {
       ev.preventDefault();
       if (ev.shiftKey) editor.redo();
@@ -181,6 +180,30 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     else if (key === "r") editor.setTool("scale");
     else if (key === "f") controller?.frameSelection();
     else if (key === "escape") editor.select([]);
+  };
+
+  // ---- copy, cut and paste entities (also between projects, through the system clipboard)
+  let pasteHandled = false;
+  /** True when the copy/paste keys are for entities, not for text somewhere. */
+  const entityClipboardTarget = () =>
+    !toolWindow() && !typingInField() && editor.play.mode !== "play" && !window.getSelection()?.toString();
+  const onCopy = (ev: ClipboardEvent) => {
+    if (!entityClipboardTarget() || editor.selection.length === 0) return;
+    const clip = ev.type === "cut" ? editor.cutSelection() : editor.copySelection();
+    if (!clip) return;
+    ev.clipboardData?.setData("text/plain", JSON.stringify(clip));
+    ev.preventDefault();
+    const n = clip.entities.length;
+    toast(`${ev.type === "cut" ? "Klippede" : "Kopierede"} ${n} entit${n === 1 ? "y" : "ies"}`);
+  };
+  const onPaste = (ev: ClipboardEvent) => {
+    if (!entityClipboardTarget()) return;
+    pasteHandled = true;
+    const text = ev.clipboardData?.getData("text/plain") ?? "";
+    const clip = text ? parseClipboard(text) : null;
+    // other text on the clipboard: fall back to the last entities copied here
+    editor.paste(clip ?? editor.clipboard);
+    ev.preventDefault();
   };
 
   const beforeUnload = (ev: BeforeUnloadEvent) => {
@@ -218,13 +241,23 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
   onMount(() => {
     // handle for debugging from the browser console
     (window as unknown as { __brikEditor?: Editor }).__brikEditor = editor;
+    // unsaved code from last time: open those files, and the code panel puts the edits back
+    readScriptRecovery(editor.fs).then((rec) => {
+      for (const path of Object.keys(rec?.files ?? {})) openFile(path);
+    }, reportError);
     window.addEventListener("keydown", onKey);
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCopy);
+    document.addEventListener("paste", onPaste);
     window.addEventListener("beforeunload", beforeUnload);
     window.addEventListener("focus", onFocus);
     poll = setInterval(() => document.hasFocus() && checkExternal(), 1500);
   });
   onCleanup(() => {
     window.removeEventListener("keydown", onKey);
+    document.removeEventListener("copy", onCopy);
+    document.removeEventListener("cut", onCopy);
+    document.removeEventListener("paste", onPaste);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("focus", onFocus);
     clearInterval(poll);
@@ -282,9 +315,12 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     ["console", page(() => <ConsolePanel editor={editor} />)],
   ]);
 
-  const has = (z: "left" | "center" | "bottom" | "right") => layout().zones[z].length > 0;
-  /** An empty side zone is hidden, or a thin drop strip while a tab is dragged. */
-  const sideWidth = (z: "left" | "right", size: number) => (has(z) ? `${size}px 4px` : draggingPanel() ? "36px 0px" : "0px 0px");
+  const has = (z: Zone) => layout().zones[z].length > 0;
+  const lowerOf = (side: Side): Zone => (side === "left" ? "leftLower" : "rightLower");
+  /** A side column is shown when its upper or lower zone has panels. */
+  const sideHas = (side: Side) => has(side) || has(lowerOf(side));
+  /** An empty side column is hidden, or a thin drop strip while a tab is dragged. */
+  const sideWidth = (z: Side, size: number) => (sideHas(z) ? `${size}px 4px` : draggingPanel() ? "36px 0px" : "0px 0px");
   const columns = () => {
     const [l, lgap] = sideWidth("left", left()).split(" ");
     const [r, rgap] = sideWidth("right", right()).split(" ");
@@ -295,12 +331,43 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
     if (!has("center")) return draggingPanel() ? "44px 0px 1fr" : "0px 0px 1fr";
     return `1fr 4px ${bottom()}px`;
   };
-  const zone = (z: "left" | "center" | "bottom" | "right") => (
+  const zone = (z: Zone) => (
     // grid cells must always exist, so empty zones render a placeholder
     <Show when={has(z)} fallback={<Show when={draggingPanel()} fallback={<div />}>{<DropStrip zone={z} />}</Show>}>
       <DockZone zone={z} panels={panels} labels={labels} />
     </Show>
   );
+  /** A side column: an upper and a lower zone, split when both have panels. */
+  const side = (s: Side) => {
+    let col!: HTMLDivElement;
+    const lower = lowerOf(s);
+    const sideRows = () => {
+      const up = has(s);
+      const low = has(lower);
+      if (up && low) return `${layout().split[s]}fr 4px ${1 - layout().split[s]}fr`;
+      if (!sideHas(s)) return "1fr 0px 0px";
+      if (up) return draggingPanel() ? "1fr 0px 44px" : "1fr 0px 0px";
+      return draggingPanel() ? "44px 0px 1fr" : "0px 0px 1fr";
+    };
+    return (
+      <div ref={col} style={{ display: "grid", "grid-template-rows": sideRows(), "min-width": 0, "min-height": 0 }}>
+        {zone(s)}
+        <Show when={has(s) && has(lower)} fallback={<div />}>
+          <Splitter
+            dir="h"
+            onDrag={(y) => {
+              const r = col.getBoundingClientRect();
+              setSplit(s, (y - r.top) / r.height);
+            }}
+          />
+        </Show>
+        <Show when={sideHas(s)} fallback={<div />}>
+          {zone(lower)}
+        </Show>
+      </div>
+    );
+  };
+  const floating = () => PANELS.filter((p) => layout().floating.some((f) => f.panel === p));
 
   return (
     <div class="editor" classList={{ playing: mode() !== "edit" }} ref={root}>
@@ -385,8 +452,8 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
         <button onClick={close}>Luk projekt</button>
       </div>
       <div class="workspace" style={{ "grid-template-columns": columns() }}>
-        {zone("left")}
-        <Show when={has("left")} fallback={<div />}>
+        {side("left")}
+        <Show when={sideHas("left")} fallback={<div />}>
           <Splitter
             dir="v"
             onDrag={(x) => {
@@ -409,7 +476,7 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
           </Show>
           {zone("bottom")}
         </div>
-        <Show when={has("right")} fallback={<div />}>
+        <Show when={sideHas("right")} fallback={<div />}>
           <Splitter
             dir="v"
             onDrag={(x) => {
@@ -418,7 +485,8 @@ export function EditorRoot(props: { editor: Editor; onClose: () => void }) {
             }}
           />
         </Show>
-        {zone("right")}
+        {side("right")}
+        <For each={floating()}>{(id) => <FloatingWindow id={id} panels={panels} label={labels[id]} />}</For>
       </div>
       <Show when={toolWindow()} keyed>
         {(w) =>

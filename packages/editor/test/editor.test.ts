@@ -16,6 +16,9 @@ import {
   MemoryFS,
   PROJECT_AI_GUIDE,
   RECOVERY_PATH,
+  SCRIPT_RECOVERY_PATH,
+  readScriptRecovery,
+  writeScriptRecovery,
   createProject,
   exportZip,
   importZip,
@@ -210,6 +213,15 @@ describe("Editor", () => {
 });
 
 describe("autosave and recovery", () => {
+  it("keeps unsaved code in its own file and removes it when nothing is unsaved", async () => {
+    const fs = new MemoryFS("t");
+    await writeScriptRecovery(fs, { "scripts/A.ts": "let a = 1;" });
+    expect((await readScriptRecovery(fs))?.files).toEqual({ "scripts/A.ts": "let a = 1;" });
+    await writeScriptRecovery(fs, {});
+    expect(await fs.exists(SCRIPT_RECOVERY_PATH)).toBe(false);
+    expect(await readScriptRecovery(fs)).toBeNull();
+  });
+
   it("keeps unsaved changes in .brik and offers them when the project is opened again", async () => {
     const { fs, editor } = await newEditor();
     const scene = editor.scenePath;

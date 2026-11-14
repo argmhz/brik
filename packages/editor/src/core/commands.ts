@@ -2,6 +2,7 @@ import {
   type ComponentDef,
   type Entity,
   type Mat3,
+  Parent,
   SceneId,
   type SceneEntityData,
   type ScriptEntry,
@@ -236,6 +237,79 @@ export function duplicateEntities(world: World, ids: string[]): { cmd: EditComma
   const topIds = new Set(tops.map((e) => sceneIdOf(world, e)));
   const newIds = data.filter((_, i) => topIds.has(original[i].id)).map((d) => d.id);
   return { cmd: createEntities(world, newIds.length === 1 ? "Dupliker entity" : "Dupliker entities", data), newIds };
+}
+
+// ------------------------------------------------------------------ clipboard
+
+/** Copied entities, as they go on the clipboard (as JSON text). */
+export interface EntityClipboard {
+  brik: "entities";
+  version: 1;
+  entities: SceneEntityData[];
+  /** World placement of each top-level entity, by id, so a paste under another parent keeps it. */
+  world: Record<string, Mat3>;
+}
+
+/** The selected entities (and their children) for the clipboard. Null when none of them exist. */
+export function copyEntities(world: World, ids: string[]): EntityClipboard | null {
+  const tops = topLevel(world, ids);
+  if (tops.length === 0) return null;
+  const placement: Record<string, Mat3> = {};
+  for (const e of tops) if (world.has(e, Transform2D)) placement[sceneIdOf(world, e)] = worldMatrix(world, e);
+  return { brik: "entities", version: 1, entities: serializeEntities(world, tops), world: placement };
+}
+
+/** Reads clipboard text; null when it isn't copied Brik entities. */
+export function parseClipboard(text: string): EntityClipboard | null {
+  try {
+    const v = JSON.parse(text) as Partial<EntityClipboard>;
+    if (v?.brik !== "entities" || !Array.isArray(v.entities)) return null;
+    const ok = v.entities.every((d) => d && typeof d.id === "string" && d.components && typeof d.components === "object");
+    return ok ? { brik: "entities", version: 1, entities: v.entities, world: v.world ?? {} } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pastes clipboard entities under `parentId` (null: at the root) with new ids.
+ * They keep their place in the world, also under another parent.
+ */
+export function pasteEntities(world: World, clip: EntityClipboard, parentId: string | null): { cmd: EditCommand; newIds: string[] } {
+  const inClip = new Set(clip.entities.map((d) => d.id));
+  const isTop = (d: SceneEntityData) => {
+    const p = d.components[Parent.name]?.entity;
+    return typeof p !== "string" || !inClip.has(p);
+  };
+  const oldTops = clip.entities.filter(isTop).map((d) => d.id);
+  const fresh = copyIdFor(clip.entities.map((d) => d.id));
+  const data = remapIds(clip.entities, fresh).map((d, i) => {
+    if (!isTop(clip.entities[i])) return d;
+    const components = { ...d.components };
+    if (parentId) components[Parent.name] = { entity: parentId };
+    else delete components[Parent.name];
+    return { ...d, components };
+  });
+  const newIds = oldTops.map(fresh);
+  return {
+    newIds,
+    cmd: {
+      label: newIds.length === 1 ? "Indsæt entity" : `Indsæt ${newIds.length} entities`,
+      do() {
+        instantiate(world, data);
+        oldTops.forEach((old, i) => {
+          const m = clip.world[old];
+          if (m) setWorldMatrix(world, need(world, newIds[i]), m);
+        });
+      },
+      undo() {
+        for (const id of newIds) {
+          const e = findBySceneId(world, id);
+          if (e >= 0) destroyRecursive(world, e);
+        }
+      },
+    },
+  };
 }
 
 // ------------------------------------------------------------------ hierarchy
