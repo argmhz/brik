@@ -72,9 +72,11 @@ export type EntityKind =
   | "ui-slider"
   | "ui-toggle"
   | "ui-input"
-  | "ui-stack";
+  | "ui-stack"
+  | "ui-touch-stick"
+  | "ui-touch-button";
 
-const UI_KINDS = new Set<EntityKind>(["ui-image", "ui-text", "ui-button", "ui-slider", "ui-toggle", "ui-input", "ui-stack"]);
+const UI_KINDS = new Set<EntityKind>(["ui-image", "ui-text", "ui-button", "ui-slider", "ui-toggle", "ui-input", "ui-stack", "ui-touch-stick", "ui-touch-button"]);
 export type EditorEvent = "world" | "selection" | "assets" | "scene" | "settings" | "scripts" | "console" | "play" | "recovery";
 
 export interface EditorOptions {
@@ -467,6 +469,8 @@ export class Editor {
       "ui-toggle": "Toggle",
       "ui-input": "Tekstfelt",
       "ui-stack": "Kolonne",
+      "ui-touch-stick": "Joystick",
+      "ui-touch-button": "Hop-knap",
     };
     const extraChildren: SceneEntityData[] = [];
     const components: SceneEntityData["components"] = {
@@ -546,6 +550,16 @@ export class Editor {
       components.UIText = { text: "Skriv her…", size: 18, align: "left", wrap: false };
       components.UITextInput = {};
     }
+    if (kind === "ui-touch-stick") {
+      // bottom left, where a left thumb rests
+      components.UIRect = { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 0, y: 0 }, position: { x: 150, y: 150 }, size: { x: 220, y: 220 } };
+      components.UITouchStick = {};
+    }
+    if (kind === "ui-touch-button") {
+      // bottom right, for the right thumb
+      components.UIRect = { anchorMin: { x: 1, y: 0 }, anchorMax: { x: 1, y: 0 }, position: { x: -110, y: 110 }, size: { x: 110, y: 110 } };
+      components.UITouchButton = {};
+    }
     if (kind === "ui-stack") {
       components.UIRect = { size: { x: 280, y: 220 } };
       components.UIImage = { color: { r: 0.2, g: 0.22, b: 0.28, a: 0.9 } };
@@ -583,6 +597,18 @@ export class Editor {
           Parent: { entity: id },
           UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 0, y: 0 } },
           UIText: { text: "Knap", size: 20 },
+        },
+      });
+    }
+    if (kind === "ui-touch-button") {
+      data.push({
+        id: newSceneId(),
+        components: {
+          Name: { value: "Tekst" },
+          Transform2D: {},
+          Parent: { entity: id },
+          UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 0, y: 0 } },
+          UIText: { text: "Hop", size: 24, bold: true, color: { r: 1, g: 1, b: 1, a: 0.85 } },
         },
       });
     }

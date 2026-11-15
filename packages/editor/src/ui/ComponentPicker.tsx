@@ -48,6 +48,8 @@ export const COMPONENT_INFO: Record<string, Info> = {
   UIToggle: { category: "UI", text: "Afkrydsningsfelt", words: "checkbox til fra" },
   UISlider: { category: "UI", text: "Skyder til en værdi", words: "slider værdi" },
   UITextInput: { category: "UI", text: "Felt man kan skrive i", words: "input skriv" },
+  UITouchStick: { category: "UI", text: "Joystick på skærmen til mobil", words: "touch mobil telefon tablet stick styring" },
+  UITouchButton: { category: "UI", text: "Knap på skærmen der holder en handling (fx hop)", words: "touch mobil telefon tablet hop" },
   UIStack: { category: "UI", text: "Stabler børn under eller ved siden af hinanden", words: "liste layout" },
   Spawner: { category: "Gameplay", text: "Laver en prefab med faste mellemrum", words: "spawn fjender bølger" },
   Timer: { category: "Gameplay", text: "Tæller ned og sender en besked", words: "tid nedtælling" },

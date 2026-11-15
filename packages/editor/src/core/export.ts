@@ -222,8 +222,10 @@ export function indexHtml(title: string, pwa = false): string {
     <link rel="icon" href="data:," />`
     }
     <style>
-      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-      #game { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; overscroll-behavior: none; }
+      /* phones: no text selection, callouts or tap flashes on long presses */
+      body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+      #game { display: block; width: 100vw; height: 100vh; height: 100dvh; outline: none; touch-action: none; }
       #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
         gap: 14px; color: #ccd; font: 14px system-ui, sans-serif; background: #111216; }
       #track { width: min(320px, 70vw); height: 6px; background: #2a2c33; border-radius: 3px; overflow: hidden; }

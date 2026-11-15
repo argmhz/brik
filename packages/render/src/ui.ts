@@ -143,6 +143,11 @@ export class UILayout {
   worldCanvases: WorldCanvasLayout[] = [];
   screenW = 0;
   screenH = 0;
+  /**
+   * Show elements meant for touch screens (on-screen joysticks and buttons with `showOn: "touch"`).
+   * The game sets it from `Input.touchMode` every frame; a layout nobody sets (the editor's) shows them.
+   */
+  touch = true;
 
   /** Recomputes every rect for a screen of `w` x `h` CSS pixels. */
   update(world: World, w: number, h: number): void {
@@ -201,6 +206,7 @@ export class UILayout {
   /** `fixed`: the rect a UIStack parent gave the element, instead of its anchors. */
   private visit(world: World, e: Entity, parent: Rect, scale: number, fixed?: Rect, into?: UIElement[]): void {
     if (!isActive(world, e)) return;
+    if (HIDDEN.some((hidden) => hidden(world, e, this))) return;
     let rect = parent;
     if (world.has(e, UIRect)) {
       rect = fixed ?? layoutRect(world, e, parent);
@@ -225,6 +231,9 @@ export class UILayout {
 
 /** Components that make an element react to the mouse (set by the widgets module too). */
 export const INTERACTIVE: ComponentDef[] = [UIButton];
+
+/** Tests that leave an element (and its children) out of the layout this frame, e.g. touch controls on a computer. */
+export const HIDDEN: ((world: World, e: Entity, layout: UILayout) => boolean)[] = [];
 
 /** Rects for a UIStack's children (null for children it doesn't place). In UI units, y up. */
 function stackRects(world: World, e: Entity, box: Rect, kids: readonly Entity[]): (Rect | null)[] {

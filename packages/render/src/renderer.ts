@@ -6,6 +6,7 @@ import { ParticleEmitter2D, Particles } from "./particles";
 import { type UIElement, UIFocus, UIImage, UILayout, UIText } from "./ui";
 import { LightRenderer, collectLights, lightingOf } from "./lighting";
 import { UISlider, UIToggle } from "./ui-widgets";
+import { UITouchButton, UITouchStick } from "./ui-touch";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle, textResolution } from "./text";
 import { PathCache, type PathImage, cssColor, pathBounds } from "./shape-raster";
@@ -335,6 +336,8 @@ export class Renderer {
       }
       if (world.has(e, UISlider)) this.drawSlider(world, e, x, y, w, h);
       if (world.has(e, UIToggle)) this.drawToggle(world, e, x, y, w, h);
+      if (world.has(e, UITouchStick)) this.drawTouchStick(world, e, x, y, w, h, el.scale);
+      if (world.has(e, UITouchButton) && !world.has(e, UIImage)) this.drawTouchButton(world, e, x, y, w, h);
       if (world.has(e, UIText) && X.text[e]) {
         style.text = X.text[e];
         style.size = X.size[e] * el.scale;
@@ -376,6 +379,32 @@ export class Renderer {
     const handleColor = packColor(S.handleColor.r[e], S.handleColor.g[e], S.handleColor.b[e], S.handleColor.a[e] * dim);
     this.batcher.pushShape(handle, 0, 0, handle, hx, y + (h - handle) / 2, 2, handleColor, 0, 0, 0);
     this.stats.sprites += 3;
+  }
+
+  /** An on-screen joystick: a ring (the base) and the knob, at the stick's origin in its rect. */
+  private drawTouchStick(world: World, e: Entity, x: number, y: number, w: number, h: number, scale: number): void {
+    const S = world.store(UITouchStick);
+    const r = Math.max(1, S.radius[e]) * scale;
+    const cx = x + w / 2 + S.origin.x[e] * scale;
+    const cy = y + h / 2 + S.origin.y[e] * scale;
+    const base = packColor(S.baseColor.r[e], S.baseColor.g[e], S.baseColor.b[e], S.baseColor.a[e]);
+    const knob = packColor(S.knobColor.r[e], S.knobColor.g[e], S.knobColor.b[e], S.knobColor.a[e]);
+    const k = r * 0.45;
+    const kx = cx + S.value.x[e] * r;
+    const ky = cy + S.value.y[e] * r;
+    // (a, b, c, d, x, y, mode 2 = ellipse, fill, stroke, strokeWidth, radius)
+    this.batcher.pushShape(2 * r, 0, 0, 2 * r, cx - r, cy - r, 2, base, base, Math.max(2, 2 * scale), 0);
+    this.batcher.pushShape(2 * k, 0, 0, 2 * k, kx - k, ky - k, 2, knob, 0, 0, 0);
+    this.stats.sprites += 2;
+  }
+
+  /** An on-screen button without a UIImage: a circle filling its rect, brighter while held. */
+  private drawTouchButton(world: World, e: Entity, x: number, y: number, w: number, h: number): void {
+    const B = world.store(UITouchButton);
+    const c = B.held[e] ? B.pressedColor : B.color;
+    const d = Math.min(w, h);
+    this.batcher.pushShape(d, 0, 0, d, x + (w - d) / 2, y + (h - d) / 2, 2, packColor(c.r[e], c.g[e], c.b[e], c.a[e]), 0, 0, 0);
+    this.stats.sprites++;
   }
 
   /** The box (and check when on) of a UIToggle, at the left of its rect. */

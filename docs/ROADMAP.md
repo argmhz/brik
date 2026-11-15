@@ -2,7 +2,7 @@
 
 Her står, hvad Brik kan i dag, hvad der arbejdes på, og hvad der kommer. Siden opdateres, hver gang en større del er færdig eller planen ændres. Den detaljerede arbejdsplan med alle delopgaver ligger i `PLAN.md` i repoet.
 
-**Sidst opdateret:** 8. november 2026
+**Sidst opdateret:** 15. november 2026
 
 ## Færdigt: 2D
 
@@ -16,7 +16,7 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 | Tilemaps | Maling i scene view, auto-tiling med terræner, kollisionsform pr. tile (hel, pynt, envejs, halv, skråninger), import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
 | Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring (også på skærme over 60 Hz), envejsplatforme (som man kan hoppe ned igennem), led og opslag |
-| Input | Tastatur, mus og gamepad (knapper, sticks og d-pad) gennem samme handlinger og akser |
+| Input | Tastatur, mus, gamepad (knapper, sticks og d-pad) og touch gennem samme handlinger og akser, med joystick og knapper på skærmen til telefoner og tablets |
 | Gem | `this.save` gemmer point, bane og indstillinger i browseren, så de overlever, at spillet lukkes |
 | UI | Knapper, tekst, billeder, slider, toggle, tekstfelt og kolonner, med tastaturstyring (Tab, Enter, piletaster) og synlig fokusramme |
 | Lyd | Lydkilder, kanaler med hver sin lydstyrke (musik, effekter, UI, master) og rumlig lyd |
@@ -28,10 +28,6 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 ## Næste: det, et færdigt spil mangler
 
 Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved at gennemgå motoren for ting, et rigtigt spil hurtigt støder på. Rækkefølgen er vores forslag.
-
-**Først, fordi spillere mærker det med det samme**
-
-- [ ] **Touch og mobil:** virtuelle knapper og joystick, så et eksporteret spil kan spilles på en telefon
 
 **Giver spil et bedre udseende**
 
@@ -90,6 +86,7 @@ Det, der skal gøre Brik anderledes. Rækkefølgen er ikke fastlagt.
 
 ## Ikke afprøvet endnu
 
+- Styring på skærmen (joystick og knapper) på en rigtig telefon eller tablet. Den er afprøvet med injicerede fingre i tests og i editoren.
 - Knappen "installér som app" i et eksporteret spil, og at et spil kører rigtigt på itch.io (selve offline-funktionen er afprøvet lokalt i en rigtig browser).
 - Knappen **Hjælp** i desktop-appen.
 - Tastatur-UI med fysiske tastetryk (Enter og mellemrum på en knap) i selve editoren.

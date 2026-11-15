@@ -134,7 +134,7 @@ tool(
 
 tool(
   "create_entity",
-  "Creates an entity and selects it. `kind` gives a starting shape: empty, rect, circle, polygon, line (Shape2D.points in local units), sprite, animated, camera, text, sound, tilemap, particles, light (a Light2D: needs a Lighting2D on the camera to show), ui-canvas, ui-world-bar (a health bar in the world: a UICanvas with space 'world' and a child 'Fyld' whose UIRect.anchorMax.x is the fraction shown; put it under the enemy), ui-image, ui-text, ui-button, ui-slider, ui-toggle, ui-input (text field), ui-stack (lays out its children in a column or row). `components` adds or overrides components, e.g. { RigidBody2D: { type: 'dynamic' }, Collider2D: { size: { x: 32, y: 32 } } }.",
+  "Creates an entity and selects it. `kind` gives a starting shape: empty, rect, circle, polygon, line (Shape2D.points in local units), sprite, animated, camera, text, sound, tilemap, particles, light (a Light2D: needs a Lighting2D on the camera to show), ui-canvas, ui-world-bar (a health bar in the world: a UICanvas with space 'world' and a child 'Fyld' whose UIRect.anchorMax.x is the fraction shown; put it under the enemy), ui-image, ui-text, ui-button, ui-slider, ui-toggle, ui-input (text field), ui-stack (lays out its children in a column or row), ui-touch-stick (an on-screen joystick for phones, bottom left, driving the axes horizontal/vertical), ui-touch-button (an on-screen button for phones, bottom right, holding the action in UITouchButton.action, default 'jump'). On-screen controls show only on touch screens (showOn 'touch'); test them with step({ touches }). `components` adds or overrides components, e.g. { RigidBody2D: { type: 'dynamic' }, Collider2D: { size: { x: 32, y: 32 } } }.",
   {
     kind: z.string().optional(),
     name: z.string().optional(),
@@ -327,6 +327,18 @@ tool(
       })
       .optional()
       .describe('Moves the mouse first: { entity: "<id>" } aims at a UI element or an entity, { x, y } at a point in world units. For a slider, { entity, at: { x: 0.8, y: 0.5 } } is 80% along it. Use with hold/press "Mouse0" to shoot or drag.'),
+    touches: z
+      .array(
+        z.object({
+          entity: z.string().optional(),
+          x: z.number().optional(),
+          y: z.number().optional(),
+          at: z.object({ x: z.number(), y: z.number() }).optional(),
+          offset: z.object({ x: z.number(), y: z.number() }).optional(),
+        }),
+      )
+      .optional()
+      .describe('Fingers on the screen during these frames, aimed like `mouse` (several at once work). A finger stays down across calls while it is listed at the same index, moving to the new spot; leave it out (or pass []) to lift it. Turns on touch mode, so on-screen controls (UITouchStick, UITouchButton) show. E.g. [{ entity: "<stick>", offset: { x: 60, y: 0 } }, { entity: "<jump button>" }] pushes the joystick right and holds jump'),
     type: z.string().optional().describe('Text typed into the focused text field (click it first); "\\n" presses Enter'),
     backspace: z.number().int().min(0).optional().describe("Characters deleted from the end of the focused text field (before `type`)"),
     replace: z.string().optional().describe("Sets the whole text of the focused text field (before backspace and type)"),

@@ -410,6 +410,45 @@ export class Walker extends Behaviour {
     await h.stop({});
   });
 
+  it("on-screen joystick and button: made from templates and played with fingers through step", async () => {
+    const { editor, h } = await setup();
+    const res = (await h.write_script({
+      path: "scripts/Thumb.ts",
+      content: `import { Behaviour, expose } from "brik";
+export class Thumb extends Behaviour {
+  @expose jumps = 0;
+  @expose fired = 0;
+  onUpdate(dt: number) {
+    this.transform.position.x += this.input.axis("horizontal") * 60 * dt;
+    if (this.input.action("jump").pressed) this.jumps++;
+    if (this.input.action("fire").pressed) this.fired++;
+  }
+}`,
+    })) as { status: string };
+    expect(res.status).toBe("ok");
+    const stick = (await h.create_entity({ kind: "ui-touch-stick" })) as { id: string };
+    const jump = (await h.create_entity({ kind: "ui-touch-button" })) as { id: string; children?: { name: string }[] };
+    const { id } = (await h.create_entity({ name: "Spiller" })) as { id: string };
+    await h.attach_script({ id, script: "Thumb" });
+    const x = () => editor.world.store(Transform2D).position.x[findBySceneId(editor.world, id)];
+    const live = async () => ((await h.inspect_entity({ id })) as { scripts: { live: { jumps: number; fired: number } }[] }).scripts[0].live;
+
+    await h.play({});
+    // thumb on the stick, pushed fully right (radius 60), and a finger on jump
+    await h.step({ frames: 1, touches: [{ entity: stick.id }, { entity: jump.id }] });
+    await h.step({ frames: 30, touches: [{ entity: stick.id, offset: { x: 60, y: 0 } }, { entity: jump.id }] });
+    expect(x()).toBeCloseTo(30, 0);
+    // jump stayed held: one press; the fingers never fired the mouse
+    expect(await live()).toMatchObject({ jumps: 1, fired: 0 });
+    // lift both
+    await h.step({ frames: 10, touches: [] });
+    expect(x()).toBeCloseTo(30, 0);
+    expect(editor.world.resource(Input).pointers).toHaveLength(0);
+    await h.step({ frames: 1, touches: [{ entity: jump.id }] });
+    expect((await live()).jumps).toBe(2);
+    await h.stop({});
+  });
+
   it("clicks UI buttons and aims the mouse at points in the world", async () => {
     const { editor, h } = await setup();
     const res = (await h.write_script({

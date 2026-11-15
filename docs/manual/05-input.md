@@ -152,6 +152,47 @@ onStart() {
 
 Det fokuserede element får en gul ramme. Se også [UI](ui.md).
 
+## Touch og mobil
+
+Et eksporteret spil kan spilles på en telefon eller tablet med styring på skærmen. Der er to UI-komponenter, og scripts læser dem gennem de samme handlinger og akser som tastaturet, så spillets kode skal ikke ændres:
+
+| Komponent | Virkning |
+|---|---|
+| `UITouchStick` | Et joystick. En finger i dets felt flytter knoppen, og knoppen styrer akserne `axisX` og `axisY` (standard `horizontal` og `vertical`) |
+| `UITouchButton` | En knap, der holder handlingen `action` (standard `jump`), så længe en finger er på den |
+
+Højreklik i Hierarki og vælg **UI → Joystick (touch)** og **UI → Knap (touch)**. Joysticket lægger sig nederst til venstre og knappen nederst til højre, på en UI Canvas. Lav én knap pr. handling, fx en til `jump` og en til `fire`.
+
+```ts
+// virker med tastatur, gamepad og touch uden ændringer
+const x = this.input.axis("horizontal");
+if (this.input.action("jump").pressed) this.hop();
+```
+
+**Felter på joysticket**
+
+| Felt | Indhold |
+|---|---|
+| `radius` | Hvor langt knoppen kan flyttes fra midten, i UI-enheder. Skubbet helt ud giver det 1 |
+| `deadZone` | Bevægelse under denne brøkdel af radius tæller som ingen (standard 0,15) |
+| `floating` | Joysticket starter dér, hvor fingeren lander. Så kan feltet være stort, fx hele venstre halvdel af skærmen |
+| `baseColor`, `knobColor` | Farverne på ringen og knoppen |
+
+**Felter på knappen:** `action`, `color` og `pressedColor`. Uden en `UIImage` tegnes knappen som en cirkel i sit felt; med en `UIImage` farves billedet i stedet. Knappens tekst er et `UIText`-barn.
+
+Sådan opfører de sig:
+
+- **Flere fingre:** hver styring tager sin egen finger, så man kan gå med venstre tommelfinger og hoppe med højre samtidig.
+- **De klikker ikke:** en finger på en styring trykker ikke `Mouse0`, så `fire` går ikke af, og UI-knapper under den bliver ikke trykket. En finger andre steder virker som musen, så menuer og UI-knapper kan trykkes som før.
+- **Knappen slipper først, når fingeren løftes**, også hvis den glider ud af knappen.
+- **Kun på berøringsskærme:** med `showOn: "touch"` (standard) er styringen skjult på en computer og dukker op, første gang skærmen røres. Trykkes en tast på tastaturet, forsvinder den igen. Sæt `showOn: "always"` for at prøve den med musen under Play i editoren. I scene view vises den altid.
+
+`this.input.touchMode` er sand, når spilleren bruger en berøringsskærm. Brug den fx til hjælpeteksten: "Tryk på knappen" i stedet for "Tryk på mellemrum".
+
+**Fingrene direkte:** `this.input.pointers` er en liste over fingre (og museknapper), der holdes på spillet, med `x`, `y` (skærm-pixels, y nedad), `startX`, `startY`, `pressed`, `released` og `owner` (den styring, der har taget fingeren, ellers -1). Den kan bruges til egne bevægelser som at stryge.
+
+Eksporten er gjort klar til telefoner: siden kan ikke zoomes eller rulles, og et langt tryk markerer ikke tekst og åbner ikke en menu.
+
 ## Tekstfelter og editoren
 
 - **Tekstfelter:** mens man skriver i et tekstfelt (`UITextInput`), går tasterne til feltet og ikke til spillet.
@@ -160,14 +201,8 @@ Det fokuserede element får en gul ramme. Se også [UI](ui.md).
 
 ## Falske tryk
 
-`this.input.inject("down", "Space")` og `inject("up", "Space")` giver tryk, der ikke kommer fra et rigtigt tastatur, fx fra knapper på en berøringsskærm eller fra tests. `injectPointer(x, y)` flytter musen. Det er det samme, MCP-værktøjet `step` bruger, når en AI-klient tester spillet.
+`this.input.inject("down", "Space")` og `inject("up", "Space")` giver tryk, der ikke kommer fra et rigtigt tastatur, fx fra tests. `injectPointer(x, y)` flytter musen, og `injectTouch("down" | "move" | "up", id, x, y)` sætter en finger ned, flytter den eller løfter den. Det er det samme, MCP-værktøjet `step` bruger, når en AI-klient tester spillet (med `touches` for fingre).
 
-```ts
-// en hop-knap på skærmen (et UI-element med UIButton og dette script)
-export class TouchJump extends Behaviour {
-  onClick() {
-    this.input.inject("down", "Space");
-    this.after(0.1, () => this.input.inject("up", "Space"));
-  }
-}
-```
+Til knapper på en berøringsskærm skal man ikke bruge `inject`: brug `UITouchButton` (se [Touch og mobil](#touch-og-mobil)).
+
+To metoder er lavet til egne styringer på skærmen: `this.input.setButton("Touch:jump", true)` holder handlingen `jump` med det samme i denne frame, og `this.input.addAxis("horizontal", 0.5)` lægger til en akse i denne frame (kald den hver frame).

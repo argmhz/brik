@@ -110,6 +110,8 @@ const ENTITY_KINDS: EntityKind[] = [
   "ui-toggle",
   "ui-input",
   "ui-stack",
+  "ui-touch-stick",
+  "ui-touch-button",
 ];
 
 class BridgeError extends Error {}
@@ -253,6 +255,9 @@ function keyList(value: unknown, what: string): string[] {
   return value as string[];
 }
 
+/** Pointer ids of the fingers `step({ touches })` puts down (far from the browser's own ids). */
+const TOUCH_ID = 1_000_000;
+
 /** Screen size the UI is laid out for when the Game view hasn't drawn yet (matches the editor's game view). */
 const FALLBACK_SCREEN = { w: 960, h: 540 };
 
@@ -346,6 +351,8 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
   const exec = (cmd: EditCommand) => editor.execute(cmd);
   /** Keys the AI holds down in the running game (see step). */
   let heldKeys = new Set<string>();
+  /** Fingers held by `step({ touches })` (index -> where it is), so they stay down between calls. */
+  let fingers: { x: number; y: number }[] = [];
 
   return {
     // ------------------------------------------------------------ looking
@@ -1039,6 +1046,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
 
     play: async () => {
       heldKeys.clear();
+      fingers = [];
       const ok = await editor.play.start();
       if (!ok) throw new BridgeError("The game could not start. See get_console for script errors.");
       return { mode: editor.play.mode };
@@ -1049,16 +1057,31 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { mode: editor.play.mode };
     },
 
-    step: async ({ frames = 1, hold = [], press = [], mouse, type, fps = 60, backspace, replace }) => {
+    step: async ({ frames = 1, hold = [], press = [], mouse, touches, type, fps = 60, backspace, replace }) => {
       if (!editor.play.active) throw new BridgeError("The game is not running. Call play first.");
       const held = keyList(hold, "hold");
       const tapped = keyList(press, "press");
       const input = world.tryResource(Input);
-      if ((held.length || tapped.length || mouse !== undefined) && !input) throw new BridgeError("This game has no input");
+      if ((held.length || tapped.length || mouse !== undefined || touches !== undefined) && !input) throw new BridgeError("This game has no input");
+      if (touches !== undefined && !Array.isArray(touches)) throw new BridgeError('`touches` is a list of fingers, each aimed like `mouse`: [{ "entity": "<id>" }, { "x": 0, "y": 0 }]');
       editor.play.pause();
       if (mouse !== undefined) {
         const p = pointerTarget(editor, mouse, ui.screenSize?.());
         input!.injectPointer(p.x, p.y);
+      }
+      if (touches !== undefined) {
+        // touch mode first, so on-screen controls are laid out (and can be aimed at) before the fingers land
+        input!.touchMode = true;
+        const layout = world.tryResource(UILayout);
+        if (layout) layout.touch = true;
+        const now = (touches as unknown[]).map((t) => {
+          const p = pointerTarget(editor, t, ui.screenSize?.());
+          return { x: p.x, y: p.y };
+        });
+        // finger ids are their index; lift the ones no longer listed, move or put down the rest
+        for (let i = now.length; i < fingers.length; i++) input!.injectTouch("up", TOUCH_ID + i, fingers[i].x, fingers[i].y);
+        now.forEach((p, i) => input!.injectTouch(i < fingers.length ? "move" : "down", TOUCH_ID + i, p.x, p.y));
+        fingers = now;
       }
       const rate = Number(fps);
       if (!Number.isFinite(rate) || rate < 10 || rate > 1000) throw new BridgeError("`fps` is the frame rate to simulate, between 10 and 1000 (default 60)");
@@ -1142,6 +1165,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
 
     stop: () => {
       heldKeys.clear();
+      fingers = [];
       editor.play.stop();
       return { mode: editor.play.mode };
     },

@@ -61,6 +61,7 @@ export class Player extends Behaviour {
 - Game feel: `this.shakeCamera(8, 0.3)`, `this.punchCamera(0.08)`, `this.hitStop(0.06)`, `this.slowMotion(0.3, 1)`
 - Saving: `this.save.set("level", 3)`, `this.save.get("level", 1)` (kept in localStorage when the game closes; `this.save.clear()` for a new game)
 - Input works with keyboard and gamepad: axes `horizontal`/`vertical` also follow the left stick (values between -1 and 1), `jump` is also pad A, `fire` pad X; pad buttons are named `PadA`, `PadB`, `PadLB`, `PadStart`, ...
+- Phones and tablets: put a UITouchStick (drives `horizontal`/`vertical`) and UITouchButton (`action: "jump"`) on a screen UICanvas; scripts read them through the same `axis`/`action` calls. They show only on touch screens (`showOn: "always"` to try them with the mouse); `this.input.touchMode` tells if the player is on one
 - One-way platforms (a tile sprite with collision "one-way"): `this.dropThrough()` falls through the one the character stands on
 - Tiles from a script: `setTile(this.world, map, x, y, "sprite")` (`null` erases); it updates drawing and colliders
 

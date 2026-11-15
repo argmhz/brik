@@ -12,6 +12,7 @@ export * from "./particles";
 export { collectLights, lightAt, lightingOf, type LightInfo } from "./lighting";
 export * from "./ui";
 export * from "./ui-widgets";
+export * from "./ui-touch";
 export { PathCache, pathBounds, cssColor, type PathImage, type PathStyle } from "./shape-raster";
 export { TextCache, layoutLines, textResolution, type TextImage, type TextStyle } from "./text";
 export { SpriteBatcher, packColor } from "./sprite-batcher";

@@ -591,6 +591,20 @@ Spillet **Skovvagt** (`examples/skovvagt`) blev bygget headless gennem MCP-værk
 - Et script kan ikke slå et barn op ved navn (`this.find` søger i hele scenen). Svampen peger på sin bjælke med et entity-felt, hvilket virker, også i prefab-instanser.
 - Spillet er ikke set i editoren eller i en browser med WebGL. Det er kun spillet headless.
 
+### Touch og mobil (november 2026)
+- [x] `Input` holder styr på flere fingre (`pointers`, med id, position, start, `pressed`/`released` og `owner`). En finger, der lander på en styring på skærmen, tages af den (`Input.claim`) og flytter hverken `pointer` eller trykker `Mouse0`. Kun den første frie finger er musen, så to fingre ikke slipper `Mouse0` for hinanden. `pointercancel` løfter fingeren.
+- [x] `UITouchStick`: joystick, der styrer to akser (`axisX`, `axisY`) med radius, dødzone og `floating` (starter, hvor fingeren lander). `UITouchButton`: holder en handling (`"Touch:<action>"`, som alle handlinger af det navn lytter på) og tegnes som en cirkel uden `UIImage`. Begge tegnes af rendereren.
+- [x] `Input.touchMode` (sat ved berøring eller en grov pointer ved start, slået fra af en tast) og `showOn: "touch" | "always"`: styringen er skjult på en computer. Layoutet har `touch`, og `HIDDEN` lader moduler skjule elementer; scene view viser dem altid.
+- [x] `Input.setButton` og `Input.addAxis` til egne styringer; `injectTouch` til tests. En knap, der forsvinder, slipper sin handling.
+- [x] Editor: "Joystick (touch)" og "Knap (touch)" i Hierarki og MCP (`ui-touch-stick`, `ui-touch-button`), og i "Tilføj komponent". MCP: `step({ touches })` med fingre, der bliver holdt på tværs af kald.
+- [x] Eksport: ingen rulning, markering, tap-blink eller lang-tryk-menu, og `100dvh`, så adresselinjen på en telefon ikke skærer bunden af.
+- [x] Rettet undervejs: et tap på en UI-knap på en berøringsskærm kunne gå tabt, fordi `pointerleave` (som kommer lige efter `pointerup`) satte `pointer.inside` til falsk, før slippet blev læst.
+
+**Kendte begrænsninger**
+- Ikke afprøvet på en rigtig telefon, kun med injicerede fingre i tests og i editoren.
+- Styringer i en UI-canvas i verden (`space: "world"`) virker ikke.
+- Knappen kan ikke "glide på" (en finger, der glider ind på en knap fra et andet sted, trykker den ikke).
+
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
 - [ ] PBR, lys, shadows og post-processing
