@@ -1,3 +1,4 @@
+import { parseSceneFile } from "./project";
 import {
   App,
   Audio,
@@ -81,7 +82,7 @@ export class PlayController {
         }),
       )
       .addPlugin(ScriptsPlugin(registry))
-      .addPlugin(ScenesPlugin(async (path) => refreshSceneData(editor, JSON.parse(await editor.fs.readText(path)) as SceneData), editor.scenePath));
+      .addPlugin(ScenesPlugin(async (path) => refreshSceneData(editor, parseSceneFile(await editor.fs.readText(path))), editor.scenePath));
     // keys typed elsewhere in the editor (hierarchy, assets, inspector buttons) are not game input
     const input = editor.world.tryResource(Input);
     const view = this.element;

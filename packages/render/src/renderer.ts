@@ -1,9 +1,9 @@
 import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
-import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey } from "@brik/core";
+import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey, TILE_CHUNK, tileChunks } from "@brik/core";
 import { CameraFX, ScreenFade } from "./camera-fx";
 import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
 import { ParticleEmitter2D, Particles } from "./particles";
-import { UIFocus, UIImage, UILayout, UIText } from "./ui";
+import { type UIElement, UIFocus, UIImage, UILayout, UIText } from "./ui";
 import { LightRenderer, collectLights, lightingOf } from "./lighting";
 import { UISlider, UIToggle } from "./ui-widgets";
 import { SpriteBatcher, packColor } from "./sprite-batcher";
@@ -227,6 +227,8 @@ export class Renderer {
         this.lighting ??= new LightRenderer(gl);
         this.lighting.apply(ambient, collectLights(world, bounds), this.viewProj, vx, vy, vw, vh);
       }
+      // world UI is not darkened by the lighting
+      this.drawWorldUI(world, C.zoom[cam] * dpr);
     }
     gl.disable(gl.SCISSOR_TEST);
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -264,12 +266,53 @@ export class Renderer {
     p[7] = -1;
     p[8] = 1;
     this.batcher.begin(p);
+    this.drawElements(world, layout.elements);
+    this.batcher.end();
+  }
+
+  /**
+   * World-space canvases, drawn with the current view (a camera's, or the
+   * editor's) on top of the world. `pixelsPerUnit` sharpens their text.
+   */
+  private drawWorldUI(world: World, pixelsPerUnit: number): void {
+    const layout = world.tryResource(UILayout) ?? world.insertResource(new UILayout());
+    // the screen size doesn't matter for world canvases, but the layout is shared with screen UI
+    layout.update(world, this.width, this.height);
+    if (layout.worldCanvases.length === 0) return;
+    const view = this.viewProj.slice();
+    const p = this.viewProj;
+    for (const wc of layout.worldCanvases) {
+      if (wc.elements.length === 0) continue;
+      // view * canvas transform * (move the panel so its centre is on the entity)
+      const m = globalOf(world, wc.canvas);
+      const ox = -wc.size.x / 2;
+      const oy = -wc.size.y / 2;
+      const tx = m.a * ox + m.c * oy + m.tx;
+      const ty = m.b * ox + m.d * oy + m.ty;
+      p[0] = view[0] * m.a + view[3] * m.b;
+      p[1] = view[1] * m.a + view[4] * m.b;
+      p[2] = 0;
+      p[3] = view[0] * m.c + view[3] * m.d;
+      p[4] = view[1] * m.c + view[4] * m.d;
+      p[5] = 0;
+      p[6] = view[0] * tx + view[3] * ty + view[6];
+      p[7] = view[1] * tx + view[4] * ty + view[7];
+      p[8] = 1;
+      this.batcher.begin(p);
+      this.drawElements(world, wc.elements, Math.abs(Math.hypot(m.a, m.b)) * pixelsPerUnit);
+      this.batcher.end();
+    }
+    p.set(view);
+  }
+
+  /** UI elements in their rects. `textPixelsPerUnit`: text resolution for world UI (screen UI uses the default). */
+  private drawElements(world: World, elements: UIElement[], textPixelsPerUnit?: number): void {
     const assets = world.resource(Assets);
     const I = world.store(UIImage);
     const X = world.store(UIText);
     const r = {} as ResolvedSprite;
     const focused = world.tryResource(UIFocus)?.entity ?? -1;
-    for (const el of layout.elements) {
+    for (const el of elements) {
       const e = el.e;
       const { x, y, w, h } = el.rect;
       if (world.has(e, UIImage)) {
@@ -300,7 +343,9 @@ export class Renderer {
         style.bold = X.bold[e] !== 0;
         style.maxWidth = X.wrap[e] ? w : 0;
         style.lineHeight = 1.2;
+        style.resolution = textPixelsPerUnit === undefined ? undefined : textResolution(textPixelsPerUnit);
         const img = textCache.get(style);
+        style.resolution = undefined;
         const gpu = img && this.gpuTexture(img.texture);
         if (img && gpu) {
           const anchorX = style.align === "left" ? x : style.align === "right" ? x + w : x + w / 2;
@@ -312,7 +357,6 @@ export class Renderer {
         }
       }
     }
-    this.batcher.end();
   }
 
   /** Track, filled part and handle of a UISlider, inside its rect. */
@@ -397,6 +441,7 @@ export class Renderer {
     this.batcher.drawCalls = 0;
     const camM = mat3.fromTRS(view.x, view.y, 0, 1, 1);
     this.drawSprites(world, count, this.setView(camM, view.zoom, this.width, this.height));
+    this.drawWorldUI(world, view.zoom * Math.min(globalThis.devicePixelRatio || 1, this.maxPixelRatio));
     this.stats.drawCalls = this.batcher.drawCalls;
     this.stats.cameras = 0;
   }
@@ -814,22 +859,35 @@ export class Renderer {
     const tiles = M.tiles[e];
     const iw = 1 / tex.width;
     const ih = 1 / tex.height;
+    // whole chunks outside the view are skipped without looking at their tiles
+    const n = TILE_CHUNK;
+    const cMinX = Math.min(0, a * n, c * n, (a + c) * n);
+    const cMaxX = Math.max(0, a * n, c * n, (a + c) * n);
+    const cMinY = Math.min(0, b * n, d * n, (b + d) * n);
+    const cMaxY = Math.max(0, b * n, d * n, (b + d) * n);
     let drawn = 0;
-    for (const key in tiles) {
-      const def = tex.sprites.get(tiles[key]);
-      if (!def) continue;
-      const [x, y] = parseTileKey(key);
-      const tx = ox + a * x + c * y;
-      const ty = oy + b * x + d * y;
-      if (tx + exMaxX < view.minX || tx + exMinX > view.maxX || ty + exMaxY < view.minY || ty + exMinY > view.maxY) continue;
-      const rc = def.rect;
-      // inset by a hair so neighbouring sprites in the sheet don't bleed in at odd zoom levels
-      const u0 = (rc.x + 0.01) * iw;
-      const u1 = (rc.x + rc.w - 0.01) * iw;
-      const v0 = (rc.y + rc.h - 0.01) * ih;
-      const v1 = (rc.y + 0.01) * ih;
-      this.batcher.push(gl, a, b, c, d, tx, ty, u0, v0, u1, v1, rgba);
-      drawn++;
+    for (const chunk of tileChunks(tiles, M.revision[e]).values()) {
+      const x0 = chunk.cx * n;
+      const y0 = chunk.cy * n;
+      const cx = ox + a * x0 + c * y0;
+      const cy = oy + b * x0 + d * y0;
+      if (cx + cMaxX < view.minX || cx + cMinX > view.maxX || cy + cMaxY < view.minY || cy + cMinY > view.maxY) continue;
+      for (const key of chunk.keys) {
+        const def = tex.sprites.get(tiles[key]);
+        if (!def) continue;
+        const [x, y] = parseTileKey(key);
+        const tx = ox + a * x + c * y;
+        const ty = oy + b * x + d * y;
+        if (tx + exMaxX < view.minX || tx + exMinX > view.maxX || ty + exMaxY < view.minY || ty + exMinY > view.maxY) continue;
+        const rc = def.rect;
+        // inset by a hair so neighbouring sprites in the sheet don't bleed in at odd zoom levels
+        const u0 = (rc.x + 0.01) * iw;
+        const u1 = (rc.x + rc.w - 0.01) * iw;
+        const v0 = (rc.y + rc.h - 0.01) * ih;
+        const v1 = (rc.y + 0.01) * ih;
+        this.batcher.push(gl, a, b, c, d, tx, ty, u0, v0, u1, v1, rgba);
+        drawn++;
+      }
     }
     return drawn;
   }

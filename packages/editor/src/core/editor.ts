@@ -43,7 +43,7 @@ import { type EditCommand, History } from "./history";
 import { PlayController } from "./play";
 import { ScriptHost } from "./script-host";
 import type { EsbuildLike } from "./scripts";
-import { type ProjectSettings, defaultScene, ensureAiGuide, readProject, sceneToJson, writeProject } from "./project";
+import { type ProjectSettings, defaultScene, ensureAiGuide, parseSceneFile, readProject, sceneToJson, writeProject } from "./project";
 import { Autosave, type RecoveryData, readRecovery, removeRecovery } from "./recovery";
 
 export type Tool = "move" | "rotate" | "scale";
@@ -65,6 +65,7 @@ export type EntityKind =
   | "particles"
   | "light"
   | "ui-canvas"
+  | "ui-world-bar"
   | "ui-image"
   | "ui-text"
   | "ui-button"
@@ -342,7 +343,7 @@ export class Editor {
 
   async openScene(path: string): Promise<void> {
     this.play.stop();
-    const data = JSON.parse(await this.fs.readText(path)) as SceneData;
+    const data = parseSceneFile(await this.fs.readText(path));
     // prefab instances pick up prefab changes made while the scene was closed
     loadScene(this.world, refreshSceneData(this, data));
     refreshOverrides(this);
@@ -458,6 +459,7 @@ export class Editor {
       particles: "Partikler",
       light: "Lys",
       "ui-canvas": "UI Canvas",
+      "ui-world-bar": "Livsbjælke",
       "ui-image": "Billede",
       "ui-text": "UI-tekst",
       "ui-button": "Knap",
@@ -466,6 +468,7 @@ export class Editor {
       "ui-input": "Tekstfelt",
       "ui-stack": "Kolonne",
     };
+    const extraChildren: SceneEntityData[] = [];
     const components: SceneEntityData["components"] = {
       Name: { value: opts.name ?? names[kind] },
       Transform2D: { position: { x: opts.x ?? 0, y: opts.y ?? 0 } },
@@ -502,6 +505,25 @@ export class Editor {
     if (kind === "particles") components.ParticleEmitter2D = {};
     if (kind === "light") components.Light2D = {};
     if (kind === "ui-canvas") components.UICanvas = {};
+    if (kind === "ui-world-bar") {
+      // a UI panel in the world, above its parent: background and a fill whose right anchor is the value
+      components.Transform2D = { position: { x: opts.x ?? 0, y: opts.y ?? 24 } };
+      components.UICanvas = { space: "world", referenceSize: { x: 32, y: 5 } };
+      const stretch = { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 0, y: 0 } };
+      extraChildren.push(
+        { id: newSceneId(), components: { Name: { value: "Baggrund" }, Transform2D: {}, Parent: { entity: id }, UIRect: stretch, UIImage: { color: { r: 0.1, g: 0.1, b: 0.12, a: 0.85 } } } },
+        {
+          id: newSceneId(),
+          components: {
+            Name: { value: "Fyld" },
+            Transform2D: {},
+            Parent: { entity: id },
+            UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, pivot: { x: 0, y: 0.5 }, position: { x: 1, y: 0 }, size: { x: -2, y: -2 } },
+            UIImage: { color: { r: 0.35, g: 0.85, b: 0.4, a: 1 } },
+          },
+        },
+      );
+    }
     if (kind === "ui-image") components.UIImage = { color: { r: 0.2, g: 0.22, b: 0.28, a: 0.9 } };
     if (kind === "ui-text") components.UIText = { text: "Tekst" };
     if (kind === "ui-button") {
@@ -537,11 +559,11 @@ export class Editor {
         components[name] = { ...base, ...v, position: pos };
       } else components[name] = base ? { ...base, ...(values as object) } : values;
     }
-    const data: SceneEntityData[] = [{ id, components }];
+    const data: SceneEntityData[] = [{ id, components }, ...extraChildren];
     let parentId = opts.parentId ?? null;
     // UI elements must live under a UICanvas: use the nearest one, or make one
     if (UI_KINDS.has(kind) && !this.underCanvas(parentId)) {
-      const canvas = this.world.query([UICanvas]).first();
+      const canvas = this.screenCanvas();
       if (canvas >= 0) parentId = this.idOf(canvas);
       else {
         const canvasId = newSceneId();
@@ -579,6 +601,12 @@ export class Editor {
     this.execute(createEntities(this.world, `Opret ${components.Name.value}`, data, parentId));
     this.select([id]);
     return id;
+  }
+
+  /** The first screen-space canvas (UI added without a parent goes there), or -1. */
+  private screenCanvas(): Entity {
+    const C = this.world.store(UICanvas);
+    return this.world.query([UICanvas]).toArray().find((c) => C.space[c] !== "world") ?? -1;
   }
 
   private underCanvas(id: string | null): boolean {
@@ -641,7 +669,7 @@ export class Editor {
       return d.components.UIRect && (typeof par !== "string" || !ids.has(par));
     });
     if (hasUI && !this.underCanvas(parentId)) {
-      const canvas = this.world.query([UICanvas]).first();
+      const canvas = this.screenCanvas();
       if (canvas < 0) {
         this.log("warn", "UI-elementer skal ligge under en UI Canvas. Opret en først.");
         return [];

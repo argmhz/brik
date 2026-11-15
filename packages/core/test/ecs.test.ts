@@ -194,6 +194,29 @@ describe("Queries", () => {
     expect(other.changed(Pos)).toEqual([c]);
   });
 
+  it("notices lists and objects in ref fields changed in place through a view", () => {
+    const Bag = defineComponent("TestBag", { items: t.ref<number[]>(() => []), info: t.ref(() => ({ hp: 3, pos: { x: 0 } })) });
+    const w = new World();
+    const q = w.query([Bag]);
+    const e = w.spawn(Bag);
+    q.changed(Bag);
+    const bag = componentView(w, Bag, e);
+    bag.items.push(4);
+    expect(q.changed(Bag)).toEqual([e]);
+    bag.info.pos.x = 5;
+    expect(q.changed(Bag)).toEqual([e]);
+    delete (bag.info as { hp?: number }).hp;
+    expect(q.changed(Bag)).toEqual([e]);
+    // reading doesn't count, and the same list gives the same proxy
+    void bag.items.length;
+    expect(bag.items).toBe(bag.items);
+    expect(q.changed(Bag)).toEqual([]);
+    // putting a proxy back stores the real value, which can be cloned
+    bag.items = bag.items;
+    expect(structuredClone(w.store(Bag).items[e])).toEqual([4]);
+    expect(w.store(Bag).info[e]).toEqual({ pos: { x: 5 } });
+  });
+
   it("keeps change ticks when the world grows", () => {
     const w = new World({ initialCapacity: 16 });
     const q = w.query([Pos]);

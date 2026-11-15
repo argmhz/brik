@@ -174,3 +174,32 @@ describe("one-way platforms", () => {
     expect(T.position.y[a]).toBeCloseTo(72.5, 1);
   });
 });
+
+describe("tile chunks", () => {
+  it("painting a tile rebuilds only its own chunk's colliders", () => {
+    const { app, w, map, physics, T } = setup();
+    app.update(1 / 60);
+    const chunks = () => (physics as unknown as { tilemaps: Map<number, { chunks: Map<string, { colliders: unknown[] }> }> }).tilemaps.get(map)!.chunks;
+    // the floor x -10..29 at y -1 lies in chunks -1, 0 and 1 of row -1
+    expect([...chunks().keys()].sort()).toEqual(["-1,-1", "0,-1", "1,-1"]);
+    const before = chunks().get("0,-1")!.colliders;
+    const left = chunks().get("-1,-1")!.colliders;
+    setTile(w, map, 20, 0, "full"); // chunk 1,0: new
+    setTile(w, map, 5, -1, null); // chunk 0,-1: a hole in the floor
+    app.update(1 / 60);
+    expect(chunks().get("-1,-1")!.colliders).toBe(left); // untouched
+    expect(chunks().get("0,-1")!.colliders).not.toBe(before);
+    expect(chunks().has("1,0")).toBe(true);
+    // the new tile is solid and the hole lets things fall through
+    const onTop = hero(w, 20 * 16 + 8, 60);
+    const inHole = hero(w, 5 * 16 + 8, 60);
+    run(app, physics, onTop, 90);
+    run(app, physics, inHole, 90);
+    expect(T.position.y[onTop]).toBeCloseTo(24.5, 1);
+    expect(T.position.y[inHole]).toBeLessThan(-20);
+    // replacing the whole tiles object (as the editor's undo does) is noticed too
+    w.store(TileMap).tiles[map] = { "5,-1": "full" };
+    app.update(1 / 60);
+    expect([...chunks().keys()]).toEqual(["0,-1"]);
+  });
+});

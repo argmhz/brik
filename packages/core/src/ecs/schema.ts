@@ -41,6 +41,10 @@ export interface FieldMeta {
   options?: readonly string[];
   /** Not shown in the inspector. */
   hidden?: boolean;
+  /** For `ref` fields: turns the value into the form written to scene and prefab files (see `valuesForFile`). */
+  save?: (value: unknown) => unknown;
+  /** For `ref` fields: reads a value written by `save` (or an older form) whenever the field is set. */
+  load?: (value: any) => unknown;
 }
 
 /** Returns a copy of `field` with extra editor hints. */
@@ -163,10 +167,11 @@ export function allocStore(schema: Schema, capacity: number, existing?: any): an
   return store;
 }
 
-function writeField(kind: FieldKind, slot: any, i: number, value: any): void {
+function writeField(field: Field, slot: any, i: number, value: any): void {
   if (value === undefined) return;
+  const kind = field.kind;
   if (kind === "ref") {
-    slot[i] = value;
+    slot[i] = field.meta?.load ? field.meta.load(value) : value;
   } else if (kind === "bool") {
     slot[i] = value ? 1 : 0;
   } else {
@@ -183,8 +188,8 @@ function writeField(kind: FieldKind, slot: any, i: number, value: any): void {
 export function initEntity(schema: Schema, store: any, i: number, init?: Record<string, any>): void {
   for (const key in schema) {
     const field = schema[key];
-    writeField(field.kind, store[key], i, field.make());
-    if (init && init[key] !== undefined) writeField(field.kind, store[key], i, init[key]);
+    writeField(field, store[key], i, field.make());
+    if (init && init[key] !== undefined) writeField(field, store[key], i, init[key]);
   }
 }
 
@@ -192,7 +197,7 @@ export function initEntity(schema: Schema, store: any, i: number, init?: Record<
 export function writeEntity(schema: Schema, store: any, i: number, values: Record<string, any>): void {
   for (const key in values) {
     const field = schema[key];
-    if (field) writeField(field.kind, store[key], i, values[key]);
+    if (field) writeField(field, store[key], i, values[key]);
   }
 }
 

@@ -1,0 +1,98 @@
+{
+  "guid": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+  "importer": "texture",
+  "settings": {
+    "filter": "nearest",
+    "wrap": "clamp",
+    "pixelsPerUnit": 1
+  },
+  "slicing": {
+    "mode": "manual"
+  },
+  "sprites": [
+    {
+      "id": "hero_0",
+      "name": "hero_0",
+      "rect": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.25
+      ]
+    },
+    {
+      "id": "hero_1",
+      "name": "hero_1",
+      "rect": [
+        16,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.25
+      ]
+    },
+    {
+      "id": "shroom_0",
+      "name": "shroom_0",
+      "rect": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.25
+      ]
+    },
+    {
+      "id": "shroom_1",
+      "name": "shroom_1",
+      "rect": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.25
+      ]
+    },
+    {
+      "id": "crystal",
+      "name": "crystal",
+      "rect": [
+        64,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.25
+      ]
+    },
+    {
+      "id": "sword",
+      "name": "sword",
+      "rect": [
+        80,
+        0,
+        16,
+        16
+      ],
+      "pivot": [
+        0.5,
+        0.25
+      ]
+    }
+  ]
+}

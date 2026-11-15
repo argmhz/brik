@@ -16,12 +16,18 @@ import {
 import { Input } from "@brik/input";
 
 /**
- * The root of a screen-space UI. Its descendants with a UIRect are laid out on
- * the screen (not in the world) and drawn on top of everything.
+ * The root of a UI. Its descendants with a UIRect are laid out inside it.
+ * A screen canvas covers the screen and is drawn on top of everything. A world
+ * canvas is a rectangle of `referenceSize` world units centred on the canvas
+ * entity, follows its transform (put it under an enemy for a health bar or a
+ * name tag) and is drawn on top of the world, under screen UI.
  */
 export const UICanvas = defineComponent("UICanvas", {
-  /** constant: 1 unit = 1 CSS pixel. fit / expand: scale `referenceSize` to fit inside / cover the screen. */
+  /** screen: on top of the game. world: a panel in the world, placed by the entity's transform. */
+  space: t.enum(["screen", "world"] as const, "screen"),
+  /** Screen canvases. constant: 1 unit = 1 CSS pixel. fit / expand: scale `referenceSize` to fit inside / cover the screen. */
   scaleMode: t.enum(["fit", "expand", "constant"] as const, "fit"),
+  /** Screen canvases: the size the UI is designed for. World canvases: the size of the panel in world units. */
   referenceSize: t.vec2(960, 540),
   /** Higher draws on top of other canvases. */
   order: t.i32(0),
@@ -122,10 +128,19 @@ export class UIFocus {
 }
 
 /** Laid out UI. Available as a resource: `world.resource(UILayout)`. */
+/** A world-space canvas and its laid-out elements (rects in canvas units, origin at its bottom-left corner). */
+export interface WorldCanvasLayout {
+  canvas: Entity;
+  size: { x: number; y: number };
+  elements: UIElement[];
+}
+
 export class UILayout {
-  /** Elements in draw order (later ones on top). */
+  /** Screen elements in draw order (later ones on top). */
   elements: UIElement[] = [];
   readonly byEntity = new Map<Entity, UIElement>();
+  /** World-space canvases in draw order. Their elements are not in `elements` or `byEntity`. */
+  worldCanvases: WorldCanvasLayout[] = [];
   screenW = 0;
   screenH = 0;
 
@@ -135,6 +150,7 @@ export class UILayout {
     this.screenH = h;
     this.elements = [];
     this.byEntity.clear();
+    this.worldCanvases = [];
     const C = world.store(UICanvas);
     const canvases = world
       .query([UICanvas])
@@ -142,6 +158,14 @@ export class UILayout {
       .sort((a, b) => C.order[a] - C.order[b] || a - b);
     for (const c of canvases) {
       if (!isActive(world, c)) continue;
+      if (C.space[c] === "world") {
+        const size = { x: Math.max(0, C.referenceSize.x[c]), y: Math.max(0, C.referenceSize.y[c]) };
+        const out: WorldCanvasLayout = { canvas: c, size, elements: [] };
+        const root: Rect = { x: 0, y: 0, w: size.x, h: size.y };
+        for (const child of childrenOf(world, c)) this.visit(world, child, root, 1, undefined, out.elements);
+        this.worldCanvases.push(out);
+        continue;
+      }
       const rw = Math.max(1, C.referenceSize.x[c]);
       const rh = Math.max(1, C.referenceSize.y[c]);
       const mode = C.scaleMode[c];
@@ -175,7 +199,7 @@ export class UILayout {
   }
 
   /** `fixed`: the rect a UIStack parent gave the element, instead of its anchors. */
-  private visit(world: World, e: Entity, parent: Rect, scale: number, fixed?: Rect): void {
+  private visit(world: World, e: Entity, parent: Rect, scale: number, fixed?: Rect, into?: UIElement[]): void {
     if (!isActive(world, e)) return;
     let rect = parent;
     if (world.has(e, UIRect)) {
@@ -185,14 +209,17 @@ export class UILayout {
         rect: { x: rect.x * scale, y: rect.y * scale, w: rect.w * scale, h: rect.h * scale },
         scale,
       };
-      this.elements.push(el);
-      this.byEntity.set(e, el);
+      if (into) into.push(el);
+      else {
+        this.elements.push(el);
+        this.byEntity.set(e, el);
+      }
     }
     const kids = childrenOf(world, e);
     if (world.has(e, UIStack) && world.has(e, UIRect)) {
       const rects = stackRects(world, e, rect, kids);
-      kids.forEach((child, i) => this.visit(world, child, rect, scale, rects[i] ?? undefined));
-    } else for (const child of kids) this.visit(world, child, rect, scale);
+      kids.forEach((child, i) => this.visit(world, child, rect, scale, rects[i] ?? undefined, into));
+    } else for (const child of kids) this.visit(world, child, rect, scale, undefined, into);
   }
 }
 

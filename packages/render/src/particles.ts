@@ -3,6 +3,7 @@ import {
   type App,
   type Entity,
   Time,
+  SolidRaycast,
   Transform2D,
   type World,
   computeWorldMatrix,
@@ -49,6 +50,19 @@ export const ParticleEmitter2D = defineComponent(
     sprite: withMeta(t.ref<SpriteRef | null>(() => null), { editor: "sprite" }),
     /** Destroy the entity once it stopped emitting and every particle is gone (one-shot effects). */
     autoDestroy: t.bool(false),
+    /**
+     * Particles hit solid colliders (not triggers) and bounce off them. Needs
+     * physics in the game; only for particles in world space.
+     */
+    collide: t.bool(false),
+    /** How much speed is kept along the surface normal when bouncing: 0 = no bounce, 1 = all. */
+    bounce: withMeta(t.f32(0.3), { min: 0, max: 1, step: 0.05 }),
+    /** Speed kept along the surface: 1 = slides on, 0 = stops. */
+    slide: withMeta(t.f32(0.8), { min: 0, max: 1, step: 0.05 }),
+    /** A particle that hits something disappears (rain, bullets). */
+    dieOnHit: t.bool(false),
+    /** Which collision groups particles hit (bits, like CollisionFilter.mask). */
+    collisionMask: withMeta(t.u32(0xffff), { step: 1 }),
   },
   { requires: [Transform2D] },
 );
@@ -130,6 +144,7 @@ export class Particles {
       const gx = P.gravity.x[e] * dt;
       const gy = P.gravity.y[e] * dt;
       const damp = Math.max(0, 1 - P.damping[e] * dt);
+      const cast = P.collide[e] && P.space[e] === "world" ? (world.tryResource(SolidRaycast)?.cast ?? null) : null;
       let i = 0;
       while (i < pool.count) {
         pool.age[i] += dt;
@@ -145,6 +160,10 @@ export class Particles {
         }
         pool.vx[i] = (pool.vx[i] + gx) * damp;
         pool.vy[i] = (pool.vy[i] + gy) * damp;
+        if (cast && this.collide(cast, e, pool, i, dt)) {
+          i++;
+          continue;
+        }
         pool.x[i] += pool.vx[i] * dt;
         pool.y[i] += pool.vy[i] * dt;
         i++;
@@ -153,6 +172,38 @@ export class Particles {
         world.commands.run((w) => w.isAlive(e) && destroyRecursive(w, e));
       }
     }
+  }
+
+  /**
+   * Moves particle i along its velocity unless it hits something on the way:
+   * then it stops at the surface and bounces (or dies). True if it hit.
+   */
+  private collide(cast: NonNullable<SolidRaycast["cast"]>, e: Entity, pool: ParticlePool, i: number, dt: number): boolean {
+    const P = this.world.store(ParticleEmitter2D);
+    const dx = pool.vx[i] * dt;
+    const dy = pool.vy[i] * dt;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return false;
+    const hit = cast({ x: pool.x[i], y: pool.y[i] }, { x: dx, y: dy }, len, P.collisionMask[e]);
+    // starting inside a collider gives no usable normal: let it fly out
+    if (!hit || (hit.normal.x === 0 && hit.normal.y === 0) || hit.distance <= 0) return false;
+    if (P.dieOnHit[e]) {
+      pool.age[i] = pool.life[i];
+      return true;
+    }
+    const nx = hit.normal.x;
+    const ny = hit.normal.y;
+    const vn = pool.vx[i] * nx + pool.vy[i] * ny;
+    // split into the part along the normal (bounced) and along the surface (slid)
+    const tx = pool.vx[i] - vn * nx;
+    const ty = pool.vy[i] - vn * ny;
+    const into = Math.min(vn, 0);
+    pool.vx[i] = tx * P.slide[e] - into * P.bounce[e] * nx + (vn - into) * nx;
+    pool.vy[i] = ty * P.slide[e] - into * P.bounce[e] * ny + (vn - into) * ny;
+    // a hair off the surface, so the next ray doesn't start inside it
+    pool.x[i] = hit.point.x + nx * 0.5;
+    pool.y[i] = hit.point.y + ny * 0.5;
+    return true;
   }
 
   private pool(e: Entity): ParticlePool | null {

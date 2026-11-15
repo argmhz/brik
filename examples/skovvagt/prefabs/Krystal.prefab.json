@@ -1,0 +1,72 @@
+{
+  "guid": "4d7530f5-9cfe-44c0-8167-c5fbdd31a1af",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "a55eb9b5201dd62a",
+      "components": {
+        "Name": {
+          "value": "Krystal"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "crystal"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "Collider2D": {
+          "shape": "circle",
+          "size": {
+            "x": 10,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 6
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Crystal.ts#Crystal",
+              "props": {}
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

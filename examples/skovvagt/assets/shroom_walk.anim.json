@@ -1,0 +1,22 @@
+{
+  "guid": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+  "importer": "animation",
+  "mode": "loop",
+  "frames": [
+    {
+      "sprite": [
+        "9592b4b5-003e-4673-805b-82dd4b3007dc",
+        "shroom_0"
+      ],
+      "duration": 0.25
+    },
+    {
+      "sprite": [
+        "9592b4b5-003e-4673-805b-82dd4b3007dc",
+        "shroom_1"
+      ],
+      "duration": 0.25
+    }
+  ],
+  "events": []
+}

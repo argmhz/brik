@@ -71,7 +71,7 @@ Til at lægge en farve over hele skærmen, fx et rødt blink ved skade, er der `
 
 | Komponent | Bruges til |
 |---|---|
-| `ParticleEmitter2D` | Partikler. De kan spille i verdens- eller lokale koordinater (`space`). Fra et script: `this.emitParticles(20)`. |
+| `ParticleEmitter2D` | Partikler. De kan spille i verdens- eller lokale koordinater (`space`). Fra et script: `this.emitParticles(20)`. Med `collide` støder de mod faste colliders (ikke triggere): `bounce` er hoppet (0 til 1), `slide` hvor meget fart de beholder langs fladen, og `dieOnHit` lader dem forsvinde ved første stød, fx regn og gnister. `collisionMask` vælger, hvilke grupper de rammer. Kun partikler i verdens-koordinater kolliderer. |
 | `Text2D` | Tekst i verden |
 | `Shape2D` | Udfyldte og optegnede former. Gode til prototyper og fejlsøgning |
 | `SpriteAnimator` | Afspiller en animation |

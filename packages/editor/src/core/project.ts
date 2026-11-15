@@ -1,4 +1,4 @@
-import { type PhysicsOptions, type SceneData, newSceneId } from "@brik/runtime";
+import { type PhysicsOptions, type SceneData, newSceneId, valuesForFile, valuesFromFile } from "@brik/runtime";
 import { PROJECT_AI_GUIDE } from "./project-guide";
 import type { BuildSettings } from "./export";
 import type { ProjectFS } from "./fs";
@@ -58,8 +58,14 @@ export function defaultScene(): SceneData {
   };
 }
 
+/** Reads a scene file (tiles saved as rows come back as "x,y" keys). */
+export function parseSceneFile(text: string): SceneData {
+  const data = JSON.parse(text) as SceneData;
+  return { ...data, entities: valuesFromFile(data.entities ?? []) };
+}
+
 export function sceneToJson(scene: SceneData): string {
-  return `${JSON.stringify(scene, null, 2)}\n`;
+  return `${JSON.stringify({ ...scene, entities: valuesForFile(scene.entities) }, null, 2)}\n`;
 }
 
 /** Writes the files for a new, empty project. `extras` are added as is (e.g. a sample image). */

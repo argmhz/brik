@@ -109,7 +109,19 @@ this.physics.overlapPoint(p);
 
 ## Kollisionshooks
 
-`onCollisionEnter/Exit(other)` kaldes for faste colliders, `onTriggerEnter/Exit(other)` for triggers. Se [Scripts](scripts.md#hooks). Et Exit kommer også, når modparten slettes eller slukkes, eller når en ny `group`/`mask` skiller dem ad. Er modparten slettet, så se [Når noget forsvinder](scripts.md#naar-noget-forsvinder).
+`onCollisionEnter/Exit(other)` kaldes for faste colliders, `onTriggerEnter/Exit(other)` for triggers.
+
+`onCollisionEnter` og `onTriggerEnter` får også en `contact`. `contact.normal` peger fra den anden mod en selv og siger, fra hvilken side I mødtes (en af de fire retninger, ud fra hvor I var i forrige fysik-trin). Det gør tramp-tjek enkle, også for fjender uden fysik-krop:
+
+```ts
+import { Behaviour, type Contact } from "brik";
+
+override onTriggerEnter(other: number, contact: Contact) {
+  if (contact.normal.y > 0.5) this.stomp(other); // vi kom ovenfra
+  else this.hurt();
+}
+```
+ Se [Scripts](scripts.md#hooks). Et Exit kommer også, når modparten slettes eller slukkes, eller når en ny `group`/`mask` skiller dem ad. Er modparten slettet, så se [Når noget forsvinder](scripts.md#naar-noget-forsvinder).
 
 ## Led
 

@@ -7,6 +7,7 @@ import {
   Parent,
   TileMap,
   TileMapCollider,
+  SolidRaycast,
   Time,
   NULL_REF,
   isActive,
@@ -17,6 +18,7 @@ import {
   type Vec2,
   type World,
   mat3,
+  tileChunks,
 } from "@brik/core";
 import {
   CharacterController2D,
@@ -74,6 +76,13 @@ export interface RaycastHit {
   distance: number;
 }
 
+interface Box {
+  x: number;
+  y: number;
+  hw: number;
+  hh: number;
+}
+
 interface BodyEntry {
   ref: number;
   body: RAPIER.RigidBody;
@@ -95,11 +104,24 @@ interface ColliderEntry {
   sig: string;
 }
 
+interface TileChunkColliders {
+  /** The chunk's tiles when its colliders were made (see `tileChunks`). */
+  content: string;
+  colliders: RAPIER.Collider[];
+  oneWay: { x0: number; x1: number; top: number }[];
+}
+
 interface TileMapEntry {
   ref: number;
   body: RAPIER.RigidBody;
-  colliders: RAPIER.Collider[];
+  /** Everything but the tiles: a change here rebuilds the whole map. */
   sig: string;
+  /** Tiles object and revision last synced. */
+  tilesSig: string;
+  /** Colliders per chunk, so painting a tile rebuilds only its chunk. */
+  chunks: Map<string, TileChunkColliders>;
+  /** All chunks' colliders. */
+  colliders: RAPIER.Collider[];
   /** Tops of one-way tiles in world units, for characters to land on. */
   oneWay: { x0: number; x1: number; top: number }[];
 }
@@ -190,7 +212,7 @@ export class Physics {
   }
 
   /** Casts a ray and returns the first collider hit. `dir` doesn't need to be normalized. */
-  raycast(origin: Vec2, dir: Vec2, maxDistance: number, opts: { mask?: number; exclude?: Entity } = {}): RaycastHit | null {
+  raycast(origin: Vec2, dir: Vec2, maxDistance: number, opts: { mask?: number; exclude?: Entity; solidOnly?: boolean } = {}): RaycastHit | null {
     const rw = this.rw;
     if (!rw || !rapier) return null;
     const len = Math.hypot(dir.x, dir.y);
@@ -201,7 +223,15 @@ export class Physics {
     const excl = opts.exclude === undefined ? undefined : this.colliders.get(opts.exclude)?.collider;
     // nearest enabled hit: Rapier's queries don't skip disabled colliders
     const hits: RAPIER.RayColliderIntersection[] = [];
-    rw.intersectionsWithRay(ray, maxDistance / ppm, true, (h) => (h.collider.isEnabled() && hits.push(h), true), undefined, groups, excl);
+    rw.intersectionsWithRay(
+      ray,
+      maxDistance / ppm,
+      true,
+      (h) => (h.collider.isEnabled() && !(opts.solidOnly && h.collider.isSensor()) && hits.push(h), true),
+      undefined,
+      groups,
+      excl,
+    );
     if (hits.length === 0) return null;
     const hit = hits.reduce((a, b) => (b.timeOfImpact < a.timeOfImpact ? b : a));
     const entity = this.byHandle.get(hit.collider.handle);
@@ -562,8 +592,6 @@ export class Physics {
       // each tile's collision shape comes from its sprite in the tileset
       const tex = assets?.textures.get(M.tileset[e] as string);
       const sig = [
-        objectId(M.tiles[e]),
-        M.revision[e],
         M.tileSize.x[e],
         M.tileSize.y[e],
         pos.x,
@@ -575,52 +603,83 @@ export class Physics {
         TC.isTrigger[e],
         tex ? `${tex.guid}:${tex.version}:${tex.sprites.size}` : "-",
       ].join("|");
-      const old = this.tilemaps.get(e);
-      if (old?.sig === sig) continue;
-      if (old) this.dropTileMap(e);
-      const body = rw.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(pos.x / ppm, pos.y / ppm).setRotation(rot));
+      const tilesSig = `${objectId(M.tiles[e])}|${M.revision[e]}`;
+      let entry = this.tilemaps.get(e);
+      if (entry?.sig === sig && entry.tilesSig === tilesSig) continue;
+      if (entry && entry.sig !== sig) {
+        this.dropTileMap(e);
+        entry = undefined;
+      }
+      if (!entry) {
+        const body = rw.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(pos.x / ppm, pos.y / ppm).setRotation(rot));
+        entry = { ref: world.ref(e), body, sig, tilesSig, chunks: new Map(), colliders: [], oneWay: [] };
+        this.tilemaps.set(e, entry);
+      }
+      entry.tilesSig = tilesSig;
+      const body = entry.body;
       const tw = (M.tileSize.x[e] * scale.x) / ppm;
       const th = (M.tileSize.y[e] * scale.y) / ppm;
-      const byKind: Record<TileCollision, TileData> = { full: {}, none: {}, "one-way": {}, "half-bottom": {}, "slope-up": {}, "slope-down": {} };
       const tiles = M.tiles[e];
-      for (const key in tiles) byKind[tex?.sprites.get(tiles[key])?.collision ?? "full"][key] = tiles[key];
-      const colliders: RAPIER.Collider[] = [];
-      const add = (desc: RAPIER.ColliderDesc, oneWay = false) => {
-        desc
-          .setFriction(TC.friction[e])
-          .setSensor(TC.isTrigger[e] !== 0)
-          .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS)
-          .setActiveCollisionTypes(R.ActiveCollisionTypes.DEFAULT | R.ActiveCollisionTypes.KINEMATIC_FIXED);
-        if (oneWay) desc.setCollisionGroups(((ONE_WAY_BIT << 16) | 0xffff) >>> 0);
-        const c = rw.createCollider(desc, body);
-        this.byHandle.set(c.handle, e);
-        colliders.push(c);
-      };
-      const box = (x: number, y: number, w: number, h: number) => R.ColliderDesc.cuboid(w / 2, h / 2).setTranslation(x + w / 2, y + h / 2);
-      for (const r of mergeTileRects(byKind.full)) add(box(r.x * tw, r.y * th, r.w * tw, r.h * th));
-      for (const r of rowRects(byKind["half-bottom"])) add(box(r.x * tw, r.y * th, r.w * tw, th / 2));
-      const oneWay: TileMapEntry["oneWay"] = [];
-      for (const r of rowRects(byKind["one-way"])) {
-        add(box(r.x * tw, r.y * th, r.w * tw, th), true);
-        // characters land on the top edge (only for maps that aren't rotated)
-        if (rot === 0) {
-          const x0 = pos.x + r.x * tw * ppm;
-          const x1 = pos.x + (r.x + r.w) * tw * ppm;
-          oneWay.push({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), top: pos.y + (th > 0 ? (r.y + 1) * th : r.y * th) * ppm });
+      const chunks = tileChunks(tiles, M.revision[e]);
+      // chunks that are gone or changed lose their colliders
+      for (const [ck, old] of entry.chunks) {
+        if (chunks.get(ck)?.content === old.content) continue;
+        for (const c of old.colliders) {
+          this.byHandle.delete(c.handle);
+          rw.removeCollider(c, false);
         }
+        entry.chunks.delete(ck);
       }
-      for (const kind of ["slope-up", "slope-down"] as const) {
-        for (const key in byKind[kind]) {
-          const [cx, cy] = parseTileKey(key);
-          const x = cx * tw;
-          const y = cy * th;
-          // rising to the right: high corner on the right; falling: high corner on the left
-          const pts = kind === "slope-up" ? [x, y, x + tw, y, x + tw, y + th] : [x, y, x + tw, y, x, y + th];
-          const desc = R.ColliderDesc.convexHull(new Float32Array(pts));
-          if (desc) add(desc);
+      const enabled = isActive(world, e);
+      for (const [ck, chunk] of chunks) {
+        if (entry.chunks.has(ck)) continue;
+        const byKind: Record<TileCollision, TileData> = { full: {}, none: {}, "one-way": {}, "half-bottom": {}, "slope-up": {}, "slope-down": {} };
+        for (const key of chunk.keys) byKind[tex?.sprites.get(tiles[key])?.collision ?? "full"][key] = tiles[key];
+        const colliders: RAPIER.Collider[] = [];
+        const add = (desc: RAPIER.ColliderDesc, oneWay = false) => {
+          desc
+            .setFriction(TC.friction[e])
+            .setSensor(TC.isTrigger[e] !== 0)
+            .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS)
+            .setActiveCollisionTypes(R.ActiveCollisionTypes.DEFAULT | R.ActiveCollisionTypes.KINEMATIC_FIXED);
+          if (oneWay) desc.setCollisionGroups(((ONE_WAY_BIT << 16) | 0xffff) >>> 0);
+          const c = rw.createCollider(desc, body);
+          if (!enabled) c.setEnabled(false);
+          this.byHandle.set(c.handle, e);
+          colliders.push(c);
+        };
+        const box = (x: number, y: number, w: number, h: number) => R.ColliderDesc.cuboid(w / 2, h / 2).setTranslation(x + w / 2, y + h / 2);
+        for (const r of mergeTileRects(byKind.full)) add(box(r.x * tw, r.y * th, r.w * tw, r.h * th));
+        for (const r of rowRects(byKind["half-bottom"])) add(box(r.x * tw, r.y * th, r.w * tw, th / 2));
+        const oneWay: TileMapEntry["oneWay"] = [];
+        for (const r of rowRects(byKind["one-way"])) {
+          add(box(r.x * tw, r.y * th, r.w * tw, th), true);
+          // characters land on the top edge (only for maps that aren't rotated)
+          if (rot === 0) {
+            const x0 = pos.x + r.x * tw * ppm;
+            const x1 = pos.x + (r.x + r.w) * tw * ppm;
+            oneWay.push({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), top: pos.y + (th > 0 ? (r.y + 1) * th : r.y * th) * ppm });
+          }
         }
+        for (const kind of ["slope-up", "slope-down"] as const) {
+          for (const key in byKind[kind]) {
+            const [cx, cy] = parseTileKey(key);
+            const x = cx * tw;
+            const y = cy * th;
+            // rising to the right: high corner on the right; falling: high corner on the left
+            const pts = kind === "slope-up" ? [x, y, x + tw, y, x + tw, y + th] : [x, y, x + tw, y, x, y + th];
+            const desc = R.ColliderDesc.convexHull(new Float32Array(pts));
+            if (desc) add(desc);
+          }
+        }
+        entry.chunks.set(ck, { content: chunk.content, colliders, oneWay });
       }
-      this.tilemaps.set(e, { ref: world.ref(e), body, colliders, sig, oneWay });
+      entry.colliders = [];
+      entry.oneWay = [];
+      for (const c of entry.chunks.values()) {
+        entry.colliders.push(...c.colliders);
+        entry.oneWay.push(...c.oneWay);
+      }
     }
   }
 
@@ -902,7 +961,7 @@ export class Physics {
       const c2 = rw.getCollider(h2);
       const trigger = (c1?.isSensor() ?? false) || (c2?.isSensor() ?? false);
       this.touching.set(key, { h1, h2, a, b, trigger });
-      world.emit(trigger ? TriggerEnter : CollisionEnter, { a, b });
+      world.emit(trigger ? TriggerEnter : CollisionEnter, { a, b, normal: this.meetingNormal(h1, h2) });
     });
     // Rapier stays silent when a collider is removed or switched off, or when groups/masks change under a contact:
     // end those contacts here, so scripts always get a matching Exit.
@@ -911,6 +970,63 @@ export class Physics {
       this.touching.delete(key);
       world.emit(t.trigger ? TriggerExit : CollisionExit, { a: t.a, b: t.b });
     }
+    this.rememberBoxes();
+  }
+
+  /** Each collider's box after the last step, so a new contact can tell which side it came from. */
+  private lastBoxes = new Map<number, Box>();
+
+  private rememberBoxes(): void {
+    this.lastBoxes.clear();
+    for (const c of this.colliders.values()) {
+      const box = this.boxOf(c.collider.handle);
+      if (box) this.lastBoxes.set(c.collider.handle, box);
+    }
+  }
+
+  /** A collider's axis-aligned box in world units (rotation ignored), or null. */
+  private boxOf(handle: number): Box | null {
+    const c = this.rw?.getCollider(handle);
+    const e = this.byHandle.get(handle);
+    if (!c || e === undefined || !this.world.has(e, Collider2D)) return null;
+    const ppm = this.pixelsPerMeter;
+    const p = c.translation();
+    const C = this.world.store(Collider2D);
+    const g = this.world.has(e, GlobalTransform2D) ? this.world.store(GlobalTransform2D).matrix : null;
+    const sx = g ? Math.hypot(g.a[e], g.b[e]) : 1;
+    const sy = g ? Math.hypot(g.c[e], g.d[e]) : 1;
+    const round = C.shape[e] === "circle";
+    const hw = (C.size.x[e] * sx) / 2;
+    const hh = ((round ? C.size.x[e] : C.size.y[e]) * sy) / 2;
+    return { x: p.x * ppm, y: p.y * ppm, hw, hh };
+  }
+
+  /**
+   * Which side `h1` met `h2` on, as a unit axis from h2 toward h1. Uses where
+   * they were after the previous step: the axis on which they were apart then.
+   * When they were apart on both, the one with the bigger gap relative to the
+   * motion wins; when they already overlapped (spawned inside), the axis of
+   * least overlap now.
+   */
+  private meetingNormal(h1: number, h2: number): { x: number; y: number } {
+    const now1 = this.boxOf(h1);
+    const now2 = this.boxOf(h2);
+    if (!now1 || !now2) return { x: 0, y: 0 };
+    const was1 = this.lastBoxes.get(h1) ?? now1;
+    const was2 = this.lastBoxes.get(h2) ?? now2;
+    const gapX = Math.abs(was1.x - was2.x) - (was1.hw + was2.hw);
+    const gapY = Math.abs(was1.y - was2.y) - (was1.hh + was2.hh);
+    const sign = (v: number) => (v >= 0 ? 1 : -1);
+    if (gapX > 0 || gapY > 0) {
+      // apart on an axis before: that is the side they met on (the bigger relative gap if both)
+      const relX = Math.abs(now1.x - now2.x - (was1.x - was2.x)) || 1e-9;
+      const relY = Math.abs(now1.y - now2.y - (was1.y - was2.y)) || 1e-9;
+      const useY = gapX <= 0 || (gapY > 0 && gapY / relY >= gapX / relX);
+      return useY ? { x: 0, y: sign(was1.y - was2.y) } : { x: sign(was1.x - was2.x), y: 0 };
+    }
+    const overX = now1.hw + now2.hw - Math.abs(now1.x - now2.x);
+    const overY = now1.hh + now2.hh - Math.abs(now1.y - now2.y);
+    return overY <= overX ? { x: 0, y: sign(now1.y - now2.y) } : { x: sign(now1.x - now2.x), y: 0 };
   }
 
   /** False once either collider is gone, switched off, or the two no longer interact by group and mask. */
@@ -1002,6 +1118,9 @@ export function PhysicsPlugin(options: PhysicsOptions = {}) {
     name: "brik:physics",
     build(app: App) {
       const physics = app.world.insertResource(new Physics(app.world, options));
+      // particles and other non-physics systems ray-cast through this
+      const solid = app.world.tryResource(SolidRaycast) ?? app.world.insertResource(new SolidRaycast());
+      solid.cast = (origin, dir, maxDistance, mask) => physics.raycast(origin, dir, maxDistance, { mask, solidOnly: true });
       app.addSystem("fixedUpdate", {
         name: "physics.step",
         run: (w: World) => physics.step(w.resource(Time).dt),

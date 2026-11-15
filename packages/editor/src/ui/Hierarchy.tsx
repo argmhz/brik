@@ -61,6 +61,7 @@ export function Hierarchy(props: { editor: Editor }) {
       <MenuItem onClick={() => editor.createEntity("light", { parentId })}>Lys</MenuItem>
       <div class="group">UI</div>
       <MenuItem onClick={() => editor.createEntity("ui-canvas", { parentId })}>UI Canvas</MenuItem>
+      <MenuItem onClick={() => editor.createEntity("ui-world-bar", { parentId })}>Livsbjælke (UI i verden)</MenuItem>
       <MenuItem onClick={() => editor.createEntity("ui-button", { parentId })}>Knap</MenuItem>
       <MenuItem onClick={() => editor.createEntity("ui-text", { parentId })}>Tekst</MenuItem>
       <MenuItem onClick={() => editor.createEntity("ui-image", { parentId })}>Billede</MenuItem>

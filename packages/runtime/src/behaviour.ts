@@ -30,7 +30,7 @@ import {
   type Vec2,
 } from "@brik/core";
 import { Input } from "@brik/input";
-import { CollisionEnter, CollisionExit, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
+import { CollisionEnter, type CollisionData, CollisionExit, type Contact, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
 import { AnimationEvent, AnimationFinished, Camera2D, CameraFX, Particles, UIClick, UILayout, UISubmit, UIValueChanged, playAnimation } from "@brik/render";
 import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
@@ -187,11 +187,19 @@ export abstract class Behaviour {
   onFixedUpdate?(dt: number): void;
   /** Called when the script or its entity is removed, or play mode stops. */
   onDestroy?(): void;
-  /** This entity's collider started touching `other`. */
-  onCollisionEnter?(other: Entity): void;
+  /**
+   * This entity's collider started touching `other`. `contact.normal` points
+   * from `other` toward this entity: `contact.normal.y > 0.5` means this one came from above.
+   */
+  onCollisionEnter?(other: Entity, contact: Contact): void;
   onCollisionExit?(other: Entity): void;
-  /** `other` entered this trigger, or this collider entered the trigger `other`. */
-  onTriggerEnter?(other: Entity): void;
+  /**
+   * `other` entered this trigger, or this collider entered the trigger `other`.
+   * `contact.normal` is the side they met on, from `other` toward this entity,
+   * worked out from where they were a step before (so a stomp check can use
+   * `contact.normal.y > 0.5` even though they already overlap).
+   */
+  onTriggerEnter?(other: Entity, contact: Contact): void;
   onTriggerExit?(other: Entity): void;
   /** The entity's animation reached a frame with an event, e.g. "footstep". */
   onAnimationEvent?(name: string): void;
@@ -571,11 +579,11 @@ export class BehaviourRuntime {
   }
 
   /** Calls a hook on every started Behaviour of an entity. */
-  dispatch(e: Entity, method: HookName, arg: unknown): void {
+  dispatch(e: Entity, method: HookName, arg: unknown, arg2?: unknown): void {
     const slots = this.slots.get(e);
     const world = slots?.find(Boolean)?.inst.world;
     if (!slots || !world || !isActive(world, e)) return;
-    for (const s of slots) if (s?.started && s.inst[method]) call(s, method, arg);
+    for (const s of slots) if (s?.started && s.inst[method]) call(s, method, arg, arg2);
   }
 
   /** Calls onDestroy on everything and forgets all instances. */
@@ -643,9 +651,9 @@ type HookName =
   | "onValueChanged"
   | "onSubmit";
 
-function call(s: Slot, method: HookName, arg?: unknown): void {
+function call(s: Slot, method: HookName, arg?: unknown, arg2?: unknown): void {
   try {
-    (s.inst[method] as (arg?: unknown) => void).call(s.inst, arg);
+    (s.inst[method] as (arg?: unknown, arg2?: unknown) => void).call(s.inst, arg, arg2);
   } catch (err) {
     console.error(`${scriptDisplayName(s.id)}.${method}:`, err);
   }
@@ -660,7 +668,7 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
       if (!world.hasResource(ScriptRegistry)) world.insertResource(registry);
       const runtime = world.insertResource(new BehaviourRuntime(registry));
       const reader = <T>(type: EventType<T>): EventReader<T> => world.events(type).reader();
-      const pairs: [EventReader<{ a: Entity; b: Entity }>, HookName][] = [
+      const pairs: [EventReader<CollisionData>, HookName][] = [
         [reader(CollisionEnter), "onCollisionEnter"],
         [reader(CollisionExit), "onCollisionExit"],
         [reader(TriggerEnter), "onTriggerEnter"],
@@ -674,9 +682,11 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
       const submits = reader(UISubmit);
       const dispatchEvents = () => {
         for (const [r, hook] of pairs) {
-          for (const { a, b } of r.read()) {
-            runtime.dispatch(a, hook, b);
-            runtime.dispatch(b, hook, a);
+          for (const { a, b, normal } of r.read()) {
+            // enter hooks get how they met, seen from each side
+            const n = normal ?? { x: 0, y: 0 };
+            runtime.dispatch(a, hook, b, normal ? { normal: { x: n.x, y: n.y } } : undefined);
+            runtime.dispatch(b, hook, a, normal ? { normal: { x: -n.x || 0, y: -n.y || 0 } } : undefined);
           }
         }
         for (const ev of anim.read()) runtime.dispatch(ev.entity, "onAnimationEvent", ev.name);

@@ -1262,6 +1262,11 @@ export class SceneController {
   }
 }
 
+/**
+ * Screen UI: placed by its canvas layout, not by Transform2D. A world-space
+ * canvas is placed by its transform like any entity (its children still use UIRect).
+ */
 function isUI(world: World, e: Entity): boolean {
-  return world.has(e, UIRect) || world.has(e, UICanvas);
+  if (world.has(e, UICanvas)) return world.store(UICanvas).space[e] !== "world";
+  return world.has(e, UIRect);
 }

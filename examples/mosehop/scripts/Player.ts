@@ -1,4 +1,4 @@
-import { Behaviour, CharacterController2D, Sprite, Transform2D, expose, hasTag } from "brik";
+import { Behaviour, CharacterController2D, type Contact, Sprite, Transform2D, expose, hasTag } from "brik";
 import { Game } from "./Game";
 import { Hud } from "./Hud";
 import { Slime } from "./Slime";
@@ -65,7 +65,7 @@ export class Player extends Behaviour {
     if (this.transform.position.y < -120) this.hurt(true);
   }
 
-  onTriggerEnter(other: number) {
+  onTriggerEnter(other: number, contact: Contact) {
     if (this.frozen) return;
     const T = this.world.store(Transform2D);
     if (hasTag(this.world, other, "coin")) {
@@ -77,8 +77,8 @@ export class Player extends Behaviour {
     } else if (hasTag(this.world, other, "enemy")) {
       const slime = this.behaviourOf(Slime, other);
       if (slime?.dead) return;
-      // falling onto it squashes it (the trigger fires a frame late, so be generous)
-      if (this.vy < 0 && this.transform.position.y > T.position.y[other] - 2) {
+      // landing on it from above squashes it; contact.normal tells the side they met on
+      if (contact.normal.y > 0.5) {
         slime?.squash();
         this.vy = this.jumpSpeed * 0.7;
         this.playSound("jump", { volume: 0.4 });

@@ -1,0 +1,22 @@
+{
+  "guid": "33492dd7-759b-4498-9d9d-084b3780af53",
+  "importer": "animation",
+  "mode": "loop",
+  "frames": [
+    {
+      "sprite": [
+        "9592b4b5-003e-4673-805b-82dd4b3007dc",
+        "hero_0"
+      ],
+      "duration": 0.1667
+    },
+    {
+      "sprite": [
+        "9592b4b5-003e-4673-805b-82dd4b3007dc",
+        "hero_1"
+      ],
+      "duration": 0.1667
+    }
+  ],
+  "events": []
+}

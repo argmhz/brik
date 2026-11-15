@@ -30,8 +30,8 @@ Felter med `@expose` kan rettes i inspectoren, og værdien gemmes i scenen.
 | `onUpdate(dt)` | Hver frame |
 | `onFixedUpdate(dt)` | Ved et fast interval (60 Hz) |
 | `onDestroy` | Scriptet eller entity'en fjernes |
-| `onCollisionEnter/Exit(other)` | To faste colliders rører hinanden eller slipper |
-| `onTriggerEnter/Exit(other)` | Noget går ind i eller ud af en trigger |
+| `onCollisionEnter/Exit(other)` | To faste colliders rører hinanden eller slipper. Enter får også `contact` med `normal` (se [Fysik](fysik.md#kollisionshooks)) |
+| `onTriggerEnter/Exit(other)` | Noget går ind i eller ud af en trigger. Enter får også `contact` |
 | `onAnimationEvent(name)` | Animationen når en frame med et event |
 | `onAnimationFinished(clip)` | En animation, der kun spiller én gang, er færdig |
 | `onTimer` | Entity'ens `Timer` løber ud |

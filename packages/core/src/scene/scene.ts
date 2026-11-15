@@ -284,3 +284,43 @@ export function loadScene(world: World, scene: SceneData): Entity[] {
   clearWorld(world);
   return instantiate(world, scene.entities);
 }
+
+/**
+ * Entities in the form written to files: fields with a `save` hook (like
+ * TileMap.tiles, saved as rows of characters) are converted. Loading converts
+ * them back by itself, so this is only for writing scene, prefab and game files.
+ */
+export function valuesForFile(entities: SceneEntityData[]): SceneEntityData[] {
+  return entities.map((item) => {
+    let components = item.components;
+    for (const [name, values] of Object.entries(item.components)) {
+      const def = componentByName(name);
+      if (!def) continue;
+      for (const key in def.schema) {
+        const save = def.schema[key].meta?.save;
+        if (!save || values[key] === undefined || values[key] === null) continue;
+        if (components === item.components) components = { ...components };
+        components[name] = { ...components[name], [key]: save(values[key]) };
+      }
+    }
+    return components === item.components ? item : { ...item, components };
+  });
+}
+
+/** The reverse of `valuesForFile`: what a scene or prefab file holds, in the form used in memory. */
+export function valuesFromFile(entities: SceneEntityData[]): SceneEntityData[] {
+  return entities.map((item) => {
+    let components = item.components;
+    for (const [name, values] of Object.entries(item.components)) {
+      const def = componentByName(name);
+      if (!def) continue;
+      for (const key in def.schema) {
+        const load = def.schema[key].meta?.load;
+        if (!load || values[key] === undefined || values[key] === null) continue;
+        if (components === item.components) components = { ...components };
+        components[name] = { ...components[name], [key]: load(values[key]) };
+      }
+    }
+    return components === item.components ? item : { ...item, components };
+  });
+}

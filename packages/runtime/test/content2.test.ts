@@ -88,6 +88,73 @@ describe("tilemaps", () => {
   });
 });
 
+describe("contacts", () => {
+  it("tells which side a trigger was entered from, even though they already overlap (stomp checks)", () => {
+    const seen: { who: string; other: Entity; normal: { x: number; y: number } }[] = [];
+    class Probe extends Behaviour {
+      @expose label = "";
+      override onTriggerEnter(other: Entity, contact: { normal: { x: number; y: number } }) {
+        seen.push({ who: this.label, other, normal: contact.normal });
+      }
+    }
+    const registry = new ScriptRegistry();
+    registry.load({ "probe.ts": { Probe } });
+    const app = new App({ fixedHz: 60 }).addPlugin(GamePlugins()).addPlugin(ScriptsPlugin(registry));
+    const w = app.world;
+    const probe = (label: string) => [Scripts, { list: [{ script: "probe.ts#Probe", props: { label } }] }] as const;
+    // an enemy without a body (a trigger), and a hero falling fast onto it: in one step it sinks deep into it
+    const enemy = w.spawn([Transform2D, { position: { x: 0, y: 0 } }], [Collider2D, { size: { x: 20, y: 20 }, isTrigger: true }], probe("enemy"));
+    const hero = w.spawn(
+      [Transform2D, { position: { x: 4, y: 40 } }],
+      [RigidBody2D, { type: "kinematic" }],
+      [Collider2D, { size: { x: 12, y: 12 } }],
+      probe("hero"),
+    );
+    // a second hero walks into it from the right
+    const walker = w.spawn(
+      [Transform2D, { position: { x: 40, y: 2 } }],
+      [RigidBody2D, { type: "kinematic" }],
+      [Collider2D, { size: { x: 12, y: 12 } }],
+      probe("walker"),
+    );
+    const T = w.store(Transform2D);
+    for (let i = 0; i < 3; i++) app.update(1 / 60);
+    expect(seen).toEqual([]);
+    T.position.y[hero] = 6; // 34 units down in one step: deep inside the enemy
+    T.position.x[walker] = 13;
+    for (let i = 0; i < 3; i++) app.update(1 / 60);
+    const of = (who: string, other: Entity) => seen.find((s) => s.who === who && s.other === other)?.normal;
+    expect(of("hero", enemy)).toEqual({ x: 0, y: 1 }); // the hero came from above: a stomp
+    expect(of("enemy", hero)).toEqual({ x: 0, y: -1 });
+    expect(of("walker", enemy)).toEqual({ x: 1, y: 0 }); // from the side: hurt the player
+  });
+});
+
+describe("world-space UI", () => {
+  it("lays out world canvases in their own units, apart from screen UI", () => {
+    const app = game();
+    const w = app.world;
+    const screen = w.spawn([Transform2D], [UICanvas]);
+    const hud = w.spawn([Transform2D], [UIRect, { size: { x: 100, y: 20 } }], [UIImage]);
+    setParent(w, hud, screen);
+    const enemy = w.spawn([Transform2D, { position: { x: 300, y: 50 } }]);
+    const bar = w.spawn([Transform2D, { position: { x: 0, y: 24 } }], [UICanvas, { space: "world", referenceSize: { x: 32, y: 5 } }]);
+    setParent(w, bar, enemy);
+    const fill = w.spawn([Transform2D], [UIRect, { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 0.5, y: 1 }, pivot: { x: 0, y: 0.5 }, size: { x: 0, y: 0 } }], [UIImage]);
+    setParent(w, fill, bar);
+    const layout = new UILayout();
+    layout.update(w, 960, 540);
+    expect(layout.elements.map((el) => el.e)).toEqual([hud]);
+    expect(layout.byEntity.has(fill)).toBe(false);
+    expect(layout.worldCanvases).toHaveLength(1);
+    const wc = layout.worldCanvases[0];
+    expect(wc.canvas).toBe(bar);
+    expect(wc.size).toEqual({ x: 32, y: 5 });
+    // half full: 16 of 32 units, from the left edge
+    expect(wc.elements[0].rect).toEqual({ x: 0, y: 0, w: 16, h: 5 });
+  });
+});
+
 describe("particles", () => {
   it("emits at a rate, ages and dies, and bursts", () => {
     const app = game();
@@ -105,6 +172,26 @@ describe("particles", () => {
     w.store(ParticleEmitter2D).emitting[e] = 0;
     for (let i = 0; i < 40; i++) app.update(1 / 60);
     expect(particles.alive(e)).toBe(0);
+  });
+
+  it("particles with collide land on solid colliders, bounce, and can die on hit; triggers don't count", () => {
+    const app = game();
+    const w = app.world;
+    // a floor at y = 0 (top edge), and a trigger above it that particles fly through
+    w.spawn([Transform2D, { position: { x: 0, y: -10 } }], [Collider2D, { size: { x: 400, y: 20 } }]);
+    w.spawn([Transform2D, { position: { x: 0, y: 40 } }], [Collider2D, { size: { x: 400, y: 10 }, isTrigger: true }]);
+    const drop = { rate: 0, burst: 20, speed: { x: 0, y: 30 }, spread: 1, gravity: { x: 0, y: -400 }, lifetime: { x: 3, y: 3 } };
+    const lands = w.spawn([Transform2D, { position: { x: 0, y: 80 } }], [ParticleEmitter2D, { ...drop, collide: true, bounce: 0 }]);
+    const falls = w.spawn([Transform2D, { position: { x: 50, y: 80 } }], [ParticleEmitter2D, { ...drop }]);
+    const dies = w.spawn([Transform2D, { position: { x: -50, y: 80 } }], [ParticleEmitter2D, { ...drop, collide: true, dieOnHit: true }]);
+    const particles = w.resource(Particles);
+    for (let i = 0; i < 90; i++) app.update(1 / 60);
+    const ys = (e: Entity) => [...particles.pools.get(e)!.y.slice(0, particles.alive(e))];
+    expect(particles.alive(lands)).toBe(20);
+    expect(Math.min(...ys(lands))).toBeGreaterThan(-0.01); // resting on the floor, not inside it
+    expect(Math.max(...ys(lands))).toBeLessThan(2); // and not stuck on the trigger
+    expect(Math.min(...ys(falls))).toBeLessThan(-100); // without collide they fall through
+    expect(particles.alive(dies)).toBe(0);
   });
 
   it("local-space particles are kept in the emitter's own space, world-space ones where they were emitted", () => {

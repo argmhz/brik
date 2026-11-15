@@ -10,6 +10,8 @@ import {
   type World,
   defineComponent,
   instantiate,
+  valuesForFile,
+  valuesFromFile,
   computeWorldMatrix,
   t,
   withMeta,
@@ -54,14 +56,14 @@ interface PrefabJson {
 }
 
 export function prefabToJson(guid: string, data: SceneData): string {
-  const json: PrefabJson = { guid, importer: "prefab", entities: data.entities };
+  const json: PrefabJson = { guid, importer: "prefab", entities: valuesForFile(data.entities) };
   return `${JSON.stringify(json, null, 2)}\n`;
 }
 
 export function parsePrefab(text: string, name: string): PrefabAsset {
   const j = JSON.parse(text) as Partial<PrefabJson>;
   if (typeof j.guid !== "string") throw new Error("Brik: prefab file has no guid");
-  return { guid: j.guid, name, data: { version: 1, entities: j.entities ?? [] } };
+  return { guid: j.guid, name, data: { version: 1, entities: valuesFromFile(j.entities ?? []) } };
 }
 
 export interface SpawnPrefabOptions {

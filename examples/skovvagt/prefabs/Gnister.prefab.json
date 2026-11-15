@@ -1,0 +1,73 @@
+{
+  "guid": "2b756846-5e03-42f1-b7b8-8d80b2191961",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "dd73f49d56f831d2",
+      "components": {
+        "Name": {
+          "value": "Gnister"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "SortingOrder": {
+          "layer": 1,
+          "order": 0,
+          "ySort": false
+        },
+        "ParticleEmitter2D": {
+          "emitting": true,
+          "space": "world",
+          "rate": 0,
+          "burst": 16,
+          "maxParticles": 200,
+          "lifetime": {
+            "x": 0.4,
+            "y": 0.8
+          },
+          "speed": {
+            "x": 60,
+            "y": 140
+          },
+          "direction": 1.5707964,
+          "spread": 6.2831855,
+          "gravity": {
+            "x": 0,
+            "y": 0
+          },
+          "damping": 2,
+          "startSize": 3,
+          "endSize": 1,
+          "startColor": {
+            "r": 1,
+            "g": 0.95,
+            "b": 0.6,
+            "a": 1
+          },
+          "endColor": {
+            "r": 1,
+            "g": 0.4,
+            "b": 0.2,
+            "a": 0
+          },
+          "sprite": null,
+          "autoDestroy": true,
+          "collide": true,
+          "bounce": 0.6,
+          "slide": 0.9,
+          "dieOnHit": false,
+          "collisionMask": 65535
+        }
+      }
+    }
+  ]
+}

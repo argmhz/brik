@@ -37,6 +37,12 @@ if (ground && this.input.axis("vertical") < 0 && this.input.action("jump").press
 
 Se [Fysik](fysik.md).
 
+## Store baner
+
+I scenefilen gemmes et tilemap som rækker af tegn med en forklaring (`legend`), fx `"gggg"` for fire græs-tiles, ligesom `read_tiles` viser det. Det holder filerne små og læselige. Ældre filer med én linje pr. tile kan stadig læses, og et kort, der mest er tomt, gemmes på den gamle måde.
+
+Tiles deles i chunks på 16 x 16 celler. Kun chunks inden for kameraet tegnes, og når en tile males, bygges kun dens egen chunks collidere om. Ændrer et script tiles, så brug `setTile(world, e, x, y, sprite)`, så tegning og collidere ser ændringen.
+
 ## Fra Tiled
 
 Importér kortet (`.tmj` eller `.tmx`), tilesettet (`.tsj` eller `.tsx`) og billedet sammen. Kortet bliver til en prefab med ét tilemap pr. lag.

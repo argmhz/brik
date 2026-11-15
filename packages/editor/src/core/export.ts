@@ -1,3 +1,4 @@
+import { parseSceneFile } from "./project";
 import {
   type GameManifest,
   type PackOptions,
@@ -7,6 +8,7 @@ import {
   type SceneEntityData,
   DEFAULT_PACK_OPTIONS,
   packRects,
+  valuesForFile,
 } from "@brik/runtime";
 import { IMAGE_EXTENSIONS, type TextureEntry, isScene } from "./asset-db";
 import type { Editor } from "./editor";
@@ -271,8 +273,8 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
   const paths = await walk(fs);
   const scenes: Record<string, SceneData> = {};
   for (const path of paths.filter(isScene)) {
-    const data = refreshSceneData(editor, JSON.parse(await fs.readText(path)) as SceneData);
-    scenes[path] = { version: 1, entities: stripEditorOnly(data.entities) };
+    const data = refreshSceneData(editor, parseSceneFile(await fs.readText(path)));
+    scenes[path] = { version: 1, entities: valuesForFile(stripEditorOnly(data.entities)) };
   }
   const startScene = editor.settings.startScene;
   if (!scenes[startScene]) throw new Error(`Startscenen ${startScene} findes ikke. Gem scenen først.`);
@@ -330,7 +332,7 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
   const prefabs: GameManifest["prefabs"] = [...editor.assets.prefabs.values()].map((p) => ({
     guid: p.guid,
     name: p.name,
-    entities: stripEditorOnly((resolved.get(p.guid) ?? p.data).entities),
+    entities: valuesForFile(stripEditorOnly((resolved.get(p.guid) ?? p.data).entities)),
   }));
 
   const title = settings.title?.trim() || editor.settings.name;

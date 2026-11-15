@@ -1,0 +1,1915 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "id": "7886e0b1247366e7",
+      "components": {
+        "Name": {
+          "value": "Jord"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "TileMap": {
+          "tileset": "c19a8bea-0513-4211-bb16-7598d5d102f3",
+          "tileSize": {
+            "x": 16,
+            "y": 16
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "tiles": {
+            "$grid": {
+              "x": 0,
+              "y": 99,
+              "legend": {
+                "f": "flowers",
+                "g": "grass",
+                "p": "path"
+              },
+              "rows": [
+                "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggfffffffgggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggfffffffffffgggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppgg",
+                "ggppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppgg",
+                "ggppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppgg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggfffffffgggggggggggggggggggggggggggggggpppgggggggggggggggggggggggggggggfffffffffffffggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggfffffffgggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggfffffffgggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggfffffffgggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggfffffffgggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggfffffffgggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggpppggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+                "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg"
+              ]
+            }
+          },
+          "revision": 0
+        },
+        "SortingOrder": {
+          "layer": -2,
+          "order": 0,
+          "ySort": false
+        }
+      }
+    },
+    {
+      "id": "89c17c6e1ac0981f",
+      "components": {
+        "Name": {
+          "value": "Skov"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "TileMap": {
+          "tileset": "c19a8bea-0513-4211-bb16-7598d5d102f3",
+          "tileSize": {
+            "x": 16,
+            "y": 16
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "tiles": {
+            "$grid": {
+              "x": 0,
+              "y": 99,
+              "legend": {
+                "r": "rock",
+                "t": "tree"
+              },
+              "rows": [
+                "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+                "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt...................................................................................rrr......................................................................tt",
+                "tt...................................................................................rrr......................................................................tt",
+                "tt...................................................................................rrr......................................................................tt",
+                "tt...................................................................................rrr......................................................................tt",
+                "tt...................................................................................rrr......................................................................tt",
+                "tt...................................................................................rrr.....................................tttttttttttttttttttttttttt.......tt",
+                "tt...................................................................................rrr.....................................tttttttttttttttttttttttttt.......tt",
+                "tt...................................................................................rrr.....................................tttttttttttttttttttttttttt.......tt",
+                "tt...................................................................................rrr.....................................tttttttttttttttttttttttttt.......tt",
+                "tt...................................................................................rrr.....................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt.......................................rrr.....................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt...............................................................................tttttttttttttttttttttttttt.......tt",
+                "tt............................tttttttttttttttt................................................................................................................tt",
+                "tt............................tttttttttttttttt................................................................................................................tt",
+                "tt............................tttttttttttttttt................................................................................................................tt",
+                "tt............................tttttttttttttttt................................................................................................................tt",
+                "tt............................tttttttttttttttt................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..........................................................rrrrrrrrrrr.............................tttttttttttttttt..........................................tt",
+                "tt..........................................................rrrrrrrrrrr.............................tttttttttttttttt..........................................tt",
+                "tt..........................................................rrrrrrrrrrr.............................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt..................................................................................................tttttttttttttttt..........................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt....................................................................rrr..........................................rrr........................................tt",
+                "tt....................................................................rrr..........................................rrr........................................tt",
+                "tt....................................................................rrr..........................................rrr........................................tt",
+                "tt....................................................................rrr..........................................rrr........................................tt",
+                "tt....................................................................rrr..........................................rrr........................................tt",
+                "tt....................................................................rrr..........................................rrr........................................tt",
+                "tt....................................................................rrr...............ttttttttttt................rrr........................................tt",
+                "tt......................................................................................ttttttttttt...........................................................tt",
+                "tt......................................................................................ttttttttttt...........................................................tt",
+                "tt.............rrrrrrrrrrrrrrrrrrrrr....................................................ttttttttttt...........................................................tt",
+                "tt.............rrrrrrrrrrrrrrrrrrrrr....................................................ttttttttttt...........................................................tt",
+                "tt.............rrrrrrrrrrrrrrrrrrrrr....................................................ttttttttttt...............................tttttttttttttttt............tt",
+                "tt......................................................................................ttttttttttt...............................tttttttttttttttt............tt",
+                "tt......................................................................................ttttttttttt...............................tttttttttttttttt............tt",
+                "tt......................................................................................ttttttttttt...............................tttttttttttttttt............tt",
+                "tt......................................................................................ttttttttttt...............................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt...........................ttttttttttt...............................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt........tttttttttttttttt........................ttttttttttt.....................................................................tttttttttttttttt............tt",
+                "tt................................................ttttttttttt.................................................................................................tt",
+                "tt................................................ttttttttttt.................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tt............................................................................................................................................................tt",
+                "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+                "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+              ]
+            }
+          },
+          "revision": 0
+        },
+        "TileMapCollider": {
+          "friction": 0.5,
+          "isTrigger": false
+        },
+        "SortingOrder": {
+          "layer": -1,
+          "order": 0,
+          "ySort": false
+        }
+      }
+    },
+    {
+      "id": "d4ac4003f045de06",
+      "components": {
+        "Name": {
+          "value": "Helt"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1272,
+            "y": 792
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "hero_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "33492dd7-759b-4498-9d9d-084b3780af53",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "RigidBody2D": {
+          "type": "kinematic",
+          "mass": 0,
+          "gravityScale": 1,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "fixedRotation": false,
+          "ccd": false
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 10,
+            "y": 8
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": false
+        },
+        "CharacterController2D": {
+          "slopeLimit": 0.7853982,
+          "stepHeight": 0,
+          "snapToGround": 4,
+          "skin": 0.5,
+          "grounded": false
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Player.ts#Player",
+              "props": {
+                "hpText": {
+                  "$entity": "1da0178e06783ae4"
+                }
+              }
+            }
+          ]
+        },
+        "Bag": {
+          "crystals": [],
+          "goal": 6
+        }
+      }
+    },
+    {
+      "id": "fe30923802b7124c",
+      "components": {
+        "Name": {
+          "value": "Kamera"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1272,
+            "y": 792
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Camera2D": {
+          "zoom": 3,
+          "viewport": {
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1
+          },
+          "clearColor": {
+            "r": 0.08,
+            "g": 0.08,
+            "b": 0.1,
+            "a": 1
+          },
+          "clear": true,
+          "priority": 0
+        },
+        "CameraFollow2D": {
+          "target": "d4ac4003f045de06",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "smoothing": 0.15,
+          "deadzone": {
+            "x": 0,
+            "y": 0
+          },
+          "useBounds": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "w": 2560,
+            "h": 1600
+          },
+          "boundsMode": "view"
+        }
+      }
+    },
+    {
+      "id": "c95d78d2f774f15a",
+      "components": {
+        "Name": {
+          "value": "UI Canvas"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "UICanvas": {
+          "space": "screen",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 960,
+            "y": 540
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "1da0178e06783ae4",
+      "components": {
+        "Name": {
+          "value": "LivTekst"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "c95d78d2f774f15a"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 0,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 1
+          },
+          "position": {
+            "x": 16,
+            "y": -12
+          },
+          "size": {
+            "x": 260,
+            "y": 32
+          }
+        },
+        "UIText": {
+          "text": "Liv:",
+          "size": 20,
+          "color": {
+            "r": 1,
+            "g": 0.45,
+            "b": 0.45,
+            "a": 1
+          },
+          "font": "sans-serif",
+          "align": "left",
+          "bold": true,
+          "wrap": true
+        }
+      }
+    },
+    {
+      "id": "9364361ec5912ca0",
+      "components": {
+        "Name": {
+          "value": "KrystalTekst"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "c95d78d2f774f15a"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 1,
+            "y": 1
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 1,
+            "y": 1
+          },
+          "position": {
+            "x": -16,
+            "y": -12
+          },
+          "size": {
+            "x": 300,
+            "y": 32
+          }
+        },
+        "UIText": {
+          "text": "Krystaller: 0/6",
+          "size": 20,
+          "color": {
+            "r": 0.55,
+            "g": 0.9,
+            "b": 1,
+            "a": 1
+          },
+          "font": "sans-serif",
+          "align": "right",
+          "bold": true,
+          "wrap": true
+        }
+      }
+    },
+    {
+      "id": "eccf9f79e3bf3acd",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1400,
+            "y": 800
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+          "overrides": []
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "eccf9f79e3bf3acd/af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "eccf9f79e3bf3acd/e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "eccf9f79e3bf3acd"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "eccf9f79e3bf3acd/76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "eccf9f79e3bf3acd/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "eccf9f79e3bf3acd/af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "eccf9f79e3bf3acd/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "982cac4a48da5cce",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 600,
+            "y": 780
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+          "overrides": []
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "982cac4a48da5cce/af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "982cac4a48da5cce/e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "982cac4a48da5cce"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "982cac4a48da5cce/76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "982cac4a48da5cce/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "982cac4a48da5cce/af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "982cac4a48da5cce/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "8f3a002c43383601",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 2000,
+            "y": 800
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+          "overrides": []
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "8f3a002c43383601/af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8f3a002c43383601/e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "8f3a002c43383601"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "8f3a002c43383601/76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "8f3a002c43383601/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "8f3a002c43383601/af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "8f3a002c43383601/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "0c90cfd5ae70fdc7",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1270,
+            "y": 300
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+          "overrides": []
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "0c90cfd5ae70fdc7/af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0c90cfd5ae70fdc7/e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "0c90cfd5ae70fdc7"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "0c90cfd5ae70fdc7/76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "0c90cfd5ae70fdc7/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "0c90cfd5ae70fdc7/af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "0c90cfd5ae70fdc7/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "ed79a418e997b88a",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 1270,
+            "y": 1300
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+          "overrides": []
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "ed79a418e997b88a/af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ed79a418e997b88a/e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ed79a418e997b88a"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "ed79a418e997b88a/76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ed79a418e997b88a/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "ed79a418e997b88a/af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "ed79a418e997b88a/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "74e47658cfa13d57",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 400,
+            "y": 1000
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "PrefabInstance": {
+          "prefab": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+          "overrides": []
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "74e47658cfa13d57/af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "74e47658cfa13d57/e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "74e47658cfa13d57"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "74e47658cfa13d57/76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "74e47658cfa13d57/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "74e47658cfa13d57/af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "74e47658cfa13d57/e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    }
+  ]
+}

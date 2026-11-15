@@ -8,7 +8,7 @@ scripts). The Brik editor opens this folder; games export as a static website.
 | Path | What it is |
 |---|---|
 | `brik.project.json` | Name, start scene, optional `physics` (gravity, pixelsPerMeter) |
-| `scenes/*.scene.json` | Scenes: entities with components, as readable JSON |
+| `scenes/*.scene.json` | Scenes: entities with components, as readable JSON. `TileMap.tiles` is saved as `{ "$grid": { x, y, legend, rows } }`: rows of characters from the top-left cell (x, y) downwards, `.` empty; plain `{ "x,y": "sprite" }` is read too |
 | `prefabs/*.prefab.json` | Reusable entity trees |
 | `scripts/*.ts` | Gameplay code (Behaviours, components, systems) |
 | `assets/` | Images (`.meta.json` next to each holds sprites/slicing), sounds, `.anim.json` clips |
@@ -44,7 +44,8 @@ export class Player extends Behaviour {
 ```
 
 **Hooks:** `onStart`, `onEnable`/`onDisable` (switched on/off), `onUpdate(dt)`, `onFixedUpdate(dt)` (60 Hz), `onDestroy`,
-`onCollisionEnter/Exit(other)`, `onTriggerEnter/Exit(other)`,
+`onCollisionEnter/Exit(other)`, `onTriggerEnter/Exit(other)` (Enter also gets `contact`:
+`contact.normal` points from the other toward this one, e.g. `contact.normal.y > 0.5` = it came from above),
 `onAnimationEvent(name)`, `onAnimationFinished(clip)`, `onTimer`, `onClick`
 (the entity's UIButton), `onValueChanged(value)` (UISlider, UIToggle, UITextInput) and
 `onSubmit(text)` (Enter in a UITextInput).
@@ -61,6 +62,7 @@ export class Player extends Behaviour {
 - Saving: `this.save.set("level", 3)`, `this.save.get("level", 1)` (kept in localStorage when the game closes; `this.save.clear()` for a new game)
 - Input works with keyboard and gamepad: axes `horizontal`/`vertical` also follow the left stick (values between -1 and 1), `jump` is also pad A, `fire` pad X; pad buttons are named `PadA`, `PadB`, `PadLB`, `PadStart`, ...
 - One-way platforms (a tile sprite with collision "one-way"): `this.dropThrough()` falls through the one the character stands on
+- Tiles from a script: `setTile(this.world, map, x, y, "sprite")` (`null` erases); it updates drawing and colliders
 
 An entity switched off with `setActive(false)` (or whose parent is off) is
 hidden, its scripts and timers pause, and its colliders leave the physics world.
@@ -85,10 +87,13 @@ Scripts can also define components (`defineComponent`) and systems
 - World units are pixels; **y points up**. The default camera is at (0, 0).
 - Static ground: `Collider2D` only. Falling objects: `RigidBody2D` (dynamic) + `Collider2D`.
   Characters: `RigidBody2D` (kinematic) + `CharacterController2D` + `Collider2D`, moved with `moveCharacter`.
-  Triggers: `Collider2D` with `isTrigger: true`. Tiles: `TileMap` + `TileMapCollider`.
+  Triggers: `Collider2D` with `isTrigger: true`. Tiles: `TileMap` + `TileMapCollider` (leave the collider off
+  decoration layers such as grass).
+- Particles: `ParticleEmitter2D` with `collide: true` bounce off solid colliders (`bounce`, `slide`, `dieOnHit`).
 - Angles are radians. Colors are `{ r, g, b, a }` from 0 to 1.
 - UI lives under a `UICanvas` and is placed with `UIRect` anchors (screen space), or by a
-  `UIStack` parent that lays its children out in a column or row.
+  `UIStack` parent that lays its children out in a column or row. A `UICanvas` with `space: "world"`
+  stands in the world under its entity (health bars, name tags; one UI unit = one world unit, not clickable).
 
 ## Checking your work
 

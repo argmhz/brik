@@ -432,10 +432,10 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - [x] Platformer-eksempel som projektskabelon: genereret pixel art og lyd, animationer, prefabs, tilemap-bane, UI og to scripts
 
 **Kendte begrænsninger i 4b**
-- UI er kun i skærm-koordinater (ingen world-space canvas). ~~Ingen layout, slider, toggle eller tekstfelt.~~ (fase 5.9)
+- ~~UI er kun i skærm-koordinater (ingen world-space canvas).~~ (motor-runden: `UICanvas.space = "world"`) ~~Ingen layout, slider, toggle eller tekstfelt.~~ (fase 5.9)
 - ~~UI-elementer kan ikke vælges eller trækkes i scene view.~~ (fase 5.9; ~~størrelsen ændres stadig i inspectoren~~ editor-runden: håndtag i scene view)
-- Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener. ~~Der er ingen auto-tiling.~~ (fase 5.9)
-- Partikler har ingen kollision. ~~De simulerer kun i world space.~~ (gruppe 3: `space: "local"` lader dem følge emitteren)
+- ~~Tilemap-data gemmes som ét objekt pr. lag, ikke i chunks. Det er fint til tusinder af tiles, men ikke til meget store verdener.~~ (motor-runden: tegning og colliders arbejder i chunks; og efter Skovvagt gemmes tiles som rækker af tegn) ~~Der er ingen auto-tiling.~~ (fase 5.9)
+- ~~Partikler har ingen kollision.~~ (motor-runden: `collide` på emitteren) ~~De simulerer kun i world space.~~ (gruppe 3: `space: "local"` lader dem følge emitteren)
 - ~~`Sprite` har ikke 9-slice i verdenen.~~ (fase 5.9)
 
 **Kendte begrænsninger fra 4a**
@@ -464,7 +464,7 @@ Delt i to: 4a er runtime-delen og de editor-paneler, der hører til. 4b er de st
 - Desktop-appen er kun bygget og testet på Linux. De native åbn- og gem-dialoger er ikke testet automatisk, og der er ingen signering, auto-opdatering eller builds til Windows og macOS.
 
 ### Fase 5.5 — Editor-oplevelse
-- [x] `query.changed(C)`: entities, hvis komponent er tilføjet eller ændret siden sidste kald. Ændringer gennem `world.write`, `world.add` og views (`this.get(C)` i scripts) markeres automatisk. Direkte skrivning til `world.store(C)` kræver `world.markChanged(e, C)`.
+- [x] `query.changed(C)`: entities, hvis komponent er tilføjet eller ændret siden sidste kald. Ændringer gennem `world.write`, `world.add` og views (`this.get(C)` i scripts) markeres automatisk. Direkte skrivning til `world.store(C)` kræver `world.markChanged(e, C)`. (Motor-runden: lister og objekter i ref-felter, der ændres på plads gennem et view, markeres også.)
 - [x] `@expose({ type: "entity" })` med entity-vælger i inspectoren. Gemmes som scene-id (`{ $entity: id }`) og følger med, når prefabs spawnes og entities kopieres. Felter af typen prefab, lyd og klip fik også en asset-vælger.
 - [x] Prefab-overrides pr. felt: instansen husker, hvor den afviger fra prefab'en (felter, tilføjede og fjernede komponenter og entities). Når prefab'en ændres, følger alt andet med. Afvigende felter står med fed skrift i inspectoren, og et dobbeltklik henter prefab'ens værdi. Instanser opdateres også, når en scene åbnes, eksporteres eller indlæses med `loadScene`.
 - [x] Nested prefabs: prefabs inde i prefabs opdateres, når den inderste ændres, også i prefab-filerne på disken. En prefab kan ikke indeholde sig selv.
@@ -504,7 +504,7 @@ Spillet **Mosehop** (`examples/mosehop`) blev bygget fra platformer-skabelonen g
 - ~~`setActive` skjuler kun: scripts og colliders på en inaktiv entity kører videre.~~ (fase 5.8)
 - ~~Det kan tage op til et minut at forbinde til AI'en igen fra en baggrundsfane.~~ (fase 5.8)
 - ~~Scener skifter asynkront, så det ses først et `step` senere.~~ (fase 5.8)
-- Fjender uden fysik-krop skal flyttes i scripts, og triggere melder først, når overlappet er sket. Et tramp-tjek skal derfor være tilgivende.
+- ~~Fjender uden fysik-krop skal flyttes i scripts, og triggere melder først, når overlappet er sket. Et tramp-tjek skal derfor være tilgivende.~~ (motor-runden: `onTriggerEnter` og `onCollisionEnter` får en `contact.normal`, der siger, fra hvilken side de mødtes)
 
 ### Fase 5.8 — Oprydning efter Mosehop
 - [x] `setActive(false)` slukker nu en entity helt, også når det er en forælder, der er slukket: scripts (`onStart`, `onUpdate`, `onFixedUpdate` og events) holder pause, og det samme gør tweens og timere fra `this.after`/`this.every`. Kroppe og colliders er ude af fysikken, så de ikke falder, støder eller rammes af `raycast` og `overlapPoint`. `onStart` venter, til entity'en tændes første gang.
@@ -566,6 +566,30 @@ De kendte begrænsninger fra fase 4–5.8, der mærkes mest, når man laver og u
 **Kendte begrænsninger i editor-runden**
 - Håndtagene til UI-størrelse er kun testet i enhedstests, ikke i en browser med WebGL.
 - Et flydende vindue kan ikke rumme flere paneler som faner.
+
+### Motor-runden (november 2026)
+- [x] `query.changed` ser ændringer på plads i ref-felter: et view (`this.get(C)`) giver lister og almindelige objekter tilbage gennem en proxy, så fx `inv.items.push(x)` eller `data.hp = 3` markerer komponenten som ændret. Proxyen gemmes aldrig i store, så `structuredClone` og gem virker som før. Maps, Sets og klasse-instanser pakkes ikke ind.
+- [x] Partikler med kollision: `collide`, `bounce`, `slide`, `dieOnHit` og `collisionMask` på `ParticleEmitter2D`. Partiklerne kaster en stråle langs deres bevægelse mod faste colliders (ikke triggere) gennem en `SolidRaycast`-ressource i core, som fysikken udfylder, så render stadig ikke afhænger af fysik.
+- [x] World-space UI: `UICanvas.space = "world"` lægger canvas'en ud i verden ved entityens transform, én UI-enhed pr. verdensenhed, centreret på positionen. Lægges oven på verden, før skærm-UI. Ny skabelon "Livsbjælke (UI i verden)" i Hierarki og MCP (`ui-world-bar`).
+- [x] Kontaktnormal: `onCollisionEnter(other, contact)` og `onTriggerEnter(other, contact)` får `contact.normal`, en enhedsakse, der peger fra den anden mod en selv, ud fra hvilken side de to mødtes (deres kasser i forrige fysik-trin). Mosehops tramp-tjek bruger nu `contact.normal.y > 0.5`.
+- [x] Tilemaps i chunks på 16 x 16 celler (`TILE_CHUNK`, `tileChunks`): rendereren springer hele chunks uden for kameraet over, og fysikken genbygger kun colliders i de chunks, der har ændret sig, når man maler en tile. Indekset caches pr. tiles-objekt og `revision`.
+
+**Kendte begrænsninger i motor-runden**
+- World-space UI kan ikke klikkes på og tegnes oven på alle sprites i verden (ingen sortering mod dem). Det er kun testet i enhedstests, ikke i en browser med WebGL.
+- Partikler i `space: "local"` kolliderer ikke.
+- Kontaktnormalen bruger kassen om collideren, så for cirkler og skrå flader er den grov (altid en af de fire akser).
+- En tile, der ændres i et script ved at skrive direkte i `tiles` uden `setTile`, ses først af tegning og colliders, når `revision` ændres. Colliders flettes kun inden for en chunk, så der er lidt flere kasser end før.
+
+### Andet testspil: Skovvagt (november 2026)
+Spillet **Skovvagt** (`examples/skovvagt`) blev bygget headless gennem MCP-værktøjerne for at afprøve motor-runden i et rigtigt spil. Det er et top-down eventyr: en skov på 160 x 100 tiles (16.000 græs-tiles og knap 3.000 træer og sten), seks svampe med livsbjælker i verden, der jager helten, sværdslag med gnister, der hopper af træerne, og krystaller i en taske, hvis HUD opdateres af et system med `query.changed`.
+- [x] Regressionstest (`packages/editor/test/skovvagt.test.ts`): HUD ved start; en svamp, der rammer helten fra højre, skubber den til venstre (`contact.normal`); tre sværdslag dræber en svamp, bjælken viser 2/3 efter første slag, og krystallen fylder tasken (`push` på en liste i et ref-felt, set af `query.changed`).
+- [x] Projektguiden (`CLAUDE.md` i nye projekter) nævner nu `contact`, `setTile`, partikelkollision og UI i verden. Uden det ville en AI ikke vide, at de findes.
+
+**Fundet, men ikke rettet**
+- ~~Scenefilen fylder 592 KB, næsten alt sammen tiles (én linje pr. tile).~~ Rettet: `TileMap.tiles` gemmes som rækker af tegn med en legend (`{ "$grid": { x, y, legend, rows } }`), i scener, prefabs og det eksporterede `game.json`. Skovvagts scene gik fra 605 KB til 71 KB, Mosehops baner fra 52 til 46 KB. Det sker kun ved skrivning til fil (`valuesForFile`), og filer læses tilbage til `"x,y"`-nøgler (`valuesFromFile` og et `load`-hook på feltet), så undo, prefab-overrides og scripts ser det samme som før. Gamle filer kan stadig læses, og kort, der mest er tomme, gemmes som nøgler.
+- Skabelonen "tilemap" giver altid en `TileMapCollider`, så et græslag skal have den fjernet bagefter.
+- Et script kan ikke slå et barn op ved navn (`this.find` søger i hele scenen). Svampen peger på sin bjælke med et entity-felt, hvilket virker, også i prefab-instanser.
+- Spillet er ikke set i editoren eller i en browser med WebGL. Det er kun spillet headless.
 
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`

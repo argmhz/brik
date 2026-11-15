@@ -11,6 +11,25 @@ import { EASINGS, type Easing, easings } from "./easing";
 // ------------------------------------------------------------------ Lifetime
 
 /** Destroys the entity (and its children) after `seconds`. */
+/** What a ray into the solid world hit. */
+export interface SolidHit {
+  entity: Entity;
+  point: { x: number; y: number };
+  /** Unit normal of the surface at `point`. */
+  normal: { x: number; y: number };
+  distance: number;
+}
+
+/**
+ * Rays against solid colliders (not triggers), for systems outside the physics
+ * package, such as particles. The physics plugin fills in `cast`; without
+ * physics it stays null and nothing is hit. Available as a resource:
+ * `world.resource(SolidRaycast)`.
+ */
+export class SolidRaycast {
+  cast: ((origin: { x: number; y: number }, dir: { x: number; y: number }, maxDistance: number, mask?: number) => SolidHit | null) | null = null;
+}
+
 export const Lifetime = defineComponent("Lifetime", {
   seconds: withMeta(t.f32(1), { min: 0, step: 0.1 }),
 });

@@ -78,6 +78,18 @@ export const CharacterController2D = defineComponent(
 export interface CollisionData {
   a: Entity;
   b: Entity;
+  /**
+   * Enter events: the side they met on, as a unit axis pointing from `b`
+   * toward `a`, worked out from where they were one physics step earlier. So
+   * `normal.y > 0.5` means `a` came from above, even though they already overlap.
+   */
+  normal?: { x: number; y: number };
+}
+
+/** Passed to onCollisionEnter / onTriggerEnter: how the two met. */
+export interface Contact {
+  /** Unit axis from the other entity toward this one: { x: 0, y: 1 } means this one came from above (a stomp). */
+  normal: { x: number; y: number };
 }
 
 /** Two solid colliders started touching. */

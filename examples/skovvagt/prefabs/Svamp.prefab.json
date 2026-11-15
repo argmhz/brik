@@ -1,0 +1,220 @@
+{
+  "guid": "de5f62b3-3da5-4304-b471-b69c81f8e3ee",
+  "importer": "prefab",
+  "entities": [
+    {
+      "id": "eccf9f79e3bf3acd",
+      "components": {
+        "Name": {
+          "value": "Svamp"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Sprite": {
+          "sprite": {
+            "texture": "9592b4b5-003e-4673-805b-82dd4b3007dc",
+            "id": "shroom_0"
+          },
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "flipX": false,
+          "flipY": false,
+          "drawMode": "simple",
+          "size": {
+            "x": 32,
+            "y": 32
+          }
+        },
+        "SortingOrder": {
+          "layer": 0,
+          "order": 0,
+          "ySort": true
+        },
+        "SpriteAnimator": {
+          "clip": "5a8ce51f-f886-4d7c-8f97-cf66a1eb0e48",
+          "speed": 1,
+          "playing": true,
+          "time": 0,
+          "frame": -1
+        },
+        "Collider2D": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 10
+          },
+          "offset": {
+            "x": 0,
+            "y": 2
+          },
+          "friction": 0.5,
+          "restitution": 0,
+          "density": 1,
+          "isTrigger": true
+        },
+        "Scripts": {
+          "list": [
+            {
+              "script": "scripts/Shroom.ts#Shroom",
+              "props": {
+                "bar": {
+                  "$entity": "af248b0da8df0240"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e1f30b75d30662b3",
+      "components": {
+        "Name": {
+          "value": "Livsbjælke"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 14
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "eccf9f79e3bf3acd"
+        },
+        "UICanvas": {
+          "space": "world",
+          "scaleMode": "fit",
+          "referenceSize": {
+            "x": 16,
+            "y": 3
+          },
+          "order": 0
+        }
+      }
+    },
+    {
+      "id": "76aea1a8e3039dd1",
+      "components": {
+        "Name": {
+          "value": "Baggrund"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "size": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.12,
+            "a": 0.85
+          }
+        }
+      }
+    },
+    {
+      "id": "af248b0da8df0240",
+      "components": {
+        "Name": {
+          "value": "Fyld"
+        },
+        "Transform2D": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
+        },
+        "Parent": {
+          "entity": "e1f30b75d30662b3"
+        },
+        "UIRect": {
+          "anchorMin": {
+            "x": 0,
+            "y": 0
+          },
+          "anchorMax": {
+            "x": 1,
+            "y": 1
+          },
+          "pivot": {
+            "x": 0,
+            "y": 0.5
+          },
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "size": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        "UIImage": {
+          "sprite": null,
+          "color": {
+            "r": 0.35,
+            "g": 0.85,
+            "b": 0.4,
+            "a": 1
+          }
+        }
+      }
+    }
+  ]
+}

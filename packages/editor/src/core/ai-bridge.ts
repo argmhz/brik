@@ -102,6 +102,7 @@ const ENTITY_KINDS: EntityKind[] = [
   "particles",
   "light",
   "ui-canvas",
+  "ui-world-bar",
   "ui-image",
   "ui-text",
   "ui-button",
