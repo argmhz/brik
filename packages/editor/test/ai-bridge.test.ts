@@ -34,6 +34,27 @@ beforeAll(async () => {
   await initPhysics();
 });
 
+describe("health bar in the world", () => {
+  it("shows the fill as the exact fraction of the inside, with a border around it", async () => {
+    const { editor, h } = await setup();
+    const enemy = (await h.create_entity({ kind: "rect", name: "Fjende" })) as { id: string };
+    const bar = (await h.create_entity({ kind: "ui-world-bar", parent: enemy.id })) as { id: string; children: { id: string; name: string }[] };
+    const fill = bar.children.find((c) => c.name === "Fyld")!;
+    await h.set_fields({ id: fill.id, component: "UIRect", values: { anchorMax: { x: 2 / 3 } } });
+    const layout = new UILayout();
+    layout.update(editor.world, 960, 540);
+    const [canvas] = layout.worldCanvases;
+    const rectOf = (name: string) => canvas.elements.find((el) => editor.entityName(el.e) === name)!.rect;
+    const back = rectOf("Baggrund");
+    const front = rectOf("Fyld");
+    expect(front.x).toBeCloseTo(0);
+    expect(front.w).toBeCloseTo((32 * 2) / 3);
+    expect(front.h).toBeCloseTo(5);
+    // the background is one unit larger on every side
+    expect(back).toEqual({ x: -1, y: -1, w: 34, h: 7 });
+  });
+});
+
 describe("AI bridge handlers", () => {
   it("redo brings back what undo took, and project_info shows both steps", async () => {
     const { h } = await setup();

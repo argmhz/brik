@@ -506,10 +506,11 @@ export class Editor {
     if (kind === "light") components.Light2D = {};
     if (kind === "ui-canvas") components.UICanvas = {};
     if (kind === "ui-world-bar") {
-      // a UI panel in the world, above its parent: background and a fill whose right anchor is the value
+      // a UI panel in the world, above its parent: a fill whose right anchor is the value, on a
+      // background one unit larger all round (so a fill of 2/3 really covers 2/3 of the inside)
       components.Transform2D = { position: { x: opts.x ?? 0, y: opts.y ?? 24 } };
       components.UICanvas = { space: "world", referenceSize: { x: 32, y: 5 } };
-      const stretch = { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 0, y: 0 } };
+      const stretch = { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, size: { x: 2, y: 2 } };
       extraChildren.push(
         { id: newSceneId(), components: { Name: { value: "Baggrund" }, Transform2D: {}, Parent: { entity: id }, UIRect: stretch, UIImage: { color: { r: 0.1, g: 0.1, b: 0.12, a: 0.85 } } } },
         {
@@ -518,7 +519,7 @@ export class Editor {
             Name: { value: "Fyld" },
             Transform2D: {},
             Parent: { entity: id },
-            UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, pivot: { x: 0, y: 0.5 }, position: { x: 1, y: 0 }, size: { x: -2, y: -2 } },
+            UIRect: { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 1, y: 1 }, pivot: { x: 0, y: 0.5 }, size: { x: 0, y: 0 } },
             UIImage: { color: { r: 0.35, g: 0.85, b: 0.4, a: 1 } },
           },
         },

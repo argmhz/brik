@@ -714,7 +714,8 @@ export class SceneController {
   private drawIcons(ctx: CanvasRenderingContext2D): void {
     const world = this.editor.world;
     for (const e of world.query([Transform2D, GlobalTransform2D])) {
-      if (spriteQuad(world, e) || isUI(world, e)) continue;
+      // a canvas in the world shows itself (its UI is drawn), so no icon on top of it
+      if (spriteQuad(world, e) || isUI(world, e) || world.has(e, UICanvas)) continue;
       const g = this.globalOf(e);
       const p = this.worldToScreen(g.tx, g.ty);
       ctx.fillStyle = world.has(e, Camera2D) ? "rgba(255,255,255,0.8)" : world.has(e, Light2D) ? "rgba(255,214,90,0.95)" : "rgba(200,205,220,0.6)";
