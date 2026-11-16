@@ -62,7 +62,7 @@ export class Player extends Behaviour {
 - Entities: \`this.spawnPrefab("Name", { position })\`, \`this.destroy(e)\`, \`this.find("Name")\` (-1 if none), \`this.behaviourOf(OtherScript, e)\`, \`this.setActive(on, e)\`
 - Time: \`this.tween(Transform2D, "position.y", 100, 0.5)\`, \`this.after(1, fn)\`, \`this.every(0.5, fn)\`
 - Scenes: \`this.loadScene("level2")\` (file name in \`scenes/\` without extension); \`this.loadScene("level2", { fade: 0.4, data: { score } })\` fades and carries values, read with \`this.sceneData.score\`
-- Game feel: \`this.shakeCamera(8, 0.3)\`, \`this.punchCamera(0.08)\`, \`this.hitStop(0.06)\`, \`this.slowMotion(0.3, 1)\`
+- Game feel: \`this.shakeCamera(8, 0.3)\`, \`this.punchCamera(0.08)\`, \`this.hitStop(0.06)\`, \`this.slowMotion(0.3, 1)\`, \`this.flashSprite(0.1)\` (white flash when hit; \`this.flashSprite(0.2, { r: 1, g: 0, b: 0 }, enemy)\`)
 - Saving: \`this.save.set("level", 3)\`, \`this.save.get("level", 1)\` (kept in localStorage when the game closes; \`this.save.clear()\` for a new game)
 - Input works with keyboard and gamepad: axes \`horizontal\`/\`vertical\` also follow the left stick (values between -1 and 1), \`jump\` is also pad A, \`fire\` pad X; pad buttons are named \`PadA\`, \`PadB\`, \`PadLB\`, \`PadStart\`, ...
 - Phones and tablets: put a UITouchStick (drives \`horizontal\`/\`vertical\`) and UITouchButton (\`action: "jump"\`) on a screen UICanvas; scripts read them through the same \`axis\`/\`action\` calls. They show only on touch screens (\`showOn: "always"\` to try them with the mouse); \`this.input.touchMode\` tells if the player is on one
@@ -94,6 +94,7 @@ Scripts can also define components (\`defineComponent\`) and systems
   Characters: \`RigidBody2D\` (kinematic) + \`CharacterController2D\` + \`Collider2D\`, moved with \`moveCharacter\`.
   Triggers: \`Collider2D\` with \`isTrigger: true\`. Tiles: \`TileMap\` + \`TileMapCollider\` (leave the collider off
   decoration layers such as grass).
+- Looks: \`SpriteMaterial\` on a sprite gives a flash color, an outline (\`outlineWidth\` in image pixels) and \`blend: \"additive\"\` for glow. \`PostProcess2D\` on the camera adds bloom, color correction (brightness, contrast, saturation, tint), vignette, CRT (scanlines, curvature, chromaticAberration) and \`pixelate\`; every effect is off at its default, and the UI is not affected.
 - Particles: \`ParticleEmitter2D\` with \`collide: true\` bounce off solid colliders (\`bounce\`, \`slide\`, \`dieOnHit\`).
 - Angles are radians. Colors are \`{ r, g, b, a }\` from 0 to 1.
 - UI lives under a \`UICanvas\` and is placed with \`UIRect\` anchors (screen space), or by a

@@ -2,7 +2,7 @@
 
 Her står, hvad Brik kan i dag, hvad der arbejdes på, og hvad der kommer. Siden opdateres, hver gang en større del er færdig eller planen ændres. Den detaljerede arbejdsplan med alle delopgaver ligger i `PLAN.md` i repoet.
 
-**Sidst opdateret:** 15. november 2026
+**Sidst opdateret:** 16. november 2026
 
 ## Færdigt: 2D
 
@@ -11,7 +11,7 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 | Område | Hvad der er på plads |
 |---|---|
 | Kerne | ECS, scener og prefabs (med overrides pr. instans), scene-skift med fade og data, tweens og timere |
-| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), skærmryst og zoom-stød (der følger "reducer bevægelse"), hit-stop og slowmotion |
+| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), materialer (blink, omrids og additiv glød) og effekter på hele billedet (bloom, farvekorrektion, vignet, CRT og pixelering), skærmryst og zoom-stød (der følger "reducer bevægelse"), hit-stop og slowmotion |
 | Editor | Hierarki, scene view med gizmos og forhåndsvisning af parallax-lag, panorering med hjulet, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse, visning af collidere under Play |
 | Tilemaps | Maling i scene view, auto-tiling med terræner, kollisionsform pr. tile (hel, pynt, envejs, halv, skråninger), import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
@@ -31,7 +31,6 @@ Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved 
 
 **Giver spil et bedre udseende**
 
-- [ ] **Post-processing og egne materialer:** fuldskærmseffekter på kameraet (bloom, CRT, farvekorrektion) og et eget materiale pr. sprite (fx hvid blink ved skade). `Lighting2D` viser, at pipelinen kan det
 - [ ] **Bitmap-fonte** til pixel-art-tekst
 
 **Gør det lettere at bygge spil**
@@ -72,6 +71,7 @@ Når listen ovenfor er klaret, går arbejdet i gang med 3D. Alle 2D-funktioner b
 
 Det, der skal gøre Brik anderledes. Rækkefølgen er ikke fastlagt.
 
+- [ ] **Egne shaders:** GLSL skrevet af brugeren, både til sprites og til hele billedet (materialer og effekterne er indbyggede i dag)
 - [ ] **Skygger og normal maps til 2D-lys:** lys og mørke er lavet (`Lighting2D` og `Light2D`), men lyset går endnu igennem vægge, og alle sprites lyses ens op
 - [ ] **Time-travel debugging:** spol tilbage og undersøg præcis den frame, hvor en fejl opstod
 - [ ] **Visuel scripting**, der kompilerer til læsbar TypeScript

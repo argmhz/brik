@@ -27,6 +27,8 @@ export const COMPONENT_INFO: Record<string, Info> = {
   ParticleEmitter2D: { category: "Grafik", text: "Partikler: røg, gnister, eksplosioner", words: "partikel effekt" },
   Light2D: { category: "Grafik", text: "Lys (kræver Lighting2D på kameraet)", words: "lys light" },
   Lighting2D: { category: "Kamera", text: "Slår lys til for et kamera", words: "lys mørke ambient" },
+  PostProcess2D: { category: "Kamera", text: "Effekter på hele billedet: bloom, farver, vignet, CRT, pixeler", words: "post effekt bloom glød crt scanlines farve vignette pixel retro" },
+  SpriteMaterial: { category: "Grafik", text: "Blink, omrids og additiv glød på en sprite", words: "materiale flash blink skade omrids outline glow additiv shader" },
   SortingOrder: { category: "Grafik", text: "Hvad der tegnes foran hvad", words: "lag layer rækkefølge z" },
   Parallax2D: { category: "Kamera", text: "Baggrundslag der flytter sig langsommere", words: "baggrund dybde" },
   RigidBody2D: { category: "Fysik", text: "Tyngdekraft og fysik", words: "tyngdekraft gravity body" },

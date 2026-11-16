@@ -56,6 +56,7 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 | `this.emitParticles(20)` | Udsender partikler |
 | `this.loadScene("level2", { fade: 0.4, data })` | Skifter scene, evt. med fade og data, der læses med `this.sceneData` |
 | `this.shakeCamera(8, 0.3)`, `this.punchCamera(0.08)`, `this.hitStop(0.06)`, `this.slowMotion(0.3, 1)` | Skærmryst, zoom-stød, frys og slowmotion ([Grafik](grafik.md#skaermryst-zoom-stoed-og-hit-stop)) |
+| `this.flashSprite(0.1)`, `this.flashSprite(0.2, { r: 1, g: 0, b: 0 }, other)` | Får en sprite til at blinke i en farve, der falmer ud ([Grafik](grafik.md#materialer-blink-omrids-og-gloed)) |
 | `this.behaviourOf(Andet, e)` | Taler med et andet script |
 
 > **Pas på** Giv ikke dine egne metoder samme navn som Behaviours egne (fx `setActive` eller `find`), for så skygger de for dem.

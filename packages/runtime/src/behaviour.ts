@@ -31,7 +31,7 @@ import {
 } from "@brik/core";
 import { Input } from "@brik/input";
 import { CollisionEnter, type CollisionData, CollisionExit, type Contact, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
-import { AnimationEvent, AnimationFinished, Camera2D, CameraFX, Particles, UIClick, UILayout, UISubmit, UIValueChanged, playAnimation } from "@brik/render";
+import { AnimationEvent, AnimationFinished, Camera2D, CameraFX, Particles, UIClick, UILayout, UISubmit, UIValueChanged, flashSprite, playAnimation } from "@brik/render";
 import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
 import { type SpawnPrefabOptions, spawnPrefab } from "./prefab";
@@ -323,6 +323,14 @@ export abstract class Behaviour {
   /** A quick zoom-in that settles back, e.g. `this.punchCamera(0.08, 0.2)`. */
   punchCamera(amount = 0.1, duration = 0.2): void {
     this.world.resource(CameraFX).punch(amount, duration);
+  }
+
+  /**
+   * Flashes this entity's sprite in a color (white by default) that fades out over `duration` seconds,
+   * e.g. `this.flashSprite(0.1)` when hit, or `this.flashSprite(0.2, { r: 1, g: 0, b: 0 }, enemy)`.
+   */
+  flashSprite(duration = 0.1, color: { r: number; g: number; b: number; a?: number } = { r: 1, g: 1, b: 1 }, entity: Entity = this.entity): void {
+    flashSprite(this.world, entity, duration, color);
   }
 
   /** Freezes the game for a moment (real seconds) to give a hit weight, e.g. `this.hitStop(0.06)`. */

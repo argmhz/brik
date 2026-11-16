@@ -92,3 +92,37 @@ Alle felter står i [Komponentreferencen](komponenter.md).
 | `Light2D` | En lyskilde med `color`, `intensity`, `radius`, `softness`, og som `spot` en keglevinkel. Peger langs entity'ens rotation |
 
 Lys har endnu ingen skygger og ingen normal maps. Alle felter står i [Komponentreferencen](komponenter.md).
+
+## Materialer: blink, omrids og glød
+
+`SpriteMaterial` på en entity med `Sprite`, `Text2D` eller `Shape2D` ændrer, hvordan den tegnes. Sprites med materiale samles stadig med alle andre sprites i få draw calls.
+
+| Felt | Bruges til |
+|---|---|
+| `flash` og `flashColor` | Farver figuren, men beholder dens form. 0 er intet blink, 1 er helt `flashColor`. Typisk hvid, når noget bliver ramt |
+| `outlineWidth` og `outlineColor` | Et omrids, målt i billedets egne pixels (fx 1 til pixel-art). Kun på sprites og tekst, og omridset kan ikke gå uden for spritens ramme, så giv billedet lidt tom kant |
+| `blend` | `additive` lægger farven oven i det bagved, så lyse farver gløder. Godt til ild, gnister og magi |
+
+Fra et script blinker `this.flashSprite(0.1)` entity'en hvidt i 0,1 sekund og falmer ud. Komponenten tilføjes af sig selv, hvis den mangler. Blinket tæller spiltid, så det står stille under et hit-stop.
+
+```ts
+onCollisionEnter(other: Entity) {
+  this.flashSprite(0.12);                              // hvidt blink på mig selv
+  this.flashSprite(0.2, { r: 1, g: 0.2, b: 0.2 }, other); // rødt blink på den anden
+  this.hitStop(0.05);
+}
+```
+
+## Effekter på hele billedet
+
+`PostProcess2D` på kameraet lægger effekter over alt, hvad kameraet tegner, også lyset. UI'et tegnes bagefter og forbliver skarpt. Hver effekt er slået fra ved sin standardværdi, så du kun skruer op for dem, du vil have.
+
+| Felter | Effekt |
+|---|---|
+| `bloom`, `bloomThreshold`, `bloomRadius` | Lyse dele gløder. `bloomThreshold` er, hvor lyst noget skal være for at gløde |
+| `brightness`, `contrast`, `saturation`, `tint` | Farvekorrektion. `saturation` 0 giver sort-hvid |
+| `vignette` | Mørkere hjørner |
+| `scanlines`, `scanlineSpacing`, `curvature`, `chromaticAberration` | CRT: linjer hen over billedet, en buet skærm, og rød og blå, der glider fra hinanden mod kanten |
+| `pixelate` | Tegner billedet i blokke på så mange skærmpixels |
+
+Felterne kan ændres, mens spillet kører, fx fra et script på kameraet: `this.get(PostProcess2D).saturation = 0`, når spilleren dør. Effekterne vises kun i Game-visningen og i det eksporterede spil, ikke i Scene-fanen. Hvert kamera har sine egne effekter. Et kamera med effekter tegnes først ind i en tekstur, så det koster lidt mere, især med bloom.

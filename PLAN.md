@@ -605,6 +605,17 @@ Spillet **Skovvagt** (`examples/skovvagt`) blev bygget headless gennem MCP-værk
 - Styringer i en UI-canvas i verden (`space: "world"`) virker ikke.
 - Knappen kan ikke "glide på" (en finger, der glider ind på en knap fra et andet sted, trykker den ikke).
 
+### Post-processing og materialer (november 2026)
+- [x] `SpriteMaterial` på Sprite, Text2D og Shape2D: `flash`/`flashColor` (farver figuren, men beholder formen), `outlineWidth`/`outlineColor` (i billedets egne pixels, sprites og tekst) og `blend: "additive"`. Data ligger pr. instans i batcheren (et ekstra attribut til flash, outline i stroke-feltet, som sprites ikke brugte), så sprites med materiale stadig samles i samme draw calls. Additiv er alfa 0 under præmultipliceret blending, så blend-tilstanden skifter ikke.
+- [x] `flashSprite(world, e, duration, color)` og `this.flashSprite(0.1)`: blink, der falmer ud over spiltid (står stille under hit-stop). Et blink sat i hånden (`flash`) bliver stående. Metoden hedder ikke `flash`, fordi Skovvagts `Shroom` har et felt med det navn.
+- [x] `PostProcess2D` på kameraet: bloom (bright pass i halv størrelse og to gange separabel gauss), lysstyrke, kontrast, mætning, tint, vignet, scanlines, krumning, kromatisk aberration og pixelering. Kameraet tegner ind i en tekstur (også lyset, som nu kan tegne ind i en framebuffer), og én shader lægger det på skærmen i kameraets viewport. UI tegnes bagefter. Er alle felter neutrale, springes det hele over.
+- [x] Editor: begge i "Tilføj komponent", AI-guiden (`CLAUDE.md`) og manualen (Grafik og Scripts). Afprøvet i en rigtig browser med lys, delt skærm og alle effekter.
+
+**Kendte begrænsninger**
+- Effekterne vises ikke i Scene-fanen (som lyset heller ikke gør).
+- Omridset kan ikke gå uden for spritens ramme, og på 9-slice-sprites tegnes det pr. stykke.
+- Ingen egne shaders (GLSL skrevet af brugeren) endnu, hverken til sprites eller til hele billedet.
+
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
 - [ ] PBR, lys, shadows og post-processing

@@ -184,9 +184,19 @@ export class LightRenderer {
 
   /**
    * `viewProj` is the camera's world-to-clip matrix (the one the sprites were just drawn with); `vx, vy, vw, vh` is its
-   * viewport in pixels. Call after the camera's sprites are drawn and flushed.
+   * viewport in pixels. Call after the camera's sprites are drawn and flushed. `target` is the framebuffer the camera
+   * drew into (null: the screen; a post-processing texture is drawn with its viewport at 0, 0).
    */
-  apply(ambient: { r: number; g: number; b: number }, lights: LightInfo[], viewProj: Float32Array, vx: number, vy: number, vw: number, vh: number): void {
+  apply(
+    ambient: { r: number; g: number; b: number },
+    lights: LightInfo[],
+    viewProj: Float32Array,
+    vx: number,
+    vy: number,
+    vw: number,
+    vh: number,
+    target: WebGLFramebuffer | null = null,
+  ): void {
     const gl = this.gl;
     this.ensure(vw, vh);
 
@@ -214,7 +224,7 @@ export class LightRenderer {
     }
 
     // 2. multiply the camera's picture by it
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target);
     gl.enable(gl.SCISSOR_TEST);
     gl.viewport(vx, vy, vw, vh);
     gl.enable(gl.BLEND);

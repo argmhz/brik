@@ -1,13 +1,14 @@
 import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
 import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey, TILE_CHUNK, tileChunks } from "@brik/core";
 import { CameraFX, ScreenFade } from "./camera-fx";
-import { Camera2D, Shape2D, SortingOrder, Sprite, Text2D } from "./components";
+import { Camera2D, Shape2D, SortingOrder, Sprite, SpriteMaterial, Text2D } from "./components";
 import { ParticleEmitter2D, Particles } from "./particles";
 import { type UIElement, UIFocus, UIImage, UILayout, UIText } from "./ui";
 import { LightRenderer, collectLights, lightingOf } from "./lighting";
+import { PostRenderer, postProcessOf } from "./post";
 import { UISlider, UIToggle } from "./ui-widgets";
 import { UITouchButton, UITouchStick } from "./ui-touch";
-import { SpriteBatcher, packColor } from "./sprite-batcher";
+import { SpriteBatcher, packColor, packStraight } from "./sprite-batcher";
 import { TextCache, type TextImage, type TextStyle, textResolution } from "./text";
 import { PathCache, type PathImage, cssColor, pathBounds } from "./shape-raster";
 
@@ -113,6 +114,8 @@ export class Renderer {
   private warnedNoCamera = false;
   /** Made the first time a camera has lighting. */
   private lighting: LightRenderer | null = null;
+  /** Made the first time a camera has post-processing. */
+  private post: PostRenderer | null = null;
   /** Sprite problems already reported, so each is said once. */
   private warnedSprites = new Set<string>();
   private readonly maxPixelRatio: number;
@@ -131,6 +134,11 @@ export class Renderer {
   private naturalW: number[] = [];
   private naturalH: number[] = [];
   private viewProj = new Float32Array(9);
+  // the SpriteMaterial of the entity being drawn (see `material`)
+  private mOutline = 0;
+  private mOutlineWidth = 0;
+  private mFlash = 0;
+  private mAdditive = 0;
 
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -153,6 +161,7 @@ export class Renderer {
     canvas.addEventListener("webglcontextrestored", () => {
       this.textures.clear();
       this.lighting = null;
+      this.post = null;
       this.initGl();
       this.contextLost = false;
     });
@@ -206,10 +215,23 @@ export class Renderer {
       const vy = Math.round(C.viewport.y[cam] * gl.drawingBufferHeight);
       const vw = Math.round(C.viewport.w[cam] * gl.drawingBufferWidth);
       const vh = Math.round(C.viewport.h[cam] * gl.drawingBufferHeight);
-      gl.viewport(vx, vy, vw, vh);
-      gl.scissor(vx, vy, vw, vh);
+      if (vw <= 0 || vh <= 0) continue;
+      // post-processing: the camera draws into a texture, which is drawn to the screen through the effects
+      const post = postProcessOf(world, cam);
+      let target: WebGLFramebuffer | null = null;
+      if (post) {
+        this.post ??= new PostRenderer(gl);
+        target = this.post.begin(vw, vh);
+      } else {
+        gl.viewport(vx, vy, vw, vh);
+        gl.scissor(vx, vy, vw, vh);
+      }
       if (C.clear[cam]) {
         gl.clearColor(C.clearColor.r[cam], C.clearColor.g[cam], C.clearColor.b[cam], C.clearColor.a[cam]);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      } else if (post) {
+        // see-through, so what earlier cameras drew shows under it
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
       }
       // camera effects (shake, zoom punch) only change what is drawn, never the camera entity
@@ -226,7 +248,11 @@ export class Renderer {
       const ambient = lightingOf(world, cam);
       if (ambient) {
         this.lighting ??= new LightRenderer(gl);
-        this.lighting.apply(ambient, collectLights(world, bounds), this.viewProj, vx, vy, vw, vh);
+        this.lighting.apply(ambient, collectLights(world, bounds), this.viewProj, target ? 0 : vx, target ? 0 : vy, vw, vh, target);
+      }
+      if (post) {
+        // world UI comes after the effects, in the camera's viewport (end leaves it set)
+        this.post!.end(post, vx, vy, vw, vh, dpr);
       }
       // world UI is not darkened by the lighting
       this.drawWorldUI(world, C.zoom[cam] * dpr);
@@ -794,6 +820,7 @@ export class Renderer {
         continue;
       }
 
+      this.material(world, e);
       if (sprite && this.naturalW[i] > 0 && r.border) {
         this.slicedSprite(this.itemTex[i]!.tex, r, this.naturalW[i], this.naturalH[i], ga, gb, gc, gd, g.tx[e], g.ty[e], S.flipX[e] !== 0, S.flipY[e] !== 0, packColor(S.color.r[e], S.color.g[e], S.color.b[e], S.color.a[e]));
         drawn++;
@@ -803,17 +830,32 @@ export class Renderer {
         const fill = packColor(H.fill.r[e], H.fill.g[e], H.fill.b[e], H.fill.a[e]);
         const stroke = packColor(H.stroke.r[e], H.stroke.g[e], H.stroke.b[e], H.stroke.a[e]);
         const mode = H.kind[e] === "circle" ? 2 : 1;
-        batcher.pushShape(a, b, c, d, tx, ty, mode, fill, stroke, H.strokeWidth[e], H.radius[e]);
+        batcher.pushShape(a, b, c, d, tx, ty, mode, fill, stroke, H.strokeWidth[e], H.radius[e], this.mFlash, this.mAdditive);
       } else {
         // a path texture has its colors drawn in, so it isn't tinted
         const C = kind === KIND_TEXT ? X.color : S.color;
         const rgba = kind === KIND_PATH ? WHITE : packColor(C.r[e], C.g[e], C.b[e], C.a[e]);
-        batcher.push(this.itemTex[i]!.tex, a, b, c, d, tx, ty, r.u0, r.v0, r.u1, r.v1, rgba);
+        batcher.push(this.itemTex[i]!.tex, a, b, c, d, tx, ty, r.u0, r.v0, r.u1, r.v1, rgba, this.mOutline, this.mOutlineWidth, this.mFlash, this.mAdditive);
       }
       drawn++;
     }
     batcher.end();
     this.stats.sprites += drawn;
+  }
+
+  /** Reads the entity's SpriteMaterial into mOutline..mAdditive (all 0 without one). */
+  private material(world: World, e: Entity): void {
+    if (!world.has(e, SpriteMaterial)) {
+      this.mOutline = this.mOutlineWidth = this.mFlash = this.mAdditive = 0;
+      return;
+    }
+    const M = world.store(SpriteMaterial);
+    const width = M.outlineWidth[e];
+    this.mOutlineWidth = width > 0 && M.outlineColor.a[e] > 0 ? Math.min(8, width) : 0;
+    this.mOutline = this.mOutlineWidth > 0 ? packColor(M.outlineColor.r[e], M.outlineColor.g[e], M.outlineColor.b[e], M.outlineColor.a[e]) : 0;
+    const amount = M.flash[e] * M.flashColor.a[e];
+    this.mFlash = amount > 0 ? packStraight(M.flashColor.r[e], M.flashColor.g[e], M.flashColor.b[e], amount) : 0;
+    this.mAdditive = M.blend[e] === "additive" ? 1 : 0;
   }
 
   /**
@@ -856,7 +898,7 @@ export class Renderer {
         // corner of this piece, relative to the pivot (mirrored when flipped)
         const lx = (xs[i] - r.pivotX * W) * sx;
         const ly = (ys[j] - r.pivotY * H) * sy;
-        this.batcher.push(tex, ga * qw, gb * qw, gc * qh, gd * qh, gx + ga * lx + gc * ly, gy + gb * lx + gd * ly, us[i], vs[j], us[i + 1], vs[j + 1], rgba);
+        this.batcher.push(tex, ga * qw, gb * qw, gc * qh, gd * qh, gx + ga * lx + gc * ly, gy + gb * lx + gd * ly, us[i], vs[j], us[i + 1], vs[j + 1], rgba, this.mOutline, this.mOutlineWidth, this.mFlash, this.mAdditive);
       }
     }
   }
@@ -972,6 +1014,8 @@ export class Renderer {
     this.batcher.dispose();
     this.lighting?.dispose();
     this.lighting = null;
+    this.post?.dispose();
+    this.post = null;
   }
 
   private gpuTexture(asset: TextureAsset): GpuTexture | null {

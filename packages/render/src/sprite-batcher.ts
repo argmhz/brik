@@ -7,7 +7,8 @@ layout(location = 2) in vec2 i_t;        // translation
 layout(location = 3) in vec4 i_uv;       // u0 v0 u1 v1
 layout(location = 4) in vec4 i_color;    // premultiplied rgba (fill for shapes)
 layout(location = 5) in vec4 i_stroke;   // premultiplied rgba (shapes only)
-layout(location = 6) in vec4 i_shape;    // mode (0 sprite, 1 rect, 2 ellipse), stroke width, corner radius, unused
+layout(location = 6) in vec4 i_shape;    // mode (0 sprite, 1 rect, 2 ellipse), stroke width (sprites: outline width in texels), corner radius, 1 = additive
+layout(location = 7) in vec4 i_flash;    // material flash: rgb, a = amount (not premultiplied)
 
 uniform mat3 u_viewProj;
 
@@ -17,6 +18,8 @@ out vec4 v_stroke;
 out vec4 v_shape;
 out vec2 v_local;
 out vec2 v_size;
+out vec4 v_flash;
+flat out vec4 v_uvRect;
 
 void main() {
   vec2 world = vec2(
@@ -30,6 +33,8 @@ void main() {
   v_shape = i_shape;
   v_local = a_corner;
   v_size = vec2(length(i_abcd.xy), length(i_abcd.zw));
+  v_flash = i_flash;
+  v_uvRect = vec4(min(i_uv.xy, i_uv.zw), max(i_uv.xy, i_uv.zw));
 }`;
 
 const FS = `#version 300 es
@@ -40,11 +45,40 @@ in vec4 v_stroke;
 in vec4 v_shape;
 in vec2 v_local;
 in vec2 v_size;
+in vec4 v_flash;
+flat in vec4 v_uvRect;
 uniform sampler2D u_tex;
 out vec4 outColor;
+
+// SpriteMaterial: the flash keeps the shape (alpha) and swaps the color; additive is alpha 0 under premultiplied blending
+vec4 material(vec4 c) {
+  c.rgb = mix(c.rgb, v_flash.rgb * c.a, v_flash.a);
+  return c;
+}
+
 void main() {
   if (v_shape.x < 0.5) {
-    outColor = texture(u_tex, v_uv) * v_color;
+    vec4 c = material(texture(u_tex, v_uv) * v_color);
+    float width = v_shape.y;
+    if (width > 0.0 && c.a < 0.999) {
+      // outline: the most opaque neighbour within \`width\` texels, kept inside the sprite's own frame
+      vec2 texel = 1.0 / vec2(textureSize(u_tex, 0));
+      vec2 lo = v_uvRect.xy + texel * 0.5;
+      vec2 hi = v_uvRect.zw - texel * 0.5;
+      float m = 0.0;
+      for (int r = 1; r <= 8; r++) {
+        float rr = min(float(r), width);
+        for (int i = 0; i < 8; i++) {
+          float a = float(i) * 0.7853982;
+          vec2 uv = clamp(v_uv + vec2(cos(a), sin(a)) * rr * texel, lo, hi);
+          m = max(m, texture(u_tex, uv).a);
+        }
+        if (float(r) >= width) break;
+      }
+      c += v_stroke * (m * v_color.a * (1.0 - c.a));
+    }
+    if (v_shape.w > 0.5) c.a = 0.0;
+    outColor = c;
     return;
   }
   // signed distance (world units) to the shape's edge, negative inside
@@ -61,16 +95,20 @@ void main() {
   float aa = max(fwidth(d), 1e-4);
   float outer = clamp(0.5 - d / aa, 0.0, 1.0);
   float sw = v_shape.y;
+  vec4 c;
   if (sw > 0.0) {
     float inner = clamp(0.5 - (d + sw) / aa, 0.0, 1.0);
-    outColor = v_color * inner + v_stroke * (outer - inner);
+    c = v_color * inner + v_stroke * (outer - inner);
   } else {
-    outColor = v_color * outer;
+    c = v_color * outer;
   }
+  c = material(c);
+  if (v_shape.w > 0.5) c.a = 0.0;
+  outColor = c;
 }`;
 
-/** Words per instance: abcd (4) + t (2) + uv (4) + color (1 packed u32) + stroke (1 packed u32) + shape (4). */
-const STRIDE_WORDS = 16;
+/** Words per instance: abcd (4) + t (2) + uv (4) + color (1 packed u32) + stroke (1 packed u32) + shape (4) + flash (1 packed u32). */
+const STRIDE_WORDS = 17;
 const STRIDE_BYTES = STRIDE_WORDS * 4;
 
 /**
@@ -131,6 +169,7 @@ export class SpriteBatcher {
     attr(4, 4, 10, gl.UNSIGNED_BYTE, true);
     attr(5, 4, 11, gl.UNSIGNED_BYTE, true);
     attr(6, 4, 12);
+    attr(7, 4, 16, gl.UNSIGNED_BYTE, true);
     gl.bindVertexArray(null);
 
     // shapes don't sample a texture, but something must be bound
@@ -153,6 +192,8 @@ export class SpriteBatcher {
   /**
    * Adds one quad. The matrix maps the unit square to world space.
    * `rgba` is a packed, premultiplied color (little-endian ABGR).
+   * The rest is the SpriteMaterial: `outline` a premultiplied color and `outlineWidth` in texels,
+   * `flash` a straight (not premultiplied) color whose alpha is the amount, and `additive` 1 or 0.
    */
   push(
     texture: WebGLTexture,
@@ -167,6 +208,10 @@ export class SpriteBatcher {
     u1: number,
     v1: number,
     rgba: number,
+    outline = 0,
+    outlineWidth = 0,
+    flash = 0,
+    additive = 0,
   ): void {
     if (texture !== this.texture || this.count === this.maxInstances) {
       this.flush();
@@ -185,11 +230,12 @@ export class SpriteBatcher {
     f[o + 8] = u1;
     f[o + 9] = v1;
     this.u32[o + 10] = rgba;
-    this.u32[o + 11] = 0;
+    this.u32[o + 11] = outline;
     f[o + 12] = 0;
-    f[o + 13] = 0;
+    f[o + 13] = outlineWidth;
     f[o + 14] = 0;
-    f[o + 15] = 0;
+    f[o + 15] = additive;
+    this.u32[o + 16] = flash;
     this.count++;
   }
 
@@ -209,6 +255,8 @@ export class SpriteBatcher {
     stroke: number,
     strokeWidth: number,
     radius: number,
+    flash = 0,
+    additive = 0,
   ): void {
     if (this.count === this.maxInstances) this.flush();
     if (!this.texture) this.texture = this.white;
@@ -229,7 +277,8 @@ export class SpriteBatcher {
     f[o + 12] = mode;
     f[o + 13] = strokeWidth;
     f[o + 14] = radius;
-    f[o + 15] = 0;
+    f[o + 15] = additive;
+    this.u32[o + 16] = flash;
     this.count++;
   }
 
@@ -274,4 +323,10 @@ export function packColor(r: number, g: number, b: number, a: number): number {
   const G = Math.round(Math.max(0, Math.min(1, g)) * A * 255);
   const B = Math.round(Math.max(0, Math.min(1, b)) * A * 255);
   return ((Math.round(A * 255) << 24) | (B << 16) | (G << 8) | R) >>> 0;
+}
+
+/** Packs a 0..1 color into straight (not premultiplied) RGBA8, as a little-endian u32. Used for the material flash. */
+export function packStraight(r: number, g: number, b: number, a: number): number {
+  const c = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 255);
+  return ((c(a) << 24) | (c(b) << 16) | (c(g) << 8) | c(r)) >>> 0;
 }

@@ -1,6 +1,6 @@
 import { type AnimationClip, Assets, frameAt } from "@brik/assets";
 import { type App, type Entity, GlobalTransform2D, Parent, Time, childrenOf, Transform2D, type World, defineEvent } from "@brik/core";
-import { Camera2D, CameraFollow2D, Parallax2D, Sprite, SpriteAnimator } from "./components";
+import { Camera2D, CameraFollow2D, Parallax2D, Sprite, SpriteAnimator, SpriteMaterial } from "./components";
 import { CameraFX, ScreenFade } from "./camera-fx";
 import { UILayout } from "./ui";
 import { ParticlesPlugin } from "./particles";
@@ -236,10 +236,45 @@ function clampInto(v: number, min: number, size: number, half: number): number {
 }
 
 /** SpriteAnimator, CameraFollow2D and particles. Works without a renderer (e.g. in the editor's play mode). */
+/**
+ * Flashes an entity's Sprite (or Text2D, Shape2D) in a color, e.g. white for 0.1 seconds when it is hit.
+ * The flash starts full and fades out over `duration` seconds of game time (so it holds during a hit-stop).
+ * Adds a SpriteMaterial if the entity has none.
+ */
+export function flashSprite(world: World, e: Entity, duration = 0.1, color?: { r: number; g: number; b: number; a?: number }): void {
+  if (!world.has(e, SpriteMaterial)) world.add(e, SpriteMaterial);
+  const M = world.store(SpriteMaterial);
+  if (color) {
+    M.flashColor.r[e] = color.r;
+    M.flashColor.g[e] = color.g;
+    M.flashColor.b[e] = color.b;
+    M.flashColor.a[e] = color.a ?? 1;
+  }
+  M.flash[e] = 1;
+  M.flashLength[e] = Math.max(0, duration);
+  M.flashLeft[e] = Math.max(0, duration);
+  if (duration <= 0) M.flash[e] = 0;
+}
+
+/** Counts timed flashes down. A flash set by hand (no `flashLength`) is left alone. */
+function fadeFlashes(world: World): void {
+  const dt = world.resource(Time).dt;
+  const M = world.store(SpriteMaterial);
+  for (const e of world.query([SpriteMaterial])) {
+    const length = M.flashLength[e];
+    if (length <= 0) continue;
+    const left = Math.max(0, M.flashLeft[e] - dt);
+    M.flashLeft[e] = left;
+    M.flash[e] = left / length;
+    if (left === 0) M.flashLength[e] = 0;
+  }
+}
+
 export const SpriteLogicPlugin = {
   name: "brik:sprite-logic",
   build(app: App) {
     app.addSystem("update", { name: "sprite.animate", run: animateSprites });
+    app.addSystem("update", { name: "sprite.flash", run: fadeFlashes });
     app.addSystem("postUpdate", { name: "camera.follow", run: followCameras });
     app.addSystem("postUpdate", { name: "camera.parallax", run: applyParallax });
     const fx = app.world.insertResource(new CameraFX());

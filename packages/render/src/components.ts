@@ -73,6 +73,63 @@ export const Light2D = defineComponent(
   { requires: [Transform2D] },
 );
 
+/**
+ * How a Sprite, Text2D or Shape2D on the same entity is drawn: a flash of color (e.g. white when hit), an outline
+ * and additive blending (glow, fire, magic). Flash from a script with `this.flashSprite(0.1)`.
+ * Sprites with a material still batch together with all other sprites.
+ */
+export const SpriteMaterial = defineComponent("SpriteMaterial", {
+  /** normal: covers what is behind. additive: adds its light to what is behind (glow, fire, sparks). */
+  blend: t.enum(["normal", "additive"] as const, "normal"),
+  /** The color the flash turns the sprite into. */
+  flashColor: t.color(1, 1, 1, 1),
+  /** 0 no flash .. 1 the whole sprite is `flashColor` (its shape is kept). */
+  flash: withMeta(t.f32(0), { min: 0, max: 1, step: 0.05 }),
+  outlineColor: t.color(1, 1, 1, 1),
+  /** Outline thickness in the sprite image's own pixels. 0 is no outline. Sprites only, and inside the sprite's frame. */
+  outlineWidth: withMeta(t.f32(0), { min: 0, max: 8, step: 1 }),
+  /** Seconds left of a timed flash (set by `flashSprite`). */
+  flashLeft: withMeta(t.f32(0), { hidden: true }),
+  /** The length of the timed flash running now. */
+  flashLength: withMeta(t.f32(0), { hidden: true }),
+});
+
+/**
+ * Full-screen effects on what a camera draws: bloom, color correction, vignette, CRT and pixelation.
+ * Put it on the same entity as the Camera2D. Each effect is off at its default value. The UI is drawn after
+ * the effects, so it stays sharp.
+ */
+export const PostProcess2D = defineComponent("PostProcess2D", {
+  /** Switch all effects off without removing the component. */
+  enabled: t.bool(true),
+  /** How much bright parts glow. 0 is no bloom. */
+  bloom: withMeta(t.f32(0), { min: 0, max: 4, step: 0.1 }),
+  /** How bright (0..1) a pixel must be to glow. */
+  bloomThreshold: withMeta(t.f32(0.7), { min: 0, max: 1, step: 0.05 }),
+  /** How far the glow spreads, in screen pixels (roughly). */
+  bloomRadius: withMeta(t.f32(8), { min: 1, max: 64, step: 1 }),
+  /** -1 black .. 0 unchanged .. 1 white. */
+  brightness: withMeta(t.f32(0), { min: -1, max: 1, step: 0.05 }),
+  /** 1 unchanged, less is flatter, more is harder. */
+  contrast: withMeta(t.f32(1), { min: 0, max: 3, step: 0.05 }),
+  /** 1 unchanged, 0 grey, more is more colorful. */
+  saturation: withMeta(t.f32(1), { min: 0, max: 3, step: 0.05 }),
+  /** Multiplied onto the picture. White is no change. */
+  tint: t.color(1, 1, 1, 1),
+  /** Darkens the corners. 0 is none. */
+  vignette: withMeta(t.f32(0), { min: 0, max: 1, step: 0.05 }),
+  /** CRT: dark lines across the picture. 0 is none. */
+  scanlines: withMeta(t.f32(0), { min: 0, max: 1, step: 0.05 }),
+  /** Screen pixels from one scanline to the next. */
+  scanlineSpacing: withMeta(t.f32(3), { min: 2, max: 16, step: 1 }),
+  /** CRT: bends the picture like an old curved screen. 0 is flat. */
+  curvature: withMeta(t.f32(0), { min: 0, max: 1, step: 0.05 }),
+  /** CRT: red and blue pulled apart toward the edges, in screen pixels. */
+  chromaticAberration: withMeta(t.f32(0), { min: 0, max: 10, step: 0.5 }),
+  /** Draws the picture in blocks this many screen pixels wide. 1 is off. */
+  pixelate: withMeta(t.f32(1), { min: 1, max: 32, step: 1 }),
+});
+
 /** Draw order. Lower layers first; within a layer lower order first. */
 export const SortingOrder = defineComponent("SortingOrder", {
   layer: t.i32(0),
