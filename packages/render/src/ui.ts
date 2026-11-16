@@ -84,7 +84,8 @@ export const UIText = defineComponent(
     text: withMeta(t.string("Tekst"), { editor: "multiline" }),
     size: withMeta(t.f32(20), { min: 1, step: 1 }),
     color: t.color(1, 1, 1, 1),
-    font: t.string("sans-serif"),
+    /** A browser font ("sans-serif", "monospace", ...) or the name of a bitmap font in the project. */
+    font: withMeta(t.string("sans-serif"), { editor: "font" }),
     align: t.enum(["center", "left", "right"] as const, "center"),
     bold: t.bool(false),
     wrap: t.bool(true),

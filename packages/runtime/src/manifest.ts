@@ -33,6 +33,8 @@ export interface GameManifest {
     sprites: { id: string; name: string; rect: Box; pivot: [number, number]; border?: Box; collision?: TileCollision }[];
   }[];
   clips: AnimationClip[];
+  /** Bitmap fonts: the `.font.json` file text, read with parseFont. Missing in games exported before fonts existed. */
+  fonts?: { name: string; text: string }[];
   prefabs: { guid: string; name: string; entities: SceneData["entities"] }[];
   sounds: { guid: string; name: string; file: string }[];
   scenes: Record<string, SceneData>;

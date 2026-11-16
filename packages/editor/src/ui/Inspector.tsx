@@ -18,7 +18,7 @@ import {
 import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js";
 import { addComponent, addScript, removeComponent, setEntityRef, setValues } from "../core/commands";
 import { applyToPrefab, instanceRootOf, overridesFor, prefabOf, revertOverride, revertToPrefab } from "../core/prefabs";
-import { AssetField, EntityField, MultilineField, PointsField, TagsField, assetLabel } from "./asset-fields";
+import { AssetField, EntityField, FontField, MultilineField, PointsField, TagsField, assetLabel } from "./asset-fields";
 import type { Editor } from "../core/editor";
 import { AssetInspector } from "./AssetInspector";
 import { ScriptsSection } from "./ScriptsSection";
@@ -327,6 +327,7 @@ function FieldEditor(props: { editor: Editor; id: string; e: Entity; def: Compon
     if (meta.editor === "clip" || meta.editor === "prefab" || meta.editor === "audio" || meta.editor === "texture") {
       return <AssetField editor={editor} kind={meta.editor} value={() => (read() as string | null) ?? null} onChange={(v) => commit(v)} />;
     }
+    if (meta.editor === "font") return <FontField editor={editor} value={() => read() as string} onCommit={(v) => commit(v)} />;
     if (meta.editor === "tags") return <TagsField value={() => read() as string[]} onCommit={(v) => commit(v)} />;
     if (meta.editor === "points") return <PointsField value={() => read() as { x: number; y: number }[]} onCommit={(v) => commit(v)} />;
     if (meta.editor === "multiline") return <MultilineField value={() => read() as string} onCommit={(v) => commit(v)} />;

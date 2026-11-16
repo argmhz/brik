@@ -1,4 +1,4 @@
-import { Assets, type ResolvedSprite, type TextureAsset } from "@brik/assets";
+import { Assets, type BitmapFont, type BitmapTextLayout, type ResolvedSprite, type TextureAsset, layoutBitmapText } from "@brik/assets";
 import { type Entity, GlobalTransform2D, type Mat3, Name, TileMap, type Vec2, type World, mat3, parseTileKey, TILE_CHUNK, tileChunks } from "@brik/core";
 import { CameraFX, ScreenFade } from "./camera-fx";
 import { Camera2D, Shape2D, SortingOrder, Sprite, SpriteMaterial, Text2D } from "./components";
@@ -21,6 +21,8 @@ const KIND_TILEMAP = 3;
 const KIND_PARTICLES = 4;
 /** A polygon or line Shape2D, rasterized to a texture. */
 const KIND_PATH = 5;
+/** A Text2D in a bitmap font, drawn letter by letter. */
+const KIND_BITMAP = 6;
 
 const renderers = new Set<Renderer>();
 
@@ -73,6 +75,36 @@ export function textImage(world: World, e: Entity, pixelsPerUnit = 2): TextImage
   style.resolution = undefined;
   return img;
 }
+
+/** Laid-out bitmap text, per font (a reloaded font is a new object, so its old layouts go with it). */
+const bitmapLayouts = new WeakMap<BitmapFont, Map<string, BitmapTextLayout>>();
+
+/** Lays out text in a bitmap font, cached. `maxWidth` and the result are in font pixels. */
+export function bitmapLayout(font: BitmapFont, text: string, maxWidth: number, align: string): BitmapTextLayout {
+  let cache = bitmapLayouts.get(font);
+  if (!cache) bitmapLayouts.set(font, (cache = new Map()));
+  const key = `${maxWidth}\u0000${align}\u0000${text}`;
+  let layout = cache.get(key);
+  if (!layout) {
+    if (cache.size > 512) cache.clear();
+    layout = layoutBitmapText(font, text, maxWidth, align);
+    cache.set(key, layout);
+  }
+  return layout;
+}
+
+/** A Text2D's bitmap font and layout, or null when its `font` is not a bitmap font (it is then a browser font). */
+export function bitmapText(world: World, e: Entity): { font: BitmapFont; layout: BitmapTextLayout; scale: number } | null {
+  const T = world.store(Text2D);
+  const font = world.tryResource(Assets)?.font(T.font[e]);
+  if (!font || !T.text[e]) return null;
+  // the size is the line height in world units
+  const scale = T.size[e] / font.lineHeight;
+  const maxWidth = T.maxWidth[e] > 0 ? T.maxWidth[e] / scale : 0;
+  return { font, layout: bitmapLayout(font, T.text[e], maxWidth, T.align[e]), scale };
+}
+
+const alignPivot = (align: string) => (align === "left" ? 0 : align === "right" ? 1 : 0.5);
 
 interface GpuTexture {
   tex: WebGLTexture;
@@ -133,6 +165,8 @@ export class Renderer {
   /** The sprite's own size for sliced sprites (their `resolved` size is the stretched one); 0 otherwise. */
   private naturalW: number[] = [];
   private naturalH: number[] = [];
+  /** Bitmap text of KIND_BITMAP items. */
+  private bitmap: ({ font: BitmapFont; layout: BitmapTextLayout; scale: number } | null)[] = [];
   private viewProj = new Float32Array(9);
   // the SpriteMaterial of the entity being drawn (see `material`)
   private mOutline = 0;
@@ -364,7 +398,22 @@ export class Renderer {
       if (world.has(e, UIToggle)) this.drawToggle(world, e, x, y, w, h);
       if (world.has(e, UITouchStick)) this.drawTouchStick(world, e, x, y, w, h, el.scale);
       if (world.has(e, UITouchButton) && !world.has(e, UIImage)) this.drawTouchButton(world, e, x, y, w, h);
-      if (world.has(e, UIText) && X.text[e]) {
+      const uiFont = world.has(e, UIText) && X.text[e] ? assets.font(X.font[e]) : undefined;
+      if (uiFont) {
+        const tex = assets.textures.get(uiFont.texture);
+        const gpu = tex && tex.status === "ready" ? this.gpuTexture(tex) : null;
+        if (tex && gpu) {
+          const scale = (X.size[e] * el.scale) / uiFont.lineHeight;
+          const layout = bitmapLayout(uiFont, X.text[e], X.wrap[e] ? w / scale : 0, X.align[e]);
+          const bw = layout.width * scale;
+          const bh = layout.height * scale;
+          const anchorX = X.align[e] === "left" ? x : X.align[e] === "right" ? x + w : x + w / 2;
+          const rgba = packColor(X.color.r[e], X.color.g[e], X.color.b[e], X.color.a[e]);
+          this.mOutline = this.mOutlineWidth = this.mFlash = this.mAdditive = 0;
+          this.pushBitmapText(gpu.tex, tex, layout, scale, 1, 0, 0, 1, anchorX - bw * alignPivot(X.align[e]), y + h / 2 - bh / 2, bh, rgba);
+          this.stats.sprites++;
+        }
+      } else if (world.has(e, UIText) && X.text[e]) {
         style.text = X.text[e];
         style.size = X.size[e] * el.scale;
         style.font = X.font[e];
@@ -639,6 +688,23 @@ export class Renderer {
     for (const e of world.query([Text2D, GlobalTransform2D])) {
       if (!G.active[e]) continue;
       // screen pixels per world unit of this text: view zoom x its own scale
+      const bt = bitmapText(world, e);
+      if (bt) {
+        const tex = assets.textures.get(bt.font.texture);
+        const gpu = tex && tex.status === "ready" ? this.gpuTexture(tex) : null;
+        if (!gpu || bt.layout.quads.length === 0) continue;
+        const r = slot(items.length);
+        r.texture = tex!;
+        r.width = bt.layout.width * bt.scale;
+        r.height = bt.layout.height * bt.scale;
+        r.pivotX = alignPivot(world.store(Text2D).align[e]);
+        r.pivotY = 0.5;
+        this.bitmap[items.length] = bt;
+        items.push(e);
+        this.itemKind.push(KIND_BITMAP);
+        this.itemTex.push(gpu);
+        continue;
+      }
       const scale = Math.max(Math.hypot(gm.a[e], gm.b[e]), Math.hypot(gm.c[e], gm.d[e]));
       const img = textImage(world, e, pixelsPerUnit * scale);
       if (!img) continue;
@@ -821,6 +887,14 @@ export class Renderer {
       }
 
       this.material(world, e);
+      if (kind === KIND_BITMAP) {
+        const bt = this.bitmap[i]!;
+        // an outline would be cut off at each letter's own rectangle, so bitmap text has none
+        this.mOutlineWidth = 0;
+        this.pushBitmapText(this.itemTex[i]!.tex, r.texture, bt.layout, bt.scale, ga, gb, gc, gd, tx, ty, r.height, packColor(X.color.r[e], X.color.g[e], X.color.b[e], X.color.a[e]));
+        drawn++;
+        continue;
+      }
       if (sprite && this.naturalW[i] > 0 && r.border) {
         this.slicedSprite(this.itemTex[i]!.tex, r, this.naturalW[i], this.naturalH[i], ga, gb, gc, gd, g.tx[e], g.ty[e], S.flipX[e] !== 0, S.flipY[e] !== 0, packColor(S.color.r[e], S.color.g[e], S.color.b[e], S.color.a[e]));
         drawn++;
@@ -841,6 +915,55 @@ export class Renderer {
     }
     batcher.end();
     this.stats.sprites += drawn;
+  }
+
+  /**
+   * Pushes the letters of laid-out bitmap text. (ga..gd) is the text's frame, (ox, oy) the bottom-left corner of the
+   * text block in it, `height` the block's height and `scale` units per font pixel.
+   */
+  private pushBitmapText(
+    gl: WebGLTexture,
+    tex: TextureAsset,
+    layout: BitmapTextLayout,
+    scale: number,
+    ga: number,
+    gb: number,
+    gc: number,
+    gd: number,
+    ox: number,
+    oy: number,
+    height: number,
+    rgba: number,
+  ): void {
+    const rx = tex.region?.x ?? 0;
+    const ry = tex.region?.y ?? 0;
+    const tw = tex.width;
+    const th = tex.height;
+    for (const q of layout.quads) {
+      const g = q.glyph;
+      const w = g.w * scale;
+      const h = g.h * scale;
+      const lx = q.x * scale;
+      const ly = height - (q.y + g.h) * scale;
+      this.batcher.push(
+        gl,
+        ga * w,
+        gb * w,
+        gc * h,
+        gd * h,
+        ox + ga * lx + gc * ly,
+        oy + gb * lx + gd * ly,
+        (rx + g.x) / tw,
+        (ry + g.y + g.h) / th,
+        (rx + g.x + g.w) / tw,
+        (ry + g.y) / th,
+        rgba,
+        this.mOutline,
+        this.mOutlineWidth,
+        this.mFlash,
+        this.mAdditive,
+      );
+    }
   }
 
   /** Reads the entity's SpriteMaterial into mOutline..mAdditive (all 0 without one). */
@@ -1077,6 +1200,11 @@ export function spriteQuad(world: World, e: Entity): Mat3 | null {
       w = H.size.x[e];
       h = H.size.y[e];
     }
+  } else if (world.has(e, Text2D) && bitmapText(world, e)) {
+    const bt = bitmapText(world, e)!;
+    w = bt.layout.width * bt.scale;
+    h = bt.layout.height * bt.scale;
+    px = alignPivot(world.store(Text2D).align[e]);
   } else if (world.has(e, Text2D)) {
     const img = textImage(world, e);
     if (!img) return null;

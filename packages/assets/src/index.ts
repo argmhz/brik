@@ -1,9 +1,11 @@
 import type { App, Rect, SceneData, Vec2 } from "@brik/core";
 import type { AnimationClip } from "./clip";
+import type { BitmapFont } from "./font";
 import type { TextureMeta } from "./meta";
 
 export * from "./meta";
 export * from "./clip";
+export * from "./font";
 export * from "./atlas";
 
 /** A saved entity tree, stored as `<name>.prefab.json`. */
@@ -153,6 +155,7 @@ export class Assets {
   readonly textures = new Map<string, TextureAsset>();
   readonly clips = new Map<string, AnimationClip>();
   readonly prefabs = new Map<string, PrefabAsset>();
+  readonly fonts = new Map<string, BitmapFont>();
   private byName = new Map<string, SpriteRef>();
 
   /** Starts loading an image. The texture can be used right away; it draws once loaded. */
@@ -339,6 +342,27 @@ export class Assets {
     const byGuid = this.clips.get(nameOrGuid);
     if (byGuid) return byGuid;
     for (const c of this.clips.values()) if (c.name === nameOrGuid) return c;
+    return undefined;
+  }
+
+  // ------------------------------------------------------------ bitmap fonts
+
+  /** Adds or replaces a bitmap font (by guid). */
+  addFont(font: BitmapFont): BitmapFont {
+    this.fonts.set(font.guid, font);
+    return font;
+  }
+
+  removeFont(guid: string): void {
+    this.fonts.delete(guid);
+  }
+
+  /** Finds a bitmap font by guid or by name, e.g. `"pixel"`. Undefined for browser fonts like "sans-serif". */
+  font(nameOrGuid: string): BitmapFont | undefined {
+    if (this.fonts.size === 0 || !nameOrGuid) return undefined;
+    const byGuid = this.fonts.get(nameOrGuid);
+    if (byGuid) return byGuid;
+    for (const f of this.fonts.values()) if (f.name === nameOrGuid) return f;
     return undefined;
   }
 

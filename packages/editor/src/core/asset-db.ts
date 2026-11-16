@@ -2,6 +2,8 @@ import { tmxToJson, tsxToJson } from "./tiled-xml";
 import {
   ANIMATION_EXTENSION,
   AUDIO_EXTENSIONS,
+  type BitmapFont,
+  FONT_EXTENSION,
   type AnimationClip,
   type Assets,
   type Audio,
@@ -12,8 +14,12 @@ import {
   type TextureSource,
   defaultTextureMeta,
   clipToJson,
+  fontToJson,
+  gridFont,
   newGuid,
+  parseBMFont,
   parseClip,
+  parseFont,
   parsePrefab,
   parseTextureMeta,
   prefabToJson,
@@ -70,6 +76,10 @@ export function isClip(path: string): boolean {
   return path.endsWith(ANIMATION_EXTENSION);
 }
 
+export function isFont(path: string): boolean {
+  return path.endsWith(FONT_EXTENSION);
+}
+
 export function isPrefab(path: string): boolean {
   return path.endsWith(PREFAB_EXTENSION);
 }
@@ -80,7 +90,7 @@ export function isAudio(path: string): boolean {
 
 /** Asset name from a path: the file name without its (double) extension. */
 export function assetName(path: string): string {
-  return basename(path).replace(/(\.anim\.json|\.prefab\.json|\.scene\.json|\.[^.]+)$/, "");
+  return basename(path).replace(/(\.anim\.json|\.font\.json|\.prefab\.json|\.scene\.json|\.[^.]+)$/, "");
 }
 
 export interface ImportReport {
@@ -92,6 +102,10 @@ export interface ImportReport {
 async function convertToolFiles(db: AssetDatabase, fs: ProjectFS, paths: string[]): Promise<ImportReport> {
   const report: ImportReport = { created: [], warnings: [] };
   for (const path of paths) {
+    if (path.toLowerCase().endsWith(".fnt")) {
+      await convertBMFont(db, fs, path, report);
+      continue;
+    }
     let data: unknown;
     try {
       const text = await fs.readText(path);
@@ -170,6 +184,36 @@ async function convertToolFiles(db: AssetDatabase, fs: ProjectFS, paths: string[
   return report;
 }
 
+/** A BMFont `.fnt` (text or XML) and its image become a `.font.json` next to them. */
+async function convertBMFont(db: AssetDatabase, fs: ProjectFS, path: string, report: ImportReport): Promise<void> {
+  const name = basename(path).replace(/\.fnt$/i, "");
+  try {
+    const data = parseBMFont(await fs.readText(path));
+    const page = data.pages[0];
+    const image = page ? joinPath(dirname(path), basename(page)) : "";
+    const entry = db.textures.get(image);
+    if (!entry) {
+      report.warnings.push(`${basename(path)}: billedet ${page || "(intet)"} mangler. Importér det sammen med .fnt-filen.`);
+      return;
+    }
+    const fontPath = joinPath(dirname(path), `${name}${FONT_EXTENSION}`);
+    const old = db.fonts.get(fontPath);
+    await db.saveFont(fontPath, {
+      guid: old?.guid ?? newGuid(),
+      name,
+      texture: entry.meta.guid,
+      lineHeight: data.lineHeight,
+      base: data.base,
+      glyphs: data.glyphs,
+      kerning: data.kerning,
+    });
+    report.created.push(fontPath);
+    if (data.pages.length > 1) report.warnings.push(`${basename(path)}: fonten har ${data.pages.length} billeder; kun det første bruges (${data.skipped} tegn er udeladt)`);
+  } catch (err) {
+    report.warnings.push(`${basename(path)}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 export interface JsonAssetEntry {
   path: string;
   guid: string;
@@ -201,6 +245,7 @@ export class AssetDatabase {
   readonly textures = new Map<string, TextureEntry>();
   readonly clips = new Map<string, JsonAssetEntry>();
   readonly prefabs = new Map<string, JsonAssetEntry>();
+  readonly fonts = new Map<string, JsonAssetEntry>();
   readonly sounds = new Map<string, SoundEntry>();
   /** Where sound clips are registered. Set by the editor. */
   audio: Audio | null = null;
@@ -234,6 +279,11 @@ export class AssetDatabase {
       this.assets.addClip(clip);
       return clip.guid;
     }, (guid) => this.assets.removeClip(guid));
+    await this.refreshJson(files.filter(isFont), this.fonts, (text, path) => {
+      const font = parseFont(text, assetName(path));
+      this.assets.addFont(font);
+      return font.guid;
+    }, (guid) => this.assets.removeFont(guid));
     const changed: string[] = [];
     await this.refreshJson(files.filter(isPrefab), this.prefabs, (text, path) => {
       const prefab = parsePrefab(text, assetName(path));
@@ -315,6 +365,35 @@ export class AssetDatabase {
     this.clips.set(path, { path, guid: clip.guid, name: named.name, text });
   }
 
+  /** Writes a bitmap font to disk and registers it. */
+  async saveFont(path: string, font: BitmapFont): Promise<void> {
+    const text = fontToJson(font);
+    await this.fs.writeFile(path, text);
+    const named = { ...font, name: assetName(path) };
+    this.assets.addFont(named);
+    this.fonts.set(path, { path, guid: font.guid, name: named.name, text });
+  }
+
+  /**
+   * Makes (or remakes) a bitmap font from an image whose characters sit in a grid of equal cells, in the order
+   * of `chars`. With `pixels` each letter is as wide as its own pixels; without, every letter is a whole cell.
+   * The font is saved next to the image as `<image name>.font.json`. Returns its path.
+   */
+  async createGridFont(
+    imagePath: string,
+    opts: { cell: [number, number]; chars: string; offset?: [number, number]; spacing?: [number, number]; letterSpacing?: number; lineSpacing?: number; pixels?: Uint8ClampedArray | null; path?: string },
+  ): Promise<string> {
+    const entry = this.textures.get(imagePath);
+    if (!entry) throw new Error(`${imagePath} is not an imported image`);
+    const made = gridFont({ ...opts, width: entry.asset.width, height: entry.asset.height });
+    const path = opts.path ?? joinPath(dirname(imagePath), `${textureName(imagePath)}${FONT_EXTENSION}`);
+    const old = this.fonts.get(path);
+    await this.saveFont(path, { guid: old?.guid ?? newGuid(), name: assetName(path), texture: entry.meta.guid, kerning: new Map(), ...made });
+    // letters are cut by the font, not by sprites; nearest filtering keeps pixel letters sharp
+    if (entry.meta.settings.filter !== "nearest") await this.saveMeta(imagePath, { ...entry.meta, settings: { ...entry.meta.settings, filter: "nearest" } });
+    return path;
+  }
+
   /** Writes a prefab to disk and registers it. Returns its guid. */
   async savePrefab(path: string, data: SceneData, guid = this.prefabs.get(path)?.guid ?? newGuid()): Promise<string> {
     const text = prefabToJson(guid, data);
@@ -326,7 +405,7 @@ export class AssetDatabase {
 
   /** Path of a clip, prefab or sound by guid. */
   pathOf(guid: string): string | undefined {
-    for (const m of [this.clips, this.prefabs, this.sounds] as Map<string, { guid: string }>[]) {
+    for (const m of [this.clips, this.prefabs, this.fonts, this.sounds] as Map<string, { guid: string }>[]) {
       for (const [path, e] of m) if (e.guid === guid) return path;
     }
     return undefined;
@@ -399,7 +478,7 @@ export class AssetDatabase {
       paths.push(path);
     }
     await this.refresh();
-    this.lastImport = await convertToolFiles(this, this.fs, paths.filter((p) => /\.(json|tmj|tsj|tmx)$/i.test(p)));
+    this.lastImport = await convertToolFiles(this, this.fs, paths.filter((p) => /\.(json|tmj|tsj|tmx|fnt)$/i.test(p)));
     if (this.lastImport.created.length > 0) await this.refresh();
     return paths;
   }

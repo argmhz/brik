@@ -10,6 +10,7 @@ import {
   createGame,
   initPhysics,
   loadScene,
+  parseFont,
 } from "@brik/runtime";
 
 export interface StartOptions {
@@ -87,6 +88,7 @@ export async function startGame(opts: StartOptions): Promise<App> {
     }
   }
   for (const c of manifest.clips) assets.addClip(c);
+  for (const f of manifest.fonts ?? []) assets.addFont(parseFont(f.text, f.name));
   for (const p of manifest.prefabs) assets.addPrefab({ guid: p.guid, name: p.name, data: { version: 1, entities: p.entities } });
 
   const audio = world.resource(Audio);

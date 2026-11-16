@@ -90,6 +90,7 @@ Scripts can also define components (`defineComponent`) and systems
   Characters: `RigidBody2D` (kinematic) + `CharacterController2D` + `Collider2D`, moved with `moveCharacter`.
   Triggers: `Collider2D` with `isTrigger: true`. Tiles: `TileMap` + `TileMapCollider` (leave the collider off
   decoration layers such as grass).
+- Pixel text: a bitmap font is `<name>.font.json` next to an image of letters (create_font from a grid image, or drop a BMFont `.fnt` with its png). Set `font` on Text2D or UIText to the font's name; `size` is the line height, and the font's own line height (or a multiple) keeps pixels sharp. Missing lowercase letters fall back to capitals.
 - Looks: `SpriteMaterial` on a sprite gives a flash color, an outline (`outlineWidth` in image pixels) and `blend: "additive"` for glow. `PostProcess2D` on the camera adds bloom, color correction (brightness, contrast, saturation, tint), vignette, CRT (scanlines, curvature, chromaticAberration) and `pixelate`; every effect is off at its default, and the UI is not affected.
 - Particles: `ParticleEmitter2D` with `collide: true` bounce off solid colliders (`bounce`, `slide`, `dieOnHit`).
 - Angles are radians. Colors are `{ r, g, b, a }` from 0 to 1.

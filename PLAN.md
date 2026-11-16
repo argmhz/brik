@@ -616,6 +616,18 @@ Spillet **Skovvagt** (`examples/skovvagt`) blev bygget headless gennem MCP-værk
 - Omridset kan ikke gå uden for spritens ramme, og på 9-slice-sprites tegnes det pr. stykke.
 - Ingen egne shaders (GLSL skrevet af brugeren) endnu, hverken til sprites eller til hele billedet.
 
+### Bitmap-fonte (november 2026)
+- [x] `<navn>.font.json` (`BitmapFont`): billedets guid, linjehøjde, baseline, glyffer som `[x, y, w, h, ox, oy, advance]` i billedets pixels (en linje pr. tegn i filen) og kerning. `Assets.addFont`/`font(navn)`.
+- [x] `Text2D.font` og `UIText.font`: er navnet en bitmap-font, tegnes teksten bogstav for bogstav fra billedet i samme draw calls som sprites (ellers en browserfont som før). `size` er linjehøjden. Linjeskift, ombrydning ved `maxWidth`/`wrap`, justering og kerning. Små bogstaver falder tilbage til store og derefter til `?`. Blink og additiv fra `SpriteMaterial` virker; omrids ikke (det skæres af ved hvert bogstavs rektangel).
+- [x] Lav en font fra et grid-billede (`gridFont`): bredden måles pr. tegn ud fra pixels, og en tom celle er et mellemrum. Uden pixels (headless) er fonten monospace. Editor: "Lav bitmap-font" i billedets inspector med forhåndsvisning, en font-inspector med prøvetekst og et font-felt, der foreslår projektets fonte. MCP: `create_font` og `list_assets({ kind: "fonts" })`.
+- [x] Import af BMFont `.fnt` (tekst og XML) ved træk-og-slip, med kerning. Kun første side.
+- [x] Eksport: fonte i `game.json` (`fonts`), og deres billeder pakkes altid hele, så glyf-koordinaterne passer i atlasset.
+- [x] Afprøvet i en rigtig browser (verden, UI, rotation, justering og flash). Panelet "Lav bitmap-font" er typetjekket og dets logik testet, men ikke klikket igennem i editoren.
+
+**Kendte begrænsninger**
+- Headless kan ikke måle bogstavbredder (ingen pixels), så `create_font` uden editoren giver monospace.
+- Kun ét billede pr. font: en BMFont med flere sider mister tegnene på de andre.
+
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
 - [ ] PBR, lys, shadows og post-processing

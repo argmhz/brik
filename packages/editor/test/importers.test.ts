@@ -235,3 +235,33 @@ describe("importers", () => {
     expect(editor.db.lastImport.warnings[0]).toMatch(/hero.png mangler/);
   });
 });
+
+describe("BMFont import", () => {
+  it("turns a dropped .fnt and its image into a .font.json", async () => {
+    const fs = new MemoryFS("t");
+    await createProject(fs, "T");
+    const editor = await Editor.open(fs, { decode: fakeDecode });
+    const fnt = `info face="Pix" size=8
+common lineHeight=10 base=8 scaleW=64 scaleH=32 pages=1
+page id=0 file="pix_0.png"
+char id=65 x=1 y=2 width=5 height=7 xoffset=0 yoffset=1 xadvance=6 page=0`;
+    await editor.db.importFiles([
+      { name: "pix_0.png", bytes: new Uint8Array([1]) },
+      { name: "pix.fnt", bytes: new TextEncoder().encode(fnt) },
+    ]);
+    expect(editor.db.lastImport.warnings).toEqual([]);
+    expect(editor.db.lastImport.created).toEqual(["assets/pix.font.json"]);
+    const font = editor.assets.font("pix")!;
+    expect(font.lineHeight).toBe(10);
+    expect(font.texture).toBe(editor.db.textures.get("assets/pix_0.png")!.meta.guid);
+    expect(font.glyphs.get("A")).toMatchObject({ x: 1, y: 2, w: 5, h: 7 });
+  });
+
+  it("says so when the image is missing", async () => {
+    const fs = new MemoryFS("t");
+    await createProject(fs, "T");
+    const editor = await Editor.open(fs, { decode: fakeDecode });
+    await editor.db.importFiles([{ name: "pix.fnt", bytes: new TextEncoder().encode('common lineHeight=10 base=8\npage id=0 file="gone.png"') }]);
+    expect(editor.db.lastImport.warnings[0]).toMatch(/gone\.png mangler/);
+  });
+});

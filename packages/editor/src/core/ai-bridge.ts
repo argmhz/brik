@@ -28,6 +28,7 @@ import {
   Scripts,
   Tags,
   TileMap,
+  type TextureAsset,
   type TileData,
   newGuid,
   textureMetaToJson,
@@ -472,6 +473,7 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         }));
       }
       if (!kind || kind === "clips") out.clips = [...db.clips.values()].map((c) => ({ name: c.name, guid: c.guid, path: c.path }));
+      if (!kind || kind === "fonts") out.fonts = [...db.fonts.values()].map((f) => ({ name: f.name, guid: f.guid, path: f.path }));
       if (!kind || kind === "prefabs") out.prefabs = [...db.prefabs.values()].map((p) => ({ name: p.name, guid: p.guid, path: p.path }));
       if (!kind || kind === "sounds") out.sounds = [...db.sounds.values()].map((s) => ({ name: s.name, guid: s.guid, path: s.path }));
       if (!kind || kind === "scenes") out.scenes = (await walk(editor.fs)).filter(isScene);
@@ -847,6 +849,34 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
       return { path: p, guid, name: editor.db.clips.get(p)?.name, frames: ids.length, use: { SpriteAnimator: { clip: guid } } };
     },
 
+    create_font: async ({ texture, cell, chars, letterSpacing = 1, lineSpacing = 1, monospace = false, path }) => {
+      noEdits(editor);
+      const tex = [...editor.db.textures.values()].find((t) => t.path === texture || t.meta.guid === texture || t.asset.name === texture);
+      if (!tex) throw new BridgeError(`No image "${texture}". Use list_assets with kind "textures".`);
+      if (!Array.isArray(cell) || cell.length !== 2 || cell.some((n) => typeof n !== "number" || n < 1)) throw new BridgeError("`cell` is [w, h] in pixels, the size of one letter's cell");
+      if (typeof chars !== "string" || !chars) throw new BridgeError("`chars` is the characters in the image, left to right, top to bottom");
+      // measured letter widths need the pixels, which only the editor (a browser) can read
+      const pixels = monospace ? null : readPixels(tex.asset);
+      let p: string | undefined;
+      if (path !== undefined) {
+        p = projectPath(path);
+        if (!p.endsWith(".font.json")) p += ".font.json";
+      }
+      const fontPath = await editor.db.createGridFont(tex.path, { cell: [cell[0], cell[1]], chars, letterSpacing, lineSpacing, pixels, path: p });
+      editor.emit("assets");
+      editor.emit("world");
+      const font = editor.assets.fonts.get(editor.db.fonts.get(fontPath)!.guid)!;
+      return {
+        path: fontPath,
+        name: font.name,
+        glyphs: font.glyphs.size,
+        lineHeight: font.lineHeight,
+        proportional: !!pixels,
+        ...(monospace || pixels ? {} : { note: "Every letter is a whole cell wide (monospace): letter widths can only be measured in the editor" }),
+        use: { Text2D: { font: font.name, size: font.lineHeight }, UIText: { font: font.name, size: font.lineHeight * 2 } },
+      };
+    },
+
     read_tiles: ({ id }) => {
       const e = need(editor, id);
       if (!world.has(e, TileMap)) throw new BridgeError(`${editor.entityName(e)} has no TileMap`);
@@ -1180,6 +1210,7 @@ export const MUTATING = new Set([
   "slice_texture",
   "edit_sprites",
   "create_animation",
+  "create_font",
   "paint_tiles",
   "create_entity",
   "set_fields",
@@ -1201,3 +1232,23 @@ export const MUTATING = new Set([
 ]);
 
 export { BridgeError };
+
+/** A texture's RGBA pixels, or null where images can't be read (headless, or not loaded). */
+function readPixels(tex: TextureAsset): Uint8ClampedArray | null {
+  const img = tex.source as CanvasImageSource | null;
+  if (!img || !tex.width || !tex.height) return null;
+  try {
+    const canvas =
+      typeof OffscreenCanvas !== "undefined"
+        ? new OffscreenCanvas(tex.width, tex.height)
+        : typeof document !== "undefined"
+          ? Object.assign(document.createElement("canvas"), { width: tex.width, height: tex.height })
+          : null;
+    const ctx = canvas?.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined;
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, tex.width, tex.height).data;
+  } catch {
+    return null;
+  }
+}

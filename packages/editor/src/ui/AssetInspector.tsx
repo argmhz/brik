@@ -1,7 +1,7 @@
 import { type Slicing, type TextureMeta, type TextureSettings, cellForCount, gridCount, sliceSprites } from "@brik/runtime";
 import { For, Match, Show, Switch, createEffect, createSignal, on } from "solid-js";
-import { isAudio, isClip, isImage, isPrefab, isScene, textureName } from "../core/asset-db";
-import { ClipInspector, MakeAnimation, PrefabInspector, SoundInspector } from "./asset-panels";
+import { isAudio, isClip, isFont, isImage, isPrefab, isScene, textureName } from "../core/asset-db";
+import { ClipInspector, FontInspector, MakeAnimation, MakeFont, PrefabInspector, SoundInspector } from "./asset-panels";
 import { leaveScene } from "./AskDialog";
 import type { Editor } from "../core/editor";
 import { isScriptFile } from "../core/scripts";
@@ -28,6 +28,10 @@ export function AssetInspector(props: { editor: Editor; path: string }) {
           </div>
           <TextureInspector editor={editor} path={props.path} />
           <MakeAnimation editor={editor} path={props.path} />
+          <MakeFont editor={editor} path={props.path} />
+        </Match>
+        <Match when={isFont(props.path)}>
+          <FontInspector editor={editor} path={props.path} />
         </Match>
         <Match when={isClip(props.path)}>
           <ClipInspector editor={editor} path={props.path} />

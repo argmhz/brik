@@ -168,10 +168,11 @@ export const Text2D = defineComponent(
   "Text2D",
   {
     text: withMeta(t.string("Tekst"), { editor: "multiline" }),
-    /** Font size in world units. */
+    /** Font size in world units. A bitmap font's line height is this size (its own line height, or a multiple, keeps pixels sharp). */
     size: withMeta(t.f32(16), { min: 1, step: 1 }),
     color: t.color(1, 1, 1, 1),
-    font: t.string("sans-serif"),
+    /** A browser font ("sans-serif", "monospace", ...) or the name of a bitmap font in the project. */
+    font: withMeta(t.string("sans-serif"), { editor: "font" }),
     align: t.enum(["left", "center", "right"] as const, "center"),
     bold: t.bool(false),
     /** Wrap lines longer than this (world units). 0 means no wrapping. */

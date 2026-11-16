@@ -1,10 +1,11 @@
-import { type AnimationClip, type AnimationMode, type Sound, type SpriteRef, PrefabInstance, clipLength, frameAt } from "@brik/runtime";
-import { For, Show, createEffect, createSignal, on, onCleanup } from "solid-js";
+import { type AnimationClip, type AnimationMode, type BitmapFont, type Sound, type SpriteRef, type TextureAsset, PrefabInstance, clipLength, frameAt, gridFont, layoutBitmapText } from "@brik/runtime";
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
 import type { Editor } from "../core/editor";
 import { placePrefab } from "../core/prefabs";
 import { MenuItem, openPopup } from "./Popup";
 import { NumberBox, SpriteThumb, TextBox, allSprites, spriteLabel } from "./fields";
 import { reportError, toast, useVersion } from "./hooks";
+import { texturePixels } from "./image-grid";
 import { setToolWindow } from "./ui-state";
 
 // ------------------------------------------------------------------ animation clips
@@ -247,6 +248,158 @@ export function MakeAnimation(props: { editor: Editor; path: string }) {
           Lav animation ({Math.max(0, last() - from() + 1)} frames)
         </button>
       </div>
+    </Show>
+  );
+}
+
+// ------------------------------------------------------------------ bitmap fonts
+
+/** The printable ASCII characters, in the order most bitmap font images use. */
+export const ASCII_CHARS = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+const PREVIEW_TEXT = "Hej verden! 0123456789\nABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** Draws text in a bitmap font onto a canvas, at a whole-number scale so pixels stay square. */
+function FontPreview(props: { font: () => Pick<BitmapFont, "glyphs" | "lineHeight" | "base" | "kerning"> | null; texture: () => TextureAsset | undefined; text?: string }) {
+  let canvas!: HTMLCanvasElement;
+  createEffect(() => {
+    const font = props.font();
+    const tex = props.texture();
+    const img = tex?.source as CanvasImageSource | null | undefined;
+    const ctx = canvas.getContext("2d")!;
+    if (!font || !img) {
+      canvas.width = canvas.height = 0;
+      return;
+    }
+    const layout = layoutBitmapText({ guid: "", name: "", texture: "", ...font }, props.text ?? PREVIEW_TEXT, 0, "left");
+    const scale = Math.max(1, Math.floor(260 / Math.max(1, layout.width)));
+    canvas.width = Math.max(1, layout.width * scale);
+    canvas.height = Math.max(1, layout.height * scale);
+    ctx.imageSmoothingEnabled = false;
+    for (const q of layout.quads) {
+      const g = q.glyph;
+      ctx.drawImage(img, g.x, g.y, g.w, g.h, q.x * scale, q.y * scale, g.w * scale, g.h * scale);
+    }
+  });
+  return (
+    <div class="texture-preview">
+      <canvas ref={canvas} />
+    </div>
+  );
+}
+
+/** "Lav bitmap-font" for an image with letters in a grid of equal cells. */
+export function MakeFont(props: { editor: Editor; path: string }) {
+  const editor = props.editor;
+  const version = useVersion(editor, "assets");
+  const entry = () => (version(), editor.db.textures.get(props.path));
+  const startCell = (): [number, number] => {
+    const s = entry()?.meta.slicing;
+    return s?.mode === "grid" ? [s.cell[0], s.cell[1]] : [8, 8];
+  };
+  const [open, setOpen] = createSignal(false);
+  const [cell, setCell] = createSignal<[number, number]>(startCell());
+  const [chars, setChars] = createSignal(ASCII_CHARS);
+  const [proportional, setProportional] = createSignal(true);
+  const [letterSpacing, setLetterSpacing] = createSignal(1);
+  createEffect(on(() => props.path, () => setCell(startCell())));
+
+  // reading the pixels is slow, so only when the image or the checkbox changes
+  const pixels = createMemo(() => {
+    const e = entry();
+    return e && proportional() ? texturePixels(e.asset) : null;
+  });
+  const draft = () => {
+    const e = entry();
+    if (!e || !e.asset.width) return null;
+    return { ...gridFont({ width: e.asset.width, height: e.asset.height, cell: cell(), chars: chars(), letterSpacing: letterSpacing(), pixels: pixels() }), kerning: new Map() };
+  };
+
+  const make = async () => {
+    try {
+      const path = await editor.db.createGridFont(props.path, { cell: cell(), chars: chars(), letterSpacing: letterSpacing(), pixels: pixels() });
+      editor.emit("assets");
+      editor.emit("world");
+      editor.selectAsset(path);
+      toast(`Bitmap-font oprettet: ${path}`);
+    } catch (err) {
+      reportError(err, "Kunne ikke lave font");
+    }
+  };
+
+  return (
+    <>
+      <div class="section-title" style={{ cursor: "pointer" }} onClick={() => setOpen(!open())}>
+        {open() ? "▾" : "▸"} Lav bitmap-font
+      </div>
+      <Show when={open()}>
+        <div class="readonly hint" style={{ "white-space": "normal" }}>
+          Til et billede med bogstaver i et grid af lige store celler, i samme rækkefølge som tegnene nedenfor.
+        </div>
+        <div class="component-body">
+          <span class="field-label">Celle (b × h)</span>
+          <div class="field-row">
+            <div class="part">
+              <span class="x">B</span>
+              <NumberBox value={() => cell()[0]} onCommit={(v) => setCell([v, cell()[1]])} integer min={1} />
+            </div>
+            <div class="part">
+              <span class="y">H</span>
+              <NumberBox value={() => cell()[1]} onCommit={(v) => setCell([cell()[0], v])} integer min={1} />
+            </div>
+          </div>
+          <span class="field-label">Tegn i rækkefølge</span>
+          <textarea rows={3} value={chars()} onChange={(ev) => setChars(ev.currentTarget.value)} spellcheck={false} />
+          <span class="field-label" title="Hvert bogstav er så bredt som sine egne pixels. Slået fra: alle bogstaver er en hel celle (monospace).">
+            Måle bredde pr. tegn
+          </span>
+          <input type="checkbox" checked={proportional()} onChange={(ev) => setProportional(ev.currentTarget.checked)} />
+          <span class="field-label">Bogstavafstand (px)</span>
+          <NumberBox value={letterSpacing} onCommit={setLetterSpacing} integer min={0} max={16} />
+        </div>
+        <FontPreview font={draft} texture={() => entry()?.asset} />
+        <div class="button-row">
+          <button class="primary" onClick={make}>
+            Lav bitmap-font
+          </button>
+        </div>
+      </Show>
+    </>
+  );
+}
+
+/** A `.font.json`: its letters, line height and how to use it. */
+export function FontInspector(props: { editor: Editor; path: string }) {
+  const editor = props.editor;
+  const version = useVersion(editor, "assets");
+  const font = () => {
+    version();
+    const guid = editor.db.fonts.get(props.path)?.guid;
+    return guid ? editor.assets.fonts.get(guid) : undefined;
+  };
+  const [text, setText] = createSignal(PREVIEW_TEXT);
+  return (
+    <Show when={font()} fallback={<div class="empty-note">Filen kunne ikke læses</div>}>
+      {(f) => (
+        <>
+          <FontPreview font={() => f()} texture={() => editor.assets.textures.get(f().texture)} text={text()} />
+          <div class="component-body">
+            <span class="field-label">Prøvetekst</span>
+            <textarea rows={2} value={text()} onInput={(ev) => setText(ev.currentTarget.value)} />
+            <span class="field-label">Tegn</span>
+            <span class="readonly" style={{ "white-space": "normal", "word-break": "break-all" }}>
+              {[...f().glyphs.keys()].join("")}
+            </span>
+            <span class="field-label">Linjehøjde</span>
+            <span class="readonly">{f().lineHeight} px</span>
+            <span class="field-label">Billede</span>
+            <span class="readonly">{editor.assets.textures.get(f().texture)?.name ?? "Mangler"}</span>
+          </div>
+          <div class="readonly hint" style={{ "white-space": "normal" }}>
+            Brug den ved at sætte <code>font</code> på en Text2D eller UIText til <code>"{f().name}"</code>. En <code>size</code> på {f().lineHeight} (eller{" "}
+            {f().lineHeight * 2}, {f().lineHeight * 3}, …) holder pixels skarpe.
+          </div>
+        </>
+      )}
     </Show>
   );
 }

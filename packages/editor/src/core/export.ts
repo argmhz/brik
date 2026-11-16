@@ -7,6 +7,7 @@ import {
   PHYSICS_COMPONENTS,
   type SceneEntityData,
   DEFAULT_PACK_OPTIONS,
+  fontToJson,
   packRects,
   valuesForFile,
 } from "@brik/runtime";
@@ -184,6 +185,8 @@ async function wholeTextureRefs(editor: Editor): Promise<Set<string>> {
   }
   for (const p of editor.assets.prefabs.values()) visit(p.data);
   for (const c of editor.assets.clips.values()) visit(c.frames);
+  // a bitmap font's letters are found by their place in the whole image
+  for (const f of editor.assets.fonts.values()) out.add(f.texture);
   return out;
 }
 
@@ -348,6 +351,7 @@ export async function exportGame(editor: Editor, deps: ExportDeps, settings: Bui
     pages: manifestPages,
     textures,
     clips: [...editor.assets.clips.values()],
+    fonts: [...editor.assets.fonts.values()].map((f) => ({ name: f.name, text: fontToJson(f) })),
     prefabs,
     sounds,
     scenes,

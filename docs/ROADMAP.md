@@ -11,7 +11,7 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 | Område | Hvad der er på plads |
 |---|---|
 | Kerne | ECS, scener og prefabs (med overrides pr. instans), scene-skift med fade og data, tweens og timere |
-| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), materialer (blink, omrids og additiv glød) og effekter på hele billedet (bloom, farvekorrektion, vignet, CRT og pixelering), skærmryst og zoom-stød (der følger "reducer bevægelse"), hit-stop og slowmotion |
+| Grafik | WebGL2-rendering, sprites, sprite sheets og atlasser, animationer, partikler, tekst og former, kamera med grænser, parallax-lag, 2D-lys med farve (punktlys og kegler), materialer (blink, omrids og additiv glød), bitmap-fonte til pixel-tekst (fra et grid-billede eller BMFont) og effekter på hele billedet (bloom, farvekorrektion, vignet, CRT og pixelering), skærmryst og zoom-stød (der følger "reducer bevægelse"), hit-stop og slowmotion |
 | Editor | Hierarki, scene view med gizmos og forhåndsvisning af parallax-lag, panorering med hjulet, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse, visning af collidere under Play |
 | Tilemaps | Maling i scene view, auto-tiling med terræner, kollisionsform pr. tile (hel, pynt, envejs, halv, skråninger), import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
@@ -28,10 +28,6 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 ## Næste: det, et færdigt spil mangler
 
 Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved at gennemgå motoren for ting, et rigtigt spil hurtigt støder på. Rækkefølgen er vores forslag.
-
-**Giver spil et bedre udseende**
-
-- [ ] **Bitmap-fonte** til pixel-art-tekst
 
 **Gør det lettere at bygge spil**
 

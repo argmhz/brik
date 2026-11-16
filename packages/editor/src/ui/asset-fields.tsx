@@ -33,6 +33,37 @@ export function assetLabel(editor: Editor, kind: AssetKind, guid: string | null)
   return assetsOfKind(editor, kind).find((a) => a.guid === guid)?.name ?? "Mangler";
 }
 
+const BROWSER_FONTS = ["sans-serif", "serif", "monospace", "cursive", "system-ui"];
+let fontListId = 0;
+
+/** A font name: the project's bitmap fonts first, then browser fonts. Any other name can be typed. */
+export function FontField(props: { editor: Editor; value: () => string; onCommit: (v: string) => void }) {
+  const id = `brik-fonts-${++fontListId}`;
+  let el!: HTMLInputElement;
+  createEffect(() => {
+    const v = props.value();
+    if (document.activeElement !== el) el.value = v;
+  });
+  const bitmap = () => [...props.editor.assets.fonts.values()].map((f) => f.name).sort();
+  return (
+    <>
+      <input
+        ref={el}
+        type="text"
+        list={id}
+        title="En bitmap-font fra projektet eller en browserfont"
+        onKeyDown={(ev) => ev.key === "Enter" && el.blur()}
+        onChange={() => el.value !== props.value() && props.onCommit(el.value)}
+        onBlur={() => el.value !== props.value() && props.onCommit(el.value)}
+      />
+      <datalist id={id}>
+        <For each={bitmap()}>{(n) => <option value={n}>bitmap-font</option>}</For>
+        <For each={BROWSER_FONTS}>{(n) => <option value={n} />}</For>
+      </datalist>
+    </>
+  );
+}
+
 /** First frame of a clip, for thumbnails. */
 export function clipThumb(editor: Editor, guid: string | null): SpriteRef | null {
   return guid ? (editor.assets.clips.get(guid)?.frames[0]?.sprite ?? null) : null;

@@ -1,6 +1,6 @@
 import type { SpriteRef } from "@brik/runtime";
 import { For, Show, createResource, createSignal } from "solid-js";
-import { SCENE_EXTENSION, assetName, isImage, isScene, metaPath } from "../core/asset-db";
+import { SCENE_EXTENSION, assetName, isFont, isImage, isScene, metaPath } from "../core/asset-db";
 import type { Editor } from "../core/editor";
 import { type FsEntry, joinPath, splitPath } from "../core/fs";
 import { defaultScene, sceneToJson } from "../core/project";
@@ -46,7 +46,7 @@ export function AssetBrowser(props: { editor: Editor }) {
       if (!dir()) setDir("assets");
       const report = editor.db.lastImport;
       for (const w of report.warnings) editor.log("warn", `Import: ${w}`);
-      const extra = report.created.length ? `, ${report.created.length} oprettet (sprites, animationer, prefabs)` : "";
+      const extra = report.created.length ? `, ${report.created.length} oprettet (sprites, animationer, prefabs, fonte)` : "";
       toast(
         report.warnings.length
           ? `Importeret med ${report.warnings.length} advarsel${report.warnings.length === 1 ? "" : "r"}. Se Console.`
@@ -275,7 +275,9 @@ export function AssetBrowser(props: { editor: Editor }) {
                           ) : 
                           entry.kind === "directory"
                             ? "📁"
-                            : isScene(entry.path)
+                            : isFont(entry.path)
+                              ? "🔤"
+                              : isScene(entry.path)
                               ? "🎬"
                               : isScriptFile(entry.path)
                                 ? "📜"
@@ -286,7 +288,7 @@ export function AssetBrowser(props: { editor: Editor }) {
                       </Show>
                     </div>
                     <div class="name">
-                      {isScene(entry.path) || assetKindOf(entry.path) ? assetName(entry.path) : entry.name}
+                      {isScene(entry.path) || isFont(entry.path) || assetKindOf(entry.path) ? assetName(entry.path) : entry.name}
                     </div>
                     <Show when={subs().length > 0}>
                       <button

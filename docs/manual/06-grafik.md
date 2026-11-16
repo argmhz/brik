@@ -72,11 +72,28 @@ Til at lægge en farve over hele skærmen, fx et rødt blink ved skade, er der `
 | Komponent | Bruges til |
 |---|---|
 | `ParticleEmitter2D` | Partikler. De kan spille i verdens- eller lokale koordinater (`space`). Fra et script: `this.emitParticles(20)`. Med `collide` støder de mod faste colliders (ikke triggere): `bounce` er hoppet (0 til 1), `slide` hvor meget fart de beholder langs fladen, og `dieOnHit` lader dem forsvinde ved første stød, fx regn og gnister. `collisionMask` vælger, hvilke grupper de rammer. Kun partikler i verdens-koordinater kolliderer. |
-| `Text2D` | Tekst i verden |
+| `Text2D` | Tekst i verden, i en browserfont eller en [bitmap-font](#bitmap-fonte-pixel-tekst) |
 | `Shape2D` | Udfyldte og optegnede former. Gode til prototyper og fejlsøgning |
 | `SpriteAnimator` | Afspiller en animation |
 
 Alle felter står i [Komponentreferencen](komponenter.md).
+
+## Bitmap-fonte: pixel-tekst
+
+En browserfont bliver udglattet og passer sjældent til pixel art. En bitmap-font tegner i stedet hvert bogstav fra et billede, så teksten er lige så skarp som resten af spillet. Den virker i både `Text2D` og `UIText`.
+
+En bitmap-font er en fil `navn.font.json` ved siden af billedet med bogstaverne. Du kan lave den på to måder:
+
+- **Fra et billede med bogstaver i et grid.** Vælg billedet i Assets, fold **Lav bitmap-font** ud i inspectoren, og angiv cellestørrelsen og tegnene i den rækkefølge, de står i billedet (venstre mod højre, oppefra og ned). Med **Måle bredde pr. tegn** får hvert bogstav sin egen bredde, og en tom celle bliver et mellemrum. Uden den er alle bogstaver lige brede (monospace). Forhåndsvisningen viser resultatet, før du trykker **Lav bitmap-font**.
+- **Fra et font-værktøj.** Træk en BMFont-fil (`.fnt`, som tekst eller XML) ind i Assets sammen med dens billede. Den laves af fx BMFont, Hiero og Littera. Kerning kommer med. Fonte med flere billeder bruger kun det første.
+
+Brug fonten ved at skrive dens navn i feltet `font` på en `Text2D` eller `UIText`. Feltet foreslår projektets bitmap-fonte. `size` er linjehøjden, og står den på fontens egen linjehøjde eller et multiplum af den, bliver pixels skarpe. Fontens inspector viser linjehøjden og en prøvetekst.
+
+```ts
+this.get(Text2D).text = `Point: ${this.score}`; // samme kode som med en browserfont
+```
+
+Mangler fonten små bogstaver, bruges de store, og et tegn, der slet ikke findes, vises som `?` (hvis fonten har det). Fontens egen linjehøjde bruges, så `lineHeight` på `Text2D` virker kun på browserfonte. Billedet sættes til filteret *Nearest*, når fonten laves. I det eksporterede spil pakkes billedet altid helt, så bogstaverne ligger, hvor fonten siger. Omrids fra `SpriteMaterial` virker ikke på bitmap-tekst, men blink og additiv glød gør.
 
 ## Tegnerækkefølge
 

@@ -132,6 +132,24 @@ describe("export", () => {
     expect(app.world.store(Transform2D).position.x[hero]).toBeCloseTo(30, 0);
   });
 
+  it("ships bitmap fonts, with their image kept whole on the atlas so the letters are where the font says", async () => {
+    const { editor } = await project();
+    // a sliced image: without the font its sprites could be packed one by one
+    const a = editor.db.textures.get("assets/a.png")!;
+    await editor.db.saveMeta("assets/a.png", { ...a.meta, slicing: { mode: "grid", cell: [8, 8], offset: [0, 0], spacing: [0, 0], pivot: [0.5, 0.5] }, sprites: runtime.sliceSprites({ mode: "grid", cell: [8, 8], offset: [0, 0], spacing: [0, 0], pivot: [0.5, 0.5] }, 32, 16, "a", []) });
+    await editor.db.createGridFont("assets/a.png", { cell: [8, 8], chars: "ABCDEFGH" });
+    await editor.saveScene("scenes/main.scene.json");
+    const deps = { esbuild, playerFiles: { "brik.js": "", "brik-physics.js": "" }, drawPage: async () => new Uint8Array([9]) };
+    const result = await exportGame(editor, deps, { atlas: true, pack: { maxSize: 256, padding: 2, extrude: 1, pot: false } });
+    const m = JSON.parse(new TextDecoder().decode(result.files["game.json"])) as GameManifest;
+    expect(m.fonts?.map((f) => f.name)).toEqual(["a"]);
+    const font = runtime.parseFont(m.fonts![0].text, "a");
+    const tex = m.textures.find((t) => t.guid === font.texture)!;
+    // whole: the texture's region is the full image, so glyph x/y plus the region's corner is right
+    expect([tex.region[2], tex.region[3]]).toEqual([32, 16]);
+    expect(tex.sprites.find((s) => s.name === "a_1")!.rect.slice(0, 2)).toEqual([tex.region[0] + 8, tex.region[1]]);
+  });
+
   it("flags games that use physics, so the player loads Rapier before starting", async () => {
     const { editor } = await project();
     editor.createEntity("rect", { name: "Floor", extra: { Collider2D: {} } });

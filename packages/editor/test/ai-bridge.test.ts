@@ -772,3 +772,27 @@ export class Dt extends Behaviour {
   });
 });
 
+
+describe("bitmap fonts", () => {
+  it("create_font makes a font from drawn letters; Text2D and UIText use it by name", async () => {
+    const { editor, h } = await setup();
+    await h.draw_sprites({ path: "assets/letters.png", palette: { w: "#fff" }, sprites: { a: ["www", "w.w", "www"], b: ["ww.", "www", "www"] } });
+    const made = (await h.create_font({ texture: "assets/letters.png", cell: [3, 3], chars: "AB" })) as {
+      path: string;
+      name: string;
+      glyphs: number;
+      lineHeight: number;
+      proportional: boolean;
+      note?: string;
+    };
+    expect(made).toMatchObject({ path: "assets/letters.font.json", name: "letters", lineHeight: 4, glyphs: 3 });
+    // no pixels to read in tests (as headless): monospace, and it says so
+    expect(made.proportional).toBe(false);
+    expect(made.note).toMatch(/monospace/);
+    expect(editor.db.textures.get("assets/letters.png")!.meta.settings.filter).toBe("nearest");
+    expect(((await h.list_assets({ kind: "fonts" })) as { fonts: { name: string }[] }).fonts.map((f) => f.name)).toEqual(["letters"]);
+    // the file is read back the same way after a reload
+    expect(await editor.fs.readText("assets/letters.font.json")).toContain('"A": [0, 0, 3, 3, 0, 0, 4]');
+    await expect(async () => h.create_font({ texture: "nope", cell: [3, 3], chars: "A" })).rejects.toThrow(/No image/);
+  });
+});

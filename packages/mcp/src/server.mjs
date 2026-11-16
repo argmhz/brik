@@ -26,7 +26,7 @@ How to work:
 - Gravity and collisions: a falling object needs RigidBody2D (type "dynamic") plus Collider2D; static ground needs only Collider2D. Platformer characters use RigidBody2D "kinematic" + CharacterController2D + Collider2D and are moved with this.moveCharacter(dx, dy) in a script.
 - Movement: do it with dt in onUpdate, or in onFixedUpdate for anything physics- or collision-sensitive (moveCharacter, velocities). Movement in onUpdate at a high frame rate can tunnel through thin colliders. step({ fps }) lets you test other frame rates (30, 144).
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
-- Art: draw_sprites makes pixel-art PNGs from text rows; import_asset copies an image or sound from disk into the project; slice_texture cuts a sprite sheet into a grid and edit_sprites renames sprites and sets pivots; create_animation turns sprites into clips. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
+- Art: draw_sprites makes pixel-art PNGs from text rows; import_asset copies an image or sound from disk into the project; slice_texture cuts a sprite sheet into a grid and edit_sprites renames sprites and sets pivots; create_animation turns sprites into clips; create_font turns an image of letters into a bitmap font for Text2D/UIText. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
 - Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space, or moving the mouse), click (UI buttons or points in the world), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
 - The scene is not saved automatically. Call save_scene when the user wants to keep the result.
 
@@ -107,8 +107,8 @@ tool(
 
 tool(
   "list_assets",
-  "Textures (with their sprite ids), animation clips, prefabs, sounds, scenes and script files.",
-  { kind: z.enum(["textures", "clips", "prefabs", "sounds", "scenes", "scripts"]).optional() },
+  "Textures (with their sprite ids), animation clips, bitmap fonts, prefabs, sounds, scenes and script files.",
+  { kind: z.enum(["textures", "clips", "fonts", "prefabs", "sounds", "scenes", "scripts"]).optional() },
   { readOnly: true },
 );
 
@@ -236,6 +236,20 @@ tool(
     fps: z.number().positive().optional().describe("Frames per second (default 8)"),
     mode: z.enum(["loop", "once", "pingpong"]).optional(),
     events: z.array(z.object({ frame: z.number().int(), name: z.string() })).optional().describe("Calls onAnimationEvent(name) in scripts when the frame shows"),
+  },
+);
+
+tool(
+  "create_font",
+  "Creates or replaces a bitmap font (<name>.font.json) from an image with letters in a grid of equal cells, in the order of `chars` (left to right, top to bottom). Text2D and UIText use it when their `font` is its name; a `size` equal to the font's line height (or a multiple) keeps pixels sharp. In the editor each letter is as wide as its own pixels; headless (or with monospace: true) every letter is a whole cell. Draw the letters with draw_sprites, all one size, then pass that image. Sets the image's filter to nearest.",
+  {
+    texture: z.string().describe("Image path, guid or name, e.g. assets/font.png"),
+    cell: z.tuple([z.number(), z.number()]).describe("Size of one letter's cell in pixels, e.g. [6, 8]"),
+    chars: z.string().describe('The characters in the image in order, e.g. "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?.,:- " (a space can be an empty cell)'),
+    letterSpacing: z.number().int().min(0).optional().describe("Pixels between letters (default 1)"),
+    lineSpacing: z.number().int().min(0).optional().describe("Extra pixels between lines (default 1)"),
+    monospace: z.boolean().optional().describe("Every letter a whole cell wide"),
+    path: z.string().optional().describe("Default: next to the image, <image name>.font.json (the file name is the font name)"),
   },
 );
 
