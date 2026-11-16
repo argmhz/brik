@@ -628,6 +628,19 @@ Spillet **Skovvagt** (`examples/skovvagt`) blev bygget headless gennem MCP-værk
 - Headless kan ikke måle bogstavbredder (ingen pixels), så `create_font` uden editoren giver monospace.
 - Kun ét billede pr. font: en BMFont med flere sider mister tegnene på de andre.
 
+### Pathfinding (november 2026)
+- [x] A* på et grid (`gridPath`, 4 eller 8 retninger uden at skære hjørner, med et loft over søgningen) og `findPath(world, fra, til)`. Grid'et er en TileMaps celler (den første med en solid `TileMapCollider`, eller `map`), ellers 16 × 16. Vægge er solide tiles (kollision `none` og `one-way` er åbne) og statiske colliders, gjort større med gængerens radius, dog mindst 0,45 celle, så en tynd væg uden for grid'et ikke falder mellem to cellecentre. Grid'et gemmes, til en tile sættes eller en statisk collider flytter sig.
+- [x] Ruten glattes fra gængerens rigtige position og tjekkes mod de voksede vægbokse (ikke kun cellerne), så den ikke skærer hjørner. Et mål inde i en væg giver vejen til den nærmeste åbne celle.
+- [x] `NavAgent2D`: `target` (jagt, ny vej hvert `repathInterval`) eller `destination` via `navigateTo`, `speed`, `stopDistance`, `radius` (0: fra collideren), `diagonal`, `map`; `status`, `path` og `velocity` til læsning. Bevæger sig gennem `CharacterController2D`, ellers `Velocity2D` eller positionen. `NavigationFinished` og hooket `onArrive(reached)`.
+- [x] Scripts: `this.navigateTo(punkt | entity)`, `this.stopNavigation()`, `this.findPath(til)`.
+- [x] Editor: en valgt agent viser sine spærrede celler i Scene-fanen og under Play sin rute og sit mål. "Tilføj komponent". MCP: `find_path` (punkter, længde, når den frem). Manual (Fysik, Scripts, Tilemaps, AI) og AI-guiden.
+- [x] Afprøvet i editoren med shooter-skabelonen: en fjende bag en væg går uden om den og holder afstand til hjørnet.
+
+**Kendte begrænsninger**
+- Kun top-down: ingen hop eller fald (platformspil).
+- Ingen omkostning pr. tile (mudder, vand), og agenter undgår ikke hinanden.
+- Roterede colliders og tilemaps bliver til deres omsluttende kasse.
+
 ### Fase 6 — 3D
 - [ ] 3D-matematik, `Transform3D`, `Camera3D` og `MeshRenderer`
 - [ ] PBR, lys, shadows og post-processing

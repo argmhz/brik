@@ -37,6 +37,8 @@ if (ground && this.input.axis("vertical") < 0 && this.input.action("jump").press
 
 Se [Fysik](fysik.md).
 
+Tiles med kollision er også vægge for fjender, der finder vej med `NavAgent2D`. Se [Fjender, der finder vej](fysik.md#fjender-der-finder-vej).
+
 ## Store baner
 
 I scenefilen gemmes et tilemap som rækker af tegn med en forklaring (`legend`), fx `"gggg"` for fire græs-tiles, ligesom `read_tiles` viser det. Det holder filerne små og læselige. Ældre filer med én linje pr. tile kan stadig læses, og et kort, der mest er tomt, gemmes på den gamle måde.

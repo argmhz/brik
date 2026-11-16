@@ -796,3 +796,19 @@ describe("bitmap fonts", () => {
     await expect(async () => h.create_font({ texture: "nope", cell: [3, 3], chars: "A" })).rejects.toThrow(/No image/);
   });
 });
+
+describe("find_path", () => {
+  it("finds a way around a wall entity, from an entity or a point", async () => {
+    const { h } = await setup();
+    await h.create_entity({ kind: "rect", name: "Væg", components: { Transform2D: { position: { x: 0, y: 0 } }, Collider2D: { size: { x: 16, y: 160 } }, Shape2D: { size: { x: 16, y: 160 } } } });
+    const { id } = (await h.create_entity({ kind: "rect", name: "Fjende", components: { Transform2D: { position: { x: -60, y: 0 } }, Collider2D: { size: { x: 12, y: 12 } }, NavAgent2D: {} } })) as { id: string };
+    const r = (await h.find_path({ from: id, to: { x: 60, y: 0 } })) as { found: boolean; reachesGoal: boolean; radius: number; points: { x: number; y: number }[]; length: number };
+    expect(r.found).toBe(true);
+    expect(r.reachesGoal).toBe(true);
+    expect(r.radius).toBeCloseTo(5.4);
+    // around an end of the wall, so longer than the straight 120
+    expect(r.points.some((p) => Math.abs(p.y) >= 80)).toBe(true);
+    expect(r.length).toBeGreaterThan(160);
+    await expect(async () => h.find_path({ from: "nope", to: { x: 0, y: 0 } })).rejects.toThrow();
+  });
+});

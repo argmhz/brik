@@ -35,6 +35,7 @@ Felter med `@expose` kan rettes i inspectoren, og værdien gemmes i scenen.
 | `onAnimationEvent(name)` | Animationen når en frame med et event |
 | `onAnimationFinished(clip)` | En animation, der kun spiller én gang, er færdig |
 | `onTimer` | Entity'ens `Timer` løber ud |
+| `onArrive(reached)` | Entity'ens `NavAgent2D` er nået derhen, hvor `navigateTo` sendte den (`reached` er falsk, hvis den kun kom så tæt på, som den kunne) |
 | `onClick` | Entity'ens `UIButton` klikkes |
 
 UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
@@ -57,6 +58,7 @@ UI-elementernes hooks (`onValueChanged`, `onSubmit`) står i [UI](ui.md).
 | `this.loadScene("level2", { fade: 0.4, data })` | Skifter scene, evt. med fade og data, der læses med `this.sceneData` |
 | `this.shakeCamera(8, 0.3)`, `this.punchCamera(0.08)`, `this.hitStop(0.06)`, `this.slowMotion(0.3, 1)` | Skærmryst, zoom-stød, frys og slowmotion ([Grafik](grafik.md#skaermryst-zoom-stoed-og-hit-stop)) |
 | `this.flashSprite(0.1)`, `this.flashSprite(0.2, { r: 1, g: 0, b: 0 }, other)` | Får en sprite til at blinke i en farve, der falmer ud ([Grafik](grafik.md#materialer-blink-omrids-og-gloed)) |
+| `this.navigateTo(this.find("Player"))`, `this.navigateTo({ x, y })`, `this.findPath({ x, y })` | Går uden om vægge hen til et sted eller efter en entity ([Fysik](fysik.md#fjender-der-finder-vej)) |
 | `this.behaviourOf(Andet, e)` | Taler med et andet script |
 
 > **Pas på** Giv ikke dine egne metoder samme navn som Behaviours egne (fx `setActive` eller `find`), for så skygger de for dem.

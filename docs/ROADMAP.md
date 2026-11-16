@@ -15,7 +15,7 @@ Brik er i dag en komplet 2D-engine med editor, scripting og udgivelse.
 | Editor | Hierarki, scene view med gizmos og forhåndsvisning af parallax-lag, panorering med hjulet, inspector, kode-editor, sprite-editor, animations-tidslinje, flytbare paneler, fortryd, autosave og gendannelse, visning af collidere under Play |
 | Tilemaps | Maling i scene view, auto-tiling med terræner, kollisionsform pr. tile (hel, pynt, envejs, halv, skråninger), import fra Tiled (`.tmj`, `.tmx`) |
 | Scripting | TypeScript med hot reload, hooks, `@expose`, egne komponenter og systemer |
-| Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring (også på skærme over 60 Hz), envejsplatforme (som man kan hoppe ned igennem), led og opslag |
+| Fysik | Rapier 2D: kroppe, colliders, triggers, figurstyring (også på skærme over 60 Hz), envejsplatforme (som man kan hoppe ned igennem), led og opslag. Pathfinding (A*) med `NavAgent2D`, så fjender går uden om vægge i top-down-spil |
 | Input | Tastatur, mus, gamepad (knapper, sticks og d-pad) og touch gennem samme handlinger og akser, med joystick og knapper på skærmen til telefoner og tablets |
 | Gem | `this.save` gemmer point, bane og indstillinger i browseren, så de overlever, at spillet lukkes |
 | UI | Knapper, tekst, billeder, slider, toggle, tekstfelt og kolonner, med tastaturstyring (Tab, Enter, piletaster) og synlig fokusramme |
@@ -31,7 +31,6 @@ Før 3D skal 2D kunne bære et spil, man sender til andre. Listen er fundet ved 
 
 **Gør det lettere at bygge spil**
 
-- [ ] **Pathfinding** (A* på tilemaps) til fjendens AI
 - [ ] **Profiler** med frame-tid, draw calls og antal entities, så man kan finde ud af, hvorfor et spil hakker
 - [ ] **Lokalisering:** tekst på flere sprog
 - [ ] **Fuldskærm og skalering** ved udgivelse, med en klar aftale om pixel-perfekt skalering af selve spillet

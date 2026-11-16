@@ -27,6 +27,7 @@ How to work:
 - Movement: do it with dt in onUpdate, or in onFixedUpdate for anything physics- or collision-sensitive (moveCharacter, velocities). Movement in onUpdate at a high frame rate can tunnel through thin colliders. step({ fps }) lets you test other frame rates (30, 144).
 - Gameplay code goes in Behaviour classes: write_script("scripts/Name.ts", ...) compiles at once and returns errors; then attach_script and set_script_field. Scripts import from "brik", e.g. import { Behaviour, expose, Velocity2D } from "brik". Hooks: onStart, onUpdate(dt), onFixedUpdate(dt), onCollisionEnter(other), onTriggerEnter(other), onClick, ...
 - Art: draw_sprites makes pixel-art PNGs from text rows; import_asset copies an image or sound from disk into the project; slice_texture cuts a sprite sheet into a grid and edit_sprites renames sprites and sets pivots; create_animation turns sprites into clips; create_font turns an image of letters into a bitmap font for Text2D/UIText. Levels: read_tiles shows a TileMap as text, paint_tiles edits it.
+- Enemies walking around walls (top-down): NavAgent2D with target = the player; find_path checks a way exists.
 - Test your work: play, step (a number of frames, optionally holding keys like ArrowRight or pressing Space, or moving the mouse), click (UI buttons or points in the world), inspect_entity (shows live script values while playing), screenshot, get_console, then stop. The scene can't be edited while the game runs.
 - The scene is not saved automatically. Call save_scene when the user wants to keep the result.
 
@@ -95,6 +96,18 @@ tool(
   "inspect_entity",
   "All component values of one entity, its scripts with their exposed fields (and live values while playing), parent, children and prefab link.",
   { id },
+  { readOnly: true },
+);
+
+tool(
+  "find_path",
+  "Finds a walking path around walls, the way a NavAgent2D does: solid tiles (TileMap with a TileMapCollider; tile collision none and one-way are open) and static colliders block, grown by the walker's radius. `from` and `to` are { x, y } or entity ids; with an entity as `from` its radius comes from its NavAgent2D or collider. Returns the points, the length, and whether it reaches the goal (or stops as near as it can). Use it to check that enemies can reach the player, or that a level is passable.",
+  {
+    from: z.union([z.object({ x: z.number(), y: z.number() }), z.string()]),
+    to: z.union([z.object({ x: z.number(), y: z.number() }), z.string()]),
+    radius: z.number().min(0).optional().describe("Walker radius in world units (default: from the `from` entity, else 0)"),
+    diagonal: z.boolean().optional(),
+  },
   { readOnly: true },
 );
 

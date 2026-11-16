@@ -6,7 +6,7 @@ Brik har en MCP-server (`packages/mcp`), så en AI-klient kan arbejde direkte i 
 - oprette og ændre entities, komponenter, prefabs og scener,
 - skrive scripts (den får kompileringsfejl tilbage med det samme) og sætte dem på,
 - importere billeder og lyde fra computeren (`import_asset`), opdele et sprite sheet i et grid (`slice_texture`) og omdøbe sprites og sætte pivots (`edit_sprites`),
-- tegne pixel art (`draw_sprites`: hvert tegn er en pixel, slået op i en palet), lave animationer og bitmap-fonte af den (`create_font`) og male tilemaps ud fra tekst (`paint_tiles`, `read_tiles`),
+- tegne pixel art (`draw_sprites`: hvert tegn er en pixel, slået op i en palet), lave animationer og bitmap-fonte af den (`create_font`), tjekke at fjender kan finde vej (`find_path`) og male tilemaps ud fra tekst (`paint_tiles`, `read_tiles`),
 - trykke Play, gå frem et antal frames med taster holdt nede (fx `ArrowRight` og `Space`), med en anden billedrate (`fps`, fx 30 eller 144), flytte musen (også til et sted på et UI-element, fx 80 % henad en slider), klikke på UI-knapper eller steder i verden (`click`), skrive i og redigere tekstfelter, læse konsollen og tage skærmbilleder af Scene- og Spil-visningen.
 
 Eksempelspillet `examples/mosehop` (åbn mappen i editoren) er bygget på denne måde: grafik, bane, prefabs, scripts og test er lavet gennem MCP-værktøjerne.

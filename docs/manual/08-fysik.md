@@ -107,6 +107,40 @@ this.physics.raycast(origin, dir, distance);
 this.physics.overlapPoint(p);
 ```
 
+## Fjender, der finder vej
+
+`NavAgent2D` får en entity til at gå hen til et sted eller efter en anden entity, uden om vægge. Den er lavet til top-down-spil. I et platformspil skal man hoppe for at komme frem, og det kan den ikke planlægge.
+
+Den nemmeste måde er at sætte `NavAgent2D` på fjenden og vælge spilleren som `target`. Fjenden går så efter spilleren og finder en ny vej hvert halve sekund (`repathInterval`), mens spilleren bevæger sig. Fra et script:
+
+```ts
+override onStart() {
+  this.navigateTo(this.find("Player"));     // gå efter spilleren
+}
+
+override onArrive(reached: boolean) {
+  // kaldes, når den er nået hen til et sted, den blev sendt til
+  this.navigateTo({ x: Math.random() * 300, y: Math.random() * 200 });
+}
+```
+
+| Felt | Bruges til |
+|---|---|
+| `target` | En entity at gå efter. Tom: gå til `destination`, når `navigateTo` kaldes |
+| `speed` | Enheder pr. sekund |
+| `stopDistance` | Hvor tæt på målet den stopper |
+| `radius` | Hvor bred den er. 0: halvdelen af dens `Collider2D` |
+| `diagonal` | Gå også på skrå. Slået fra: kun op, ned og til siderne |
+| `map` | Den TileMap, hvis celler bruges som grid. Tom: den første med en `TileMapCollider` |
+
+**Hvad er en væg?** Tiles i en TileMap med `TileMapCollider` (dog ikke tiles med kollision `none` eller `one-way`) og statiske colliders, altså en `Collider2D` uden `RigidBody2D` eller med en statisk. Triggers og kroppe, der bevæger sig, er ikke vægge. Væggene gøres lige så meget større, som agenten er bred, så den ikke rammer hjørner.
+
+**Bevægelse.** Med en `CharacterController2D` bevæges agenten gennem fysikken og glider langs vægge. Ellers flyttes dens position direkte (eller dens `Velocity2D`, hvis den har en). Agenten bør ligge øverst i hierarkiet. `velocity` (kun til læsning) er dens fart, fx til at vende spriten: `this.get(Sprite).flipX = this.get(NavAgent2D).velocity.x < 0`.
+
+**Se ruten.** Vælg agenten i Scene-fanen: cellerne, den ikke kan gå ind i, er røde. Under Play vises dens rute som en stiplet linje.
+
+**Kun vejen.** `this.findPath({ x, y })` giver punkterne på vejen uden at gå den, eller `null`, hvis der ingen vej er. `this.stopNavigation()` stopper agenten.
+
 ## Kollisionshooks
 
 `onCollisionEnter/Exit(other)` kaldes for faste colliders, `onTriggerEnter/Exit(other)` for triggers.

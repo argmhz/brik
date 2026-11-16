@@ -29,6 +29,8 @@ import {
   Tags,
   TileMap,
   type TextureAsset,
+  findPath,
+  walkerRadius,
   type TileData,
   newGuid,
   textureMetaToJson,
@@ -389,6 +391,40 @@ export function createBridgeHandlers(editor: Editor, ui: BridgeUi = {}): Record<
         out.push(summary(editor, e));
       }
       return out;
+    },
+
+    find_path: ({ from, to, radius, diagonal = true }) => {
+      // global positions are only kept up to date while the game runs or the view draws
+      propagateTransforms.run(world);
+      // a point { x, y } or an entity id: the entity's position
+      const point = (v: unknown, what: string): { x: number; y: number; e?: Entity } => {
+        if (v && typeof v === "object" && typeof (v as { x?: unknown }).x === "number" && typeof (v as { y?: unknown }).y === "number") return v as { x: number; y: number };
+        const e = need(editor, v);
+        const g = world.store(GlobalTransform2D).matrix;
+        if (!world.has(e, GlobalTransform2D)) throw new BridgeError(`\`${what}\` has no position`);
+        return { x: g.tx[e], y: g.ty[e], e };
+      };
+      const a = point(from, "from");
+      const b = point(to, "to");
+      const self = a.e;
+      const r = typeof radius === "number" ? radius : self !== undefined ? walkerRadius(world, self) : 0;
+      const path = findPath(world, a, b, { radius: r, diagonal, self });
+      if (!path) return { found: false, note: "No way there: walls (solid tiles and static colliders, grown by the radius) are in the way, or the search gave up" };
+      let length = 0;
+      let prev = { x: a.x, y: a.y };
+      for (const p of path) {
+        length += Math.hypot(p.x - prev.x, p.y - prev.y);
+        prev = p;
+      }
+      const end = path[path.length - 1] ?? a;
+      const round = (n: number) => Math.round(n * 10) / 10;
+      return {
+        found: true,
+        reachesGoal: Math.hypot(end.x - b.x, end.y - b.y) < 0.5,
+        radius: round(r),
+        length: round(length),
+        points: path.map((p) => ({ x: round(p.x), y: round(p.y) })),
+      };
     },
 
     inspect_entity: ({ id }) => {

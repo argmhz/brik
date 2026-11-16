@@ -30,7 +30,21 @@ import {
   type Vec2,
 } from "@brik/core";
 import { Input } from "@brik/input";
-import { CollisionEnter, type CollisionData, CollisionExit, type Contact, Physics, TriggerEnter, TriggerExit } from "@brik/physics";
+import {
+  CollisionEnter,
+  type CollisionData,
+  CollisionExit,
+  type Contact,
+  type FindPathOptions,
+  NavigationFinished,
+  Physics,
+  TriggerEnter,
+  TriggerExit,
+  findPath,
+  navigateTo,
+  stopNavigation,
+  walkerRadius,
+} from "@brik/physics";
 import { AnimationEvent, AnimationFinished, Camera2D, CameraFX, Particles, UIClick, UILayout, UISubmit, UIValueChanged, flashSprite, playAnimation } from "@brik/render";
 import { GlobalTransform2D, isActive, mat3, setActive } from "@brik/core";
 import { findBySceneId, isEntityLink } from "@brik/core";
@@ -207,6 +221,8 @@ export abstract class Behaviour {
   onAnimationFinished?(clip: string): void;
   /** The entity's Timer component ran out. */
   onTimer?(): void;
+  /** This entity's NavAgent2D got to where `navigateTo` sent it (`reached`), or as close as it could (not). */
+  onArrive?(reached: boolean): void;
   /** This entity's UIButton was clicked. */
   onClick?(): void;
   /** This entity's UISlider (number), UIToggle (boolean) or UITextInput (string) changed. */
@@ -341,6 +357,30 @@ export abstract class Behaviour {
   /** Slow motion at `scale` (0.3 is slow) for `duration` real seconds, then back to normal speed. */
   slowMotion(scale: number, duration: number): void {
     this.world.resource(CameraFX).slowMotion(scale, duration, this.world);
+  }
+
+  /**
+   * Walks this entity to a point, or after another entity, around walls (solid tiles and static colliders).
+   * Adds a NavAgent2D (speed, stop distance, ...) if it has none. `onArrive(reached)` is called when it gets there.
+   * E.g. `this.navigateTo(this.find("Player"))` or `this.navigateTo({ x: 100, y: 40 })`.
+   */
+  navigateTo(goal: Vec2 | Entity): void {
+    navigateTo(this.world, this.entity, goal);
+  }
+
+  /** Stops walking (see `navigateTo`). */
+  stopNavigation(): void {
+    stopNavigation(this.world, this.entity);
+  }
+
+  /**
+   * A path from this entity to `to` around walls, as points to walk through, or null when there is no way.
+   * Uses this entity's NavAgent2D radius (or its collider) to keep clear of walls.
+   */
+  findPath(to: Vec2, opts: FindPathOptions = {}): Vec2[] | null {
+    const g = this.world.store(GlobalTransform2D).matrix;
+    const from = { x: g.tx[this.entity], y: g.ty[this.entity] };
+    return findPath(this.world, from, to, { self: this.entity, radius: walkerRadius(this.world, this.entity), ...opts });
   }
 
   /** Lets this character fall through the one-way platform it stands on (for `seconds`, default 0.25). */
@@ -655,6 +695,7 @@ type HookName =
   | "onAnimationEvent"
   | "onAnimationFinished"
   | "onTimer"
+  | "onArrive"
   | "onClick"
   | "onValueChanged"
   | "onSubmit";
@@ -685,6 +726,7 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
       const anim = reader(AnimationEvent);
       const animDone = reader(AnimationFinished);
       const timers = reader(TimerFinished);
+      const arrivals = reader(NavigationFinished);
       const clicks = reader(UIClick);
       const changes = reader(UIValueChanged);
       const submits = reader(UISubmit);
@@ -703,6 +745,7 @@ export function ScriptsPlugin(registry: ScriptRegistry) {
           runtime.dispatch(ev.entity, "onAnimationFinished", clip?.name ?? ev.clip);
         }
         for (const ev of timers.read()) runtime.dispatch(ev.entity, "onTimer", undefined);
+        for (const ev of arrivals.read()) runtime.dispatch(ev.entity, "onArrive", ev.reached);
         for (const ev of clicks.read()) runtime.dispatch(ev.entity, "onClick", undefined);
         for (const ev of changes.read()) runtime.dispatch(ev.entity, "onValueChanged", ev.value);
         for (const ev of submits.read()) runtime.dispatch(ev.entity, "onSubmit", ev.value);

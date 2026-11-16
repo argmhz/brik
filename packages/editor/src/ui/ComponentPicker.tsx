@@ -37,6 +37,7 @@ export const COMPONENT_INFO: Record<string, Info> = {
   CollisionFilter: { category: "Fysik", text: "Hvilke ting der kan ramme hinanden", words: "lag gruppe mask" },
   Joint2D: { category: "Fysik", text: "Forbinder to kroppe (hængsel, fjeder, reb)", words: "led fjeder reb" },
   TileMapCollider: { category: "Fysik", text: "Gør en TileMaps tiles solide", words: "kollision bane" },
+  NavAgent2D: { category: "Gameplay", text: "Går hen til et mål eller efter en entity, uden om vægge", words: "pathfinding sti vej fjende ai jagt følg navigation a*" },
   Velocity2D: { category: "Fysik", text: "Bevæger entity med en fast fart", words: "fart hastighed" },
   Camera2D: { category: "Kamera", text: "Det spilleren ser igennem", words: "kamera view" },
   CameraFollow2D: { category: "Kamera", text: "Kameraet følger en entity", words: "følg follow" },

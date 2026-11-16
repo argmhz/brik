@@ -3,6 +3,10 @@ import {
   Camera2D,
   Collider2D,
   Light2D,
+  NULL_REF,
+  NavAgent2D,
+  Navigation,
+  walkerRadius,
   ParticleEmitter2D,
   Particles,
   TileMap,
@@ -226,6 +230,7 @@ export class SceneController {
     this.drawColliders(ctx);
     this.drawJoints(ctx);
     this.drawLights(ctx);
+    this.drawNavigation(ctx);
     this.drawUI(ctx);
     this.drawUIHandles(ctx);
     this.drawIcons(ctx);
@@ -302,6 +307,74 @@ export class SceneController {
         ctx.closePath();
       } else ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Made when a selected NavAgent2D needs its grid drawn and the world has none. */
+  private navigation: Navigation | null = null;
+
+  /**
+   * NavAgent2D: every agent's path while it walks; for a selected agent also the cells it can't enter
+   * (walls grown by its radius) and where it is going.
+   */
+  private drawNavigation(ctx: CanvasRenderingContext2D): void {
+    const world = this.editor.world;
+    if (world.query([NavAgent2D]).isEmpty()) return;
+    const N = world.store(NavAgent2D);
+    const selected = new Set(this.editor.selectedEntities());
+    const zoom = this.editor.view.zoom;
+    ctx.save();
+    for (const e of world.query([NavAgent2D, GlobalTransform2D])) {
+      const on = selected.has(e);
+      const g = this.globalOf(e);
+      if (on) {
+        // the walls as this agent sees them, in the visible part of the view
+        const nav = world.tryResource(Navigation) ?? (this.navigation ??= new Navigation());
+        const map = N.map[e] === NULL_REF ? -1 : world.deref(N.map[e]);
+        const grid = nav.grid(world, { radius: walkerRadius(world, e), map: map >= 0 ? map : undefined, skip: e });
+        if (grid.cellW * zoom >= 3) {
+          const tl = this.screenToWorld(0, 0);
+          const br = this.screenToWorld(this.width, this.height);
+          const a = grid.cellAt({ x: Math.min(tl.x, br.x), y: Math.min(tl.y, br.y) });
+          const b = grid.cellAt({ x: Math.max(tl.x, br.x), y: Math.max(tl.y, br.y) });
+          ctx.fillStyle = "rgba(255,80,80,0.22)";
+          if ((b.x - a.x + 1) * (b.y - a.y + 1) < 40000) {
+            for (let y = a.y; y <= b.y; y++) {
+              for (let x = a.x; x <= b.x; x++) {
+                if (!grid.isBlocked(x, y)) continue;
+                const p = this.worldToScreen(grid.originX + x * grid.cellW, grid.originY + (y + 1) * grid.cellH);
+                ctx.fillRect(p.x, p.y, grid.cellW * zoom, grid.cellH * zoom);
+              }
+            }
+          }
+        }
+      }
+      const path = N.path[e] ?? [];
+      if (path.length === 0 && !on) continue;
+      ctx.strokeStyle = on ? "rgba(90,220,255,0.95)" : "rgba(90,220,255,0.5)";
+      ctx.lineWidth = on ? 2 : 1.25;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      const o = this.worldToScreen(g.tx, g.ty);
+      ctx.moveTo(o.x, o.y);
+      for (const p of path) {
+        const s = this.worldToScreen(p.x, p.y);
+        ctx.lineTo(s.x, s.y);
+      }
+      ctx.stroke();
+      // where it is going: the target or the destination
+      if (on) {
+        const target = N.target[e] === NULL_REF ? -1 : world.deref(N.target[e]);
+        const goal = target >= 0 && world.has(target, GlobalTransform2D) ? { x: this.globalOf(target).tx, y: this.globalOf(target).ty } : N.status[e] === "moving" ? { x: N.destination.x[e], y: N.destination.y[e] } : null;
+        if (goal) {
+          const s = this.worldToScreen(goal.x, goal.y);
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
     }
     ctx.restore();
   }

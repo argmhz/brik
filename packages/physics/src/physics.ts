@@ -32,6 +32,7 @@ import {
   TriggerExit,
   Velocity2D,
 } from "./components";
+import { Navigation, moveDirect, updateNavAgents } from "./navigation";
 
 type R = typeof RAPIER;
 
@@ -1121,6 +1122,13 @@ export function PhysicsPlugin(options: PhysicsOptions = {}) {
       // particles and other non-physics systems ray-cast through this
       const solid = app.world.tryResource(SolidRaycast) ?? app.world.insertResource(new SolidRaycast());
       solid.cast = (origin, dir, maxDistance, mask) => physics.raycast(origin, dir, maxDistance, { mask, solidOnly: true });
+      // agents move before the step, like scripts' moveCharacter in onFixedUpdate
+      app.world.tryResource(Navigation) ?? app.world.insertResource(new Navigation());
+      app.addSystem("fixedUpdate", {
+        name: "navigation.agents",
+        run: (w: World) =>
+          updateNavAgents(w, (e, dx, dy) => (w.has(e, CharacterController2D) ? physics.moveCharacter(e, dx, dy) : moveDirect(w, e, dx, dy))),
+      });
       app.addSystem("fixedUpdate", {
         name: "physics.step",
         run: (w: World) => physics.step(w.resource(Time).dt),
