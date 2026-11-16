@@ -65,11 +65,15 @@ Du kan have lige så mange lys, du vil. De lægges sammen, så to lys, der overl
 
 ![Tre lys: et ved spilleren, et orange til venstre og et blåt til højre](../images/lys-flere.png)
 
+## 5. Glød (valgfrit)
+
+Lys kan kun fjerne mørke, men med `PostProcess2D` på kameraet kan lyse steder gløde. Tilføj den på **Main Camera**, sæt `bloom` til fx 1, og skru `bloomThreshold` ned, til lysene og de lyse sprites begynder at gløde. En smule `vignette` gør hjørnerne mørkere. Ild og gnister gløder ekstra, hvis de får en `SpriteMaterial` med `blend: additive`. Se [Effekter på hele billedet](../manual/grafik.md#effekter-paa-hele-billedet).
+
 ## Begrænsninger
 
 - **Ingen skygger.** Lyset går igennem vægge og tiles. Skygger kommer senere.
 - **Ingen normal maps.** Spritene er lige lyse over hele fladen.
-- **Lys kan ikke gøre noget lysere end det, det var.** Lys fjerner kun mørke: er en sprite fuldt lys, kan et lys ikke brænde den ud.
+- **Lys kan ikke gøre noget lysere end det, det var.** Lys fjerner kun mørke: er en sprite fuldt lys, kan et lys ikke brænde den ud. Brug bloom (afsnit 5) til glød.
 - **Alt i verden bliver påvirket ens.** Man kan ikke udelukke enkelte sprites eller lag fra belysningen.
 - **Scene-fanen er altid lys.** Lyset ses kun i Spil-fanen under Play, men gizmoen i Scene viser, hvor lysene er og hvor langt de når, så du kan redigere uden at stå i mørke.
 - Hvert kamera slår belysning til for sig selv. Et kamera uden `Lighting2D` tegner alt fuldt oplyst.

@@ -26,6 +26,7 @@ Fra et script: `this.playAnimation("hero_run")`.
 
 - **Aseprite og TexturePacker:** Importér `.png` og `.json` sammen. Du får sprites, og Aseprite-tags bliver til animationer.
 - **Tiled:** Se [Tilemaps](tilemaps.md#fra-tiled).
+- **BMFont (`.fnt`):** Importér `.fnt` og dens `.png` sammen. Du får en bitmap-font, se [Bitmap-fonte](#bitmap-fonte-pixel-tekst).
 
 ## Kamera
 
@@ -142,4 +143,4 @@ onCollisionEnter(other: Entity) {
 | `scanlines`, `scanlineSpacing`, `curvature`, `chromaticAberration` | CRT: linjer hen over billedet, en buet skærm, og rød og blå, der glider fra hinanden mod kanten |
 | `pixelate` | Tegner billedet i blokke på så mange skærmpixels |
 
-Felterne kan ændres, mens spillet kører, fx fra et script på kameraet: `this.get(PostProcess2D).saturation = 0`, når spilleren dør. Effekterne vises kun i Game-visningen og i det eksporterede spil, ikke i Scene-fanen. Hvert kamera har sine egne effekter. Et kamera med effekter tegnes først ind i en tekstur, så det koster lidt mere, især med bloom.
+Felterne kan ændres, mens spillet kører, fx fra et script på kameraet: `this.get(PostProcess2D).saturation = 0`, når spilleren dør. Effekterne vises kun i Spil-fanen og i det eksporterede spil, ikke i Scene-fanen. Hvert kamera har sine egne effekter. Et kamera med effekter tegnes først ind i en tekstur, så det koster lidt mere, især med bloom.

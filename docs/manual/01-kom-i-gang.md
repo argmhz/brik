@@ -38,7 +38,7 @@ Eksemplerne er almindelige projektfiler, så du kan læse og rette alt.
 | `brik.project.json` | Projektets indstillinger, fx fysik (tyngdekraft og skala) |
 | `scenes/` | Scener |
 | `scripts/` | Dine TypeScript-scripts |
-| `assets/` | Billeder, lyde og animationer (`.anim.json`) |
+| `assets/` | Billeder, lyde, animationer (`.anim.json`) og bitmap-fonte (`.font.json`) |
 | `prefabs/` | Prefabs (`.prefab.json`) |
 | `icon.png` | Valgfrit ikon til det eksporterede spil |
 | `CLAUDE.md` | Forklaring af projektet til en AI-klient (se [AI og MCP](ai-og-mcp.md)) |
